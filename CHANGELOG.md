@@ -1,6 +1,6 @@
 # Cambios
 
-Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número y actualiza `version` en `config.js`.
+Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
 ## V0.13 · 2026-11-27
 - Próximos eventos: tarjeta en el inicio y pantalla "Eventos" con afiche, fecha, lugar, mapa y botón "Cómo llegar" (copiado del Google Site). Los eventos se cargan en config.js.
