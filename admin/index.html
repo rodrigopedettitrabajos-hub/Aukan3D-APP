@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.28">
-  <script src="../tema.js?v=0.28"></script>
+  <link rel="stylesheet" href="admin.css?v=0.30">
+  <script src="../tema.js?v=0.30"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -22,7 +22,7 @@
     <label>Contraseña <input name="clave" type="password" autocomplete="current-password" required></label>
     <p class="error" id="login-error" aria-live="polite"></p>
     <button class="btn" type="submit">Ingresar</button>
-    <p class="sub chico">Versión de muestra: usuario <b>admin</b>, contraseña <b>admin</b>.</p>
+    <p class="sub chico" data-demo>Versión de muestra: usuario <b>admin</b>, contraseña <b>admin</b>.</p>
     <p class="version" data-version></p>
   </form>
 </div>
@@ -35,6 +35,7 @@
     <nav class="nav" aria-label="Secciones">
       <a href="#panel">Panel principal</a>
       <a href="#ventas">Ventas y pedidos</a>
+      <a href="#feria">Modo feria</a>
       <a href="#pendientes">Cuentas pendientes</a>
       <a href="#clientes">Clientes</a>
       <a href="#productos">Productos y stock</a>
@@ -44,7 +45,7 @@
     </nav>
     <div class="side-pie">
       <button id="tema" class="tema-btn" type="button"></button>
-      <a href="../" class="side-link">Ver la tienda ↗</a>
+      <a href="../" class="side-link" target="_blank" rel="noopener">Ver la tienda ↗</a>
       <span class="version" data-version></span>
       <button type="button" class="btn sec chico salir-movil" data-salir>Salir</button>
     </div>
@@ -53,7 +54,7 @@
   <main>
     <header class="top">
       <p class="crumb">Aukan3D Gestión / <b id="crumb">Panel principal</b></p>
-      <div class="user"><span class="avatar" aria-hidden="true">A</span><span><b>Administrador</b><small>Vista previa con datos de ejemplo</small></span><button type="button" class="btn sec chico" data-salir>Salir</button></div>
+      <div class="user"><span class="avatar" aria-hidden="true">A</span><span><b>Administrador</b><small id="user-sub">Vista previa con datos de ejemplo</small></span><button type="button" class="btn sec chico" data-salir>Salir</button></div>
     </header>
 
     <div class="content">
@@ -74,9 +75,50 @@
         <div class="filtros">
           <input id="ventas-q" type="search" placeholder="Buscar por cliente, número o producto" aria-label="Buscar ventas">
           <select id="ventas-estado" aria-label="Estado"><option value="">Todos los estados</option></select>
-          <select id="ventas-origen" aria-label="Origen"><option value="">Web y en persona</option><option value="web">Solo tienda web</option><option value="local">Solo en persona</option></select>
+          <select id="ventas-origen" aria-label="Origen"><option value="">Web y en persona</option><option value="web">Solo tienda web</option><option value="local">Solo en persona</option><option value="feria">Solo feria</option></select>
         </div>
         <div id="ventas-lista"></div>
+      </section>
+
+      <section id="v-feria" class="vista" hidden>
+        <div class="cabeza"><div><p class="eyebrow">Punto de venta</p><h1>Modo feria</h1><p class="sub" id="feria-sub">Tocá los productos, cobrá y listo. Cada venta queda registrada y descuenta stock.</p></div>
+          <div class="botones" id="feria-botones" hidden><button class="btn sec" type="button" id="caja-mov">Retiro o ingreso</button><button class="btn sec" type="button" id="caja-cerrar">Cerrar caja</button></div></div>
+
+        <form id="f-abrir" class="caja abrir-caja" novalidate hidden>
+          <h2>Abrir caja</h2>
+          <p class="sub">Contá el efectivo con el que arrancás (el cambio). Al cerrar, se compara con lo que hay.</p>
+          <div class="campos dos">
+            <label>Efectivo inicial <input name="fondo" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></label>
+            <label>Quién vende <select name="vendedor"></select></label>
+          </div>
+          <p class="error" id="abrir-error" aria-live="polite"></p>
+          <button class="btn" type="submit">Abrir caja</button>
+        </form>
+
+        <div id="pos" class="pos" hidden>
+          <div class="pos-catalogo">
+            <div class="filtros"><input id="pos-q" type="search" placeholder="Buscar producto" aria-label="Buscar producto"></div>
+            <div class="pos-cats" id="pos-cats" role="group" aria-label="Categorías"></div>
+            <div class="pos-grilla" id="pos-grilla"></div>
+          </div>
+          <aside class="pos-ticket caja" id="pos-ticket" aria-label="Ticket">
+            <div class="caja-cab"><h2>Ticket</h2><button type="button" class="link" id="pos-vaciar">Vaciar</button></div>
+            <div id="pos-items"></div>
+            <p class="pos-total"><span>Total</span><b id="pos-total">$ 0</b></p>
+            <fieldset><legend>Cómo paga</legend><div class="pos-medios" id="pos-medios"></div></fieldset>
+            <div id="pos-efectivo" class="pos-efectivo">
+              <label>Recibido <input id="pos-recibido" type="number" min="0" step="1" inputmode="numeric" placeholder="Monto justo"></label>
+              <div class="atajos" id="pos-atajos"></div>
+              <p class="pos-vuelto" id="pos-vuelto" aria-live="polite"></p>
+            </div>
+            <p class="error" id="pos-error" aria-live="polite"></p>
+            <button class="btn pos-cobrar" type="button" id="pos-cobrar">Cobrar</button>
+            <div class="pos-resumen" id="pos-resumen"></div>
+          </aside>
+          <button type="button" class="btn pos-barra" id="pos-barra">Ver ticket</button>
+        </div>
+
+        <div id="cajas-viejas"></div>
       </section>
 
       <section id="v-pendientes" class="vista" hidden>
@@ -128,7 +170,7 @@
         <div class="caja"><h2>Gastos del mes</h2><div id="gastos-lista"></div></div>
       </section>
 
-      <p class="demo-pie">Vista previa: los datos son de ejemplo y se guardan solo en este navegador.
+      <p class="demo-pie" data-demo>Vista previa: los datos son de ejemplo y se guardan solo en este navegador.
         <button type="button" class="link" id="reiniciar">Volver a los datos de ejemplo</button></p>
     </div>
   </main>
@@ -267,12 +309,36 @@
   </form>
 </dialog>
 
+<dialog id="d-mov" class="ventana" aria-labelledby="d-mov-t">
+  <form method="dialog" id="f-mov" novalidate>
+    <header><h2 id="d-mov-t">Retiro o ingreso de efectivo</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
+    <div class="campos">
+      <label>Tipo <select name="tipo"><option value="retiro">Retiro (sale plata de la caja)</option><option value="ingreso">Ingreso (entra cambio)</option></select></label>
+      <label>Monto <input name="monto" type="number" min="1" step="1" inputmode="numeric" required></label>
+      <label>Motivo <input name="nota" maxlength="80" placeholder="Ej. Pago del stand, más cambio"></label>
+    </div>
+    <p class="error" id="mov-error" aria-live="polite"></p>
+    <footer><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok">Guardar</button></footer>
+  </form>
+</dialog>
+
+<dialog id="d-cerrar" class="ventana" aria-labelledby="d-cerrar-t">
+  <form method="dialog" id="f-cerrar" novalidate>
+    <header><h2 id="d-cerrar-t">Cerrar caja</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
+    <div id="cerrar-resumen"></div>
+    <label>Efectivo contado <input name="contado" type="number" min="0" step="1" inputmode="numeric" required></label>
+    <p class="pos-vuelto" id="cerrar-dif" aria-live="polite"></p>
+    <p class="error" id="cerrar-error" aria-live="polite"></p>
+    <footer><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok">Cerrar caja</button></footer>
+  </form>
+</dialog>
+
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
-<script src="../config.js?v=0.28"></script>
-<script src="../productos.js?v=0.28"></script>
-<script src="../catalogo.js?v=0.28"></script>
-<script src="datos.js?v=0.28"></script>
-<script src="admin.js?v=0.28"></script>
+<script src="../config.js?v=0.30"></script>
+<script src="../productos.js?v=0.30"></script>
+<script src="../catalogo.js?v=0.30"></script>
+<script src="datos.js?v=0.30"></script>
+<script src="admin.js?v=0.30"></script>
 </body>
 </html>

@@ -1,4 +1,9 @@
 const cfg = window.AUKAN_CONFIG;
+if (cfg.apiUrl) { // servidor propio (api/): catálogo y pedidos salen de ahí
+  const api = cfg.apiUrl.replace(/\/+$/, "");
+  cfg.catalogoCsvUrl = api + "/api/productos.csv";
+  cfg.pedidosUrl = api + "/api/pedidos";
+}
 const $ = (s) => document.querySelector(s);
 const pesos = (n) => "$" + n.toLocaleString("es-UY");
 

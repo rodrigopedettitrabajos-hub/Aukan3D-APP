@@ -51,4 +51,37 @@ assert.strictEqual(d.totalVenta(db3.ventas[0]), 800);
 assert.strictEqual(db3.clientes[0].nombre, "Ana");
 assert.strictEqual(d.importarPedidosWeb(db3, [{ ...ped, numero: "W2" }]), 1);
 assert.strictEqual(db3.clientes.length, 1); // mismo WhatsApp, mismo cliente
+
+// Sincronización: solo se manda lo cambiado; lo del servidor no pisa cambios locales sin mandar.
+const enviado = new Map(), local = d.dbVacia();
+d.aplicarServidor(local, { ventas: [{ numero: "1001", fecha: "2026-11-01T10:00:00Z", origen: "web", items: [], pagos: [] }],
+  gastos: [{ id: "g1", concepto: "Luz", monto: 10 }] }, enviado);
+assert.deepStrictEqual(d.cambiosDb(local, enviado), { set: [], del: [] });
+local.gastos[0].monto = 20;
+local.clientes.push({ id: "c9", nombre: "Ana" });
+local.ventas.splice(0, 1);
+let cam = d.cambiosDb(local, enviado);
+assert.deepStrictEqual(cam.set.map((x) => x.col + x.id), ["clientesc9", "gastosg1"]);
+assert.deepStrictEqual(cam.del, [{ col: "ventas", id: "1001" }]);
+assert.strictEqual(d.aplicarServidor(local, { gastos: [{ id: "g1", concepto: "Luz", monto: 10 }] }, enviado), 0);
+assert.strictEqual(local.gastos[0].monto, 20); // el cambio local sin mandar se respeta
+d.marcarEnviado(enviado, cam);
+assert.deepStrictEqual(d.cambiosDb(local, enviado), { set: [], del: [] });
+assert.strictEqual(d.aplicarServidor(local, { ventas: [{ numero: "1002", fecha: "2026-11-02T10:00:00Z", origen: "web", items: [], pagos: [] }],
+  gastos: [{ _borrado: true, id: "g1" }] }, enviado), 1);
+assert.strictEqual(local.gastos.length, 0);
+assert.strictEqual(local.ventas[0].numero, "1002");
+
+// Caja de la feria: fondo + efectivo + ingresos - retiros; la diferencia contra lo contado.
+const dbF = d.datosEjemplo(cat);
+const caja = { id: "k1", abierta: "2026-11-27T13:00:00Z", cerrada: null, fondo: 1000, vendedor: "u2", movimientos: [{ tipo: "retiro", monto: 300 }, { tipo: "ingreso", monto: 50 }], contado: null };
+dbF.cajas.push(caja);
+assert.strictEqual(d.cajaAbierta(dbF), caja);
+dbF.ventas.push({ numero: "F1", caja: "k1", moneda: "UYU", items: [{ precio: 800, cant: 1 }], pagos: [{ medio: "m1", monto: 800 }] },
+  { numero: "F2", caja: "k1", moneda: "UYU", items: [{ precio: 500, cant: 2 }], pagos: [{ medio: "m3", monto: 1000 }] });
+let rc = d.resumenCaja(dbF, caja);
+assert.deepStrictEqual([rc.total, rc.efectivo, rc.esperado, rc.porMedio.m3, rc.diferencia], [1800, 800, 1550, 1000, null]);
+caja.contado = 1500; caja.cerrada = "2026-11-27T20:00:00Z";
+assert.strictEqual(d.resumenCaja(dbF, caja).diferencia, -50);
+assert.strictEqual(d.cajaAbierta(dbF), null);
 console.log("admin: ok");

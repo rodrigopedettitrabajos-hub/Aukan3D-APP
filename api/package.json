@@ -1,0 +1,12 @@
+{
+  "name": "aukan3d-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --port 8787",
+    "test": "node test.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "4.169.0"
+  }
+}
