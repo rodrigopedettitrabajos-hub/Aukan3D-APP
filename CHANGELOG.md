@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número y actualiza `version` en `config.js`.
 
+## V0.06 · 2026-11-27
+- Botón de WhatsApp con animación: onda que late y un saludo cada 4 segundos (se apaga si el sistema pide menos movimiento).
+
 ## V0.05 · 2026-11-27
 - Pago con Mercado Pago: al enviar el pedido se genera el link de pago con el total y su QR (modo prueba; necesita el servidor de pedidos y el token de Mercado Pago).
 - El mensaje de WhatsApp incluye el número de pedido y el link de pago.
