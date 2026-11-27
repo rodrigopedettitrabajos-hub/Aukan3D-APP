@@ -342,10 +342,30 @@ $("#crear-cuenta").addEventListener("click", () => {
   $("#cuenta").showModal();
   f.clave.focus();
 });
-function verGrande(src, alt) {
-  Object.assign($("#visor-img"), { src, alt });
+// Visor: si la foto viene de un carrusel, se pasa a las otras con flechas, deslizando o con ← →.
+let visorFotos = [], visorI = 0;
+function verGrande(src, alt, fotos = [src]) {
+  visorFotos = fotos; visorI = Math.max(0, fotos.indexOf(src));
+  $("#visor-img").alt = alt;
+  $("#visor").classList.toggle("varias", fotos.length > 1);
+  verFoto(0);
   $("#visor").showModal();
 }
+function verFoto(d) {
+  visorI = (visorI + d + visorFotos.length) % visorFotos.length;
+  $("#visor-img").src = visorFotos[visorI];
+  $("#visor-n").textContent = visorFotos.length > 1 ? `${visorI + 1} / ${visorFotos.length}` : "";
+}
+$("#visor-ant").onclick = () => verFoto(-1);
+$("#visor-sig").onclick = () => verFoto(1);
+$("#visor").addEventListener("keydown", (e) => { if (e.key === "ArrowLeft") verFoto(-1); if (e.key === "ArrowRight") verFoto(1); });
+let toqueX = null;
+$("#visor-img").addEventListener("pointerdown", (e) => { toqueX = e.clientX; });
+$("#visor-img").addEventListener("pointerup", (e) => {
+  const dx = e.clientX - toqueX;
+  if (toqueX !== null && Math.abs(dx) > 40) verFoto(dx < 0 ? 1 : -1);
+  toqueX = null;
+});
 // Galería: los eventos con data-fotos="a.webp|b.webp" pasan a carrusel (la foto del HTML va primera).
 document.querySelectorAll("#galeria [data-fotos]").forEach((fig) => {
   const img = fig.querySelector("img");
@@ -358,7 +378,8 @@ const ampliar = (e) => {
   const img = e.target.closest?.(AMPLIABLE);
   if (!img || (e.type === "keydown" && e.key !== "Enter")) return;
   e.preventDefault(); // si no, el Enter "aprieta" el botón cerrar del visor recién abierto
-  verGrande(img.currentSrc || img.src, img.alt);
+  const fotos = [...(img.closest(".carrusel")?.querySelectorAll("img") || [img])].map((i) => i.src);
+  verGrande(img.src, img.alt, fotos);
 };
 document.addEventListener("click", ampliar);
 document.addEventListener("keydown", ampliar);

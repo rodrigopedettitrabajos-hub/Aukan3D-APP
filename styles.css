@@ -142,7 +142,11 @@ body:has(#barra:not([hidden])) .wa-flotante { bottom: 84px; }
 a.add { text-decoration: none; display: inline-block; }
 .visor { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 96dvh; overflow: visible; }
 .visor::backdrop { background: rgb(0 0 0 / .85); }
-.visor img { display: block; max-width: 96vw; max-height: 92dvh; border-radius: 12px; }
+.visor img { display: block; max-width: 96vw; max-height: 86dvh; border-radius: 12px; }
+.visor img { touch-action: pan-y; user-select: none; -webkit-user-drag: none; }
+.visor .car-btn { display: none; }
+.visor.varias .car-btn { display: block; }
+.visor-n { position: absolute; left: 0; right: 0; bottom: -30px; margin: 0; text-align: center; color: #fff; font-size: 14px; }
 .visor .cerrar { position: absolute; top: -14px; right: -6px; z-index: 1; background: #fff; color: #000; border-radius: 50%; width: 36px; height: 36px; }
 .carrusel img, #galeria img { cursor: zoom-in; }
 .flyer-btn { padding: 0; border: 0; background: none; display: block; width: 100%; cursor: zoom-in; border-radius: var(--radius); overflow: hidden; }

@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.18 · 2026-11-27
+- Foto en grande con carrusel: si viene de un carrusel (galería o ficha del producto), se pasa a las otras con flechas, deslizando o con las teclas ← →, y muestra "2 / 4".
+
 ## V0.17 · 2026-11-27
 - Galería: Cosplay Anime Fest 2025 (3 fotos) y Friki Fest Solidaria 2026 (4 fotos) con carrusel, como en el sitio. Se agrandan al tocarlas.
 
