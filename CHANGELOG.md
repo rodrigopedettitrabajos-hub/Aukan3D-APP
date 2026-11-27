@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.23 · 2026-11-27
+- Comprobante de pedido: botón "Descargar comprobante (PDF)" al terminar el pedido y "Comprobante" en cada pedido de Mis pedidos e Historial. Abre la impresión del navegador con la opción Guardar como PDF. Incluye cliente, dirección, productos, total, seña y saldo (no es una factura).
+
 ## V0.22 · 2026-11-27
 - La cuenta deja de ser una ventanita: al tocar "Hola, …" se abre un desplegable con Mis pedidos, Historial de compras, Mis datos y Cerrar sesión, y cada uno es una pantalla aparte.
 - Ingresar y crear cuenta siguen en la ventanita (ahora se puede desplazar en pantallas bajas); al terminar llevan a Mis pedidos.

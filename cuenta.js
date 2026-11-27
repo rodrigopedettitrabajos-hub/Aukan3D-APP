@@ -43,11 +43,11 @@ function leerPedidos() {
 function guardarPedidos(lista) {
   try { localStorage.setItem(CLAVE_PEDIDOS, JSON.stringify(lista.slice(0, 50))); } catch { /* sin almacenamiento */ }
 }
-// Lo llama app.js al enviar un pedido; solo se guarda si hay sesión.
+// Lo llama app.js al enviar un pedido: lo devuelve completo (para el comprobante) y lo guarda solo si hay sesión.
 function guardarPedido(pedido) {
-  if (!leerPerfil()?.activo) return;
-  const lista = leerPedidos();
-  guardarPedidos([{ fecha: new Date().toISOString(), estado: 0, ...pedido, numero: pedido.numero || `W${lista.length + 1}` }, ...lista]);
+  const p = { fecha: new Date().toISOString(), estado: 0, ...pedido, numero: pedido.numero || `W${Date.now().toString(36).toUpperCase().slice(-6)}` };
+  if (leerPerfil()?.activo) guardarPedidos([p, ...leerPedidos()]);
+  return p;
 }
 
 const fechaCorta = (iso) => new Date(iso).toLocaleDateString("es-UY", { day: "numeric", month: "short", year: "numeric" });
@@ -64,7 +64,9 @@ function tarjetaPedido(p) {
         ariaCurrent: i === p.estado ? "step" : null }))),
     el("div", { className: "pedido-pie" },
       el("span", { textContent: `${entregado ? "Entregado" : pasos[p.estado]} · Total ${pesos(p.total)}` }),
-      entregado ? el("button", { className: "secundario chico", type: "button", textContent: "Repetir pedido", onclick: () => repetir(p) }) : ""));
+      el("div", { className: "pedido-acciones" },
+        el("button", { className: "secundario chico", type: "button", textContent: "Comprobante", ariaLabel: `Descargar comprobante del pedido ${p.numero}`, onclick: () => comprobante(p) }),
+        entregado ? el("button", { className: "secundario chico", type: "button", textContent: "Repetir pedido", onclick: () => repetir(p) }) : "")));
 }
 function repetir(p) {
   for (const i of p.items) if (productos.some((x) => x.id === i.id && x.precio)) cambiar(i.id, i.cant);

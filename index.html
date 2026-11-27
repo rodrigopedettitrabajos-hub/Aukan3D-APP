@@ -10,8 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
   <link rel="icon" href="favicon.png">
   <meta name="theme-color" content="#000000">
-  <link rel="stylesheet" href="styles.css?v=0.22">
-  <script src="tema.js?v=0.22"></script>
+  <link rel="stylesheet" href="styles.css?v=0.23">
+  <script src="tema.js?v=0.23"></script>
 </head>
 <body>
   <!-- Íconos: Simple Icons (CC0) -->
@@ -251,6 +251,7 @@
       <a id="pago-link" class="primary azul" target="_blank" rel="noopener">Pagar con Mercado Pago</a>
       <a id="pago-wa" class="primary" target="_blank" rel="noopener">Avisar por WhatsApp</a>
       <p class="fine"><strong id="pago-total"></strong></p>
+      <button id="pago-comprobante" class="secundario" type="button">Descargar comprobante (PDF)</button>
       <div id="ofrecer-cuenta" class="ofrecer">
         <p>¿Guardamos tus datos para la próxima?</p>
         <button id="crear-cuenta" class="secundario" type="button">Crear mi cuenta</button>
@@ -291,11 +292,13 @@
     </div>
   </dialog>
 
-  <script src="config.js?v=0.22"></script>
-  <script src="catalogo.js?v=0.22"></script>
-  <script src="productos.js?v=0.22"></script>
-  <script src="qrcode.js?v=0.22"></script>
-  <script src="app.js?v=0.22"></script>
-  <script src="cuenta.js?v=0.22"></script>
+  <div id="comprobante" class="comprobante" aria-hidden="true"></div>
+
+  <script src="config.js?v=0.23"></script>
+  <script src="catalogo.js?v=0.23"></script>
+  <script src="productos.js?v=0.23"></script>
+  <script src="qrcode.js?v=0.23"></script>
+  <script src="app.js?v=0.23"></script>
+  <script src="cuenta.js?v=0.23"></script>
 </body>
 </html>

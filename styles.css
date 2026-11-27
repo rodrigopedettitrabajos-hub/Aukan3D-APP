@@ -301,3 +301,24 @@ legend { font-size: 14px; color: var(--muted); padding: 0 4px; }
 .version { font-family: ui-monospace, monospace; }
 @media (max-width: 480px) { .brand h1 { display: none; } .acciones { gap: 6px; } .cart-btn { padding: 8px 12px; } .user-btn { max-width: 110px; padding: 7px 12px; } }
 .modo-pago { flex-direction: column; gap: 6px; }
+
+/* Comprobante: solo existe al imprimir ("Guardar como PDF"). */
+.comprobante { display: none; }
+.pedido-acciones { display: flex; gap: 6px; flex-wrap: wrap; }
+@media print {
+  @page { margin: 16mm; }
+  body > *:not(.comprobante) { display: none !important; }
+  body { background: #fff; color: #111; }
+  .comprobante { display: block; font: 12pt/1.4 "Open Sans", Arial, sans-serif; color: #111; }
+  .comprobante header { display: flex; gap: 16px; align-items: center; border-bottom: 3px solid #0392ca; padding-bottom: 12px; margin-bottom: 16px; }
+  .comprobante header img { border-radius: 50%; }
+  .comprobante h1 { font: 600 20pt Oswald, Arial, sans-serif; margin: 0; }
+  .comprobante h2 { font: 600 12pt Oswald, Arial, sans-serif; text-transform: uppercase; letter-spacing: .05em; margin: 0 0 4px; color: #0277a6; }
+  .comprobante p { margin: 2px 0; }
+  .comprobante table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  .comprobante th, .comprobante td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; }
+  .comprobante th:nth-child(n+3), .comprobante td:nth-child(n+3) { text-align: right; }
+  .comprobante tfoot td { font-weight: 600; border-bottom: 0; }
+  .comprobante tfoot tr:first-child td { border-top: 2px solid #111; }
+  .comp-pie { color: #555; font-size: 10pt; }
+}

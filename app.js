@@ -286,8 +286,9 @@ async function enviar(ev) {
   const sena = cliente.modo !== "total";
   const montos = (total, aPagar) => sena ? `Seña ${pesos(aPagar)} · total ${pesos(total)}` : `Total ${pesos(total)}`;
   ultimoCliente = cliente;
-  const registro = (numero, total = suma) => guardarPedido({ numero, total, sena, entrega: cliente.entrega,
-    items: items.map(({ id, nombre, precio, cant }) => ({ id, nombre, precio, cant })) });
+  const registro = (numero, total = suma) => { ultimoPedido = guardarPedido({ numero, total, sena, entrega: cliente.entrega,
+    cliente: { nombre: cliente.nombre, whatsapp: cliente.whatsapp, email: cliente.email },
+    items: items.map(({ id, nombre, precio, cant }) => ({ id, nombre, precio, cant })) }); };
   if (!cfg.pedidosUrl) { // sin servidor: directo a WhatsApp
     registro();
     window.open(waLink(texto), "_blank");
@@ -313,7 +314,31 @@ async function enviar(ev) {
   terminar(ev.target);
 }
 
-let ultimoCliente = null;
+let ultimoCliente = null, ultimoPedido = null;
+
+// Comprobante del pedido: se arma en #comprobante y se imprime (el navegador ofrece "Guardar como PDF").
+function comprobante(p) {
+  const perfil = leerPerfil()?.activo ? leerPerfil() : {}; // datos guardados solo si hay sesión
+  const c = { ...perfil, ...p.cliente };
+  const dir = [...new Set([perfil.direccion, perfil.barrio, perfil.ciudad, perfil.departamento].filter(Boolean))].join(", ");
+  const fila = (...celdas) => el("tr", {}, ...celdas.map((t) => el("td", { textContent: t })));
+  const aPagar = p.sena ? montoSena(p.total) : p.total;
+  $("#comprobante").replaceChildren(
+    el("header", {}, el("img", { src: "logo.webp", alt: "", width: 64, height: 64 }),
+      el("div", {}, el("h1", { textContent: "Comprobante de pedido" }), el("p", { textContent: `Pedido N° ${p.numero} · ${new Date(p.fecha).toLocaleDateString("es-UY")}` }))),
+    el("section", {}, el("h2", { textContent: "Cliente" }),
+      ...[c.nombre, c.whatsapp && `WhatsApp: ${c.whatsapp}`, c.email, dir && `Dirección: ${dir}`, p.entrega && `Entrega: ${p.entrega}`]
+        .filter(Boolean).map((t) => el("p", { textContent: t }))),
+    el("table", {},
+      el("thead", {}, el("tr", {}, ...["Cant.", "Producto", "Precio", "Subtotal"].map((t) => el("th", { textContent: t })))),
+      el("tbody", {}, ...p.items.map((i) => fila(String(i.cant), i.nombre, pesos(i.precio), pesos(i.precio * i.cant)))),
+      el("tfoot", {}, fila("", "Total", "", pesos(p.total)),
+        p.sena ? fila("", "Seña 50% a pagar", "", pesos(aPagar)) : fila("", "Pago total", "", pesos(aPagar)),
+        p.sena ? fila("", "Saldo al entregar", "", pesos(p.total - aPagar)) : "")),
+    el("p", { className: "comp-pie", textContent: `Aukan3D · Montevideo, Uruguay · WhatsApp ${cfg.whatsapp.replace(/^598/, "0")} · Instagram @aukan3d` }),
+    el("p", { className: "comp-pie", textContent: "Este comprobante resume tu pedido; no es una factura." }));
+  window.print();
+}
 const waLink = (texto) => `https://wa.me/${cfg.whatsapp}?text=${encodeURIComponent(texto)}`;
 
 function terminar(form) {
@@ -335,6 +360,7 @@ function mostrarPago(pago, total, texto, sena) {
   $("#pago-texto").textContent = pago
     ? `${sena ? "Pagá la seña" : "Pagalo"} con Mercado Pago: escaneá el QR con el celular o tocá el botón.`
     : "Te abrimos WhatsApp con tu pedido. Si no se abrió, tocá el botón y te pasamos cómo pagarlo.";
+  $("#pago-comprobante").hidden = !ultimoPedido;
   $("#ofrecer-cuenta").hidden = !!leerPerfil()?.activo; // a los invitados les ofrecemos crear cuenta
   if (!pago) return;
   $("#pago-link").href = pago;
@@ -441,6 +467,7 @@ $("#por-pagina").addEventListener("change", (e) => {
   irA(1);
 });
 $("#ver-carrito").addEventListener("click", verCarrito);
+$("#pago-comprobante").addEventListener("click", () => comprobante(ultimoPedido));
 $("#barra-ver").addEventListener("click", verCarrito);
 $("#detalle-add").addEventListener("click", () =>
   enDetalle.precio ? (volar(null), cambiar(enDetalle.id, 1)) : window.open(waConsulta(enDetalle), "_blank"));
