@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.39 · 2026-11-27
+- Ventas: cada fila tiene los botones "A4" y "80 mm" para elegir el formato al imprimir, sin abrir el pedido.
+
 ## V0.38 · 2026-11-27
 - Reportes, "Por tipo": un tipo con ventas solo en dólares (por ejemplo una venta en persona en USD) ahora aparece con su monto en USD; antes no se mostraba.
 - Prueba de punta a punta contra la tienda publicada y la base de pruebas real (`probar-compras.bat`, fuera del repo), con un seguro que corta cualquier escritura a la base real.

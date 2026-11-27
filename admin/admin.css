@@ -400,3 +400,4 @@ legend { padding: 0 6px; font-weight: 600; }
   #imprimir.ticket80 table { border-top: 1px dashed #000; border-bottom: 1px dashed #000; }
   #imprimir.ticket80 .pie-imp { text-align: center; }
 
+.tabla.t-ventas td > span.imp-formatos { display: inline-flex; flex-wrap: nowrap; }
