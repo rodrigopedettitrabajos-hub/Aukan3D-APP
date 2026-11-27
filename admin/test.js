@@ -28,6 +28,16 @@ assert.ok(db.ventas.length > 20 && db.ventas.every((x) => d.cobrado(x) <= d.tota
 const r = d.resumenMes(db, "2026-11");
 assert.ok(r.vendido.UYU > 0 && r.cobrado.UYU > 0 && r.gastado.UYU > 0);
 assert.strictEqual(r.resultado.UYU, r.cobrado.UYU - r.gastado.UYU);
+// Reportes por período: el año suma lo mismo que sus meses; la serie diaria cubre todo el mes.
+const anio = d.resumenRango(db, "2026-01-01", "2026-12-31");
+assert.ok(anio.vendido.UYU >= r.vendido.UYU);
+const serie = d.serieVentas(r.ventas, "2026-11-01", "2026-11-30");
+assert.strictEqual(serie.length, 30);
+assert.strictEqual(d.suma(serie, (x) => x[1]), r.vendido.UYU);
+assert.deepStrictEqual(d.serieVentas(anio.ventas, "2026-01-01", "2026-12-31", 7).map((x) => x[0]).slice(0, 2), ["2026-01", "2026-02"]);
+const top = d.masVendidos(r.ventas, 3);
+assert.ok(top.length === 3 && top[0].cant >= top[1].cant);
+
 const com = d.comisiones(db, "2026-11");
 const rom = com.find((u) => u.nombre === "Romina");
 assert.strictEqual(rom.comision.UYU, Math.round(rom.vendido.UYU * 0.1));

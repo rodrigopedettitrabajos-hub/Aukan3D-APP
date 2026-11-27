@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.34">
-  <script src="../tema.js?v=0.34"></script>
+  <link rel="stylesheet" href="admin.css?v=0.35">
+  <script src="../tema.js?v=0.35"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -166,15 +166,32 @@
       </section>
 
       <section id="v-reportes" class="vista" hidden>
-        <div class="cabeza"><div><p class="eyebrow">Finanzas</p><h1>Reportes y gastos</h1><p class="sub">Lo cobrado menos los gastos, en pesos y en dólares por separado.</p></div>
+        <div class="cabeza"><div><p class="eyebrow">Finanzas</p><h1>Reportes y gastos</h1><p class="sub">Ventas, cobros y gastos del período, en pesos y en dólares por separado.</p></div>
           <button class="btn" type="button" id="nuevo-gasto">+ Registrar gasto</button></div>
-        <div class="filtros"><input id="reportes-mes" type="month" aria-label="Mes"></div>
-        <div class="kpis" id="kpis-reporte"></div>
-        <div class="grilla">
-          <div class="caja"><h2>Ventas por categoría</h2><p class="sub">Pesos vendidos en el mes</p><div id="por-cat"></div></div>
-          <div class="caja"><h2>Cobrado por medio de pago</h2><p class="sub">Pesos cobrados en el mes</p><div id="por-medio"></div></div>
+        <div class="filtros periodo">
+          <select id="rep-tipo" aria-label="Período">
+            <option value="dia">Día</option><option value="mes" selected>Mes</option><option value="trimestre">Trimestre</option>
+            <option value="semestre">Semestre</option><option value="anio">Año</option><option value="rango">Entre fechas</option>
+          </select>
+          <div class="periodo-nav" id="rep-nav">
+            <button type="button" class="btn sec chico" id="rep-ant" aria-label="Período anterior">‹</button>
+            <strong id="rep-etiqueta" aria-live="polite"></strong>
+            <button type="button" class="btn sec chico" id="rep-sig" aria-label="Período siguiente">›</button>
+            <button type="button" class="link" id="rep-hoy">Hoy</button>
+          </div>
+          <div class="periodo-rango" id="rep-rango" hidden>
+            <label>Desde <input type="date" id="rep-desde"></label><label>Hasta <input type="date" id="rep-hasta"></label>
+          </div>
         </div>
-        <div class="caja"><h2>Gastos del mes</h2><div id="gastos-lista"></div></div>
+        <div class="kpis" id="kpis-reporte"></div>
+        <div class="caja"><h2 id="serie-t">Ventas por día</h2><p class="sub" id="serie-sub">Pesos vendidos</p><div id="rep-serie"></div></div>
+        <div class="grilla">
+          <div class="caja"><h2>Productos más vendidos</h2><p class="sub">Por cantidad · importe en pesos</p><div id="mas-vendidos"></div></div>
+          <div class="caja"><h2>Ventas por tipo</h2><p class="sub">Pesos vendidos según de dónde vino la venta</p><div id="por-origen"></div></div>
+          <div class="caja"><h2>Cobrado por forma de pago</h2><p class="sub">Pesos cobrados en el período</p><div id="por-medio"></div></div>
+          <div class="caja"><h2>Ventas por categoría</h2><p class="sub">Pesos vendidos en el período</p><div id="por-cat"></div></div>
+        </div>
+        <div class="caja"><h2>Gastos del período</h2><div id="gastos-lista"></div></div>
       </section>
 
       <p class="demo-pie" data-demo>Vista previa: los datos son de ejemplo y se guardan solo en este navegador.
@@ -349,10 +366,10 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.34"></script>
-<script src="../productos.js?v=0.34"></script>
-<script src="../catalogo.js?v=0.34"></script>
-<script src="datos.js?v=0.34"></script>
-<script src="admin.js?v=0.34"></script>
+<script src="../config.js?v=0.35"></script>
+<script src="../productos.js?v=0.35"></script>
+<script src="../catalogo.js?v=0.35"></script>
+<script src="datos.js?v=0.35"></script>
+<script src="admin.js?v=0.35"></script>
 </body>
 </html>

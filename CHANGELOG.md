@@ -2,6 +2,10 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.35 · 2026-11-27
+- Panel, Reportes: período a elegir (día, mes, trimestre, semestre, año o entre fechas) con flechas para ir hacia atrás y adelante, y botón "Hoy".
+- Reportes nuevos: ventas por día (o por mes si el período es largo; en un día, la lista de ventas), productos más vendidos, ventas por tipo (tienda web, en persona, feria) y cobrado por forma de pago, todos del período elegido.
+
 ## V0.34 · 2026-11-27
 - Panel: campana arriba con los pedidos nuevos de la tienda (número rojo, lista, tocar abre el pedido, "Marcar todo como visto"). El título de la pestaña muestra cuántos hay y, si se permite, el navegador avisa aunque estés en otra pestaña.
 - Panel: botón "Imprimir" en cada venta y en el detalle del pedido (hoja limpia, sirve para guardar como PDF).
