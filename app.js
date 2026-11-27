@@ -293,7 +293,7 @@ $("#crear-cuenta").addEventListener("click", () => {
 });
 // Eventos (config.js): tarjeta en el inicio y pantalla "Eventos" con mapa.
 const eventos = cfg.eventos || [];
-const mapaUrl = (ev) => `https://maps-api-ssl.google.com/maps?hl=es&q=${encodeURIComponent(ev.mapa)}&z=16&output=embed`;
+const mapaUrl = (ev) => `https://www.google.com/maps?hl=es&q=${encodeURIComponent(ev.mapa)}&z=16&output=embed`;
 const lugarUrl = (ev) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.mapa)}`;
 function datosEvento(ev) {
   return el("div", { className: "evento-datos" },
