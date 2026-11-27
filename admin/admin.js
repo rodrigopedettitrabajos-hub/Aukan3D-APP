@@ -43,7 +43,7 @@ $("#f-login").addEventListener("submit", (e) => {
   $("#login-error").textContent = "Usuario o contraseña incorrectos.";
   f.clave.select();
 });
-$("#salir").addEventListener("click", () => { try { sessionStorage.removeItem(SESION); } catch { /* idem */ } mostrarApp(); });
+for (const b of document.querySelectorAll("[data-salir]")) b.addEventListener("click", () => { try { sessionStorage.removeItem(SESION); } catch { /* idem */ } mostrarApp(); });
 
 // --- Datos ---
 let db = leerJson(CLAVE_DB, null);
@@ -52,7 +52,14 @@ function guardar() {
   try { localStorage.setItem(CLAVE_DB, JSON.stringify(db)); }
   catch { avisar("No se pudo guardar: el navegador no tiene más lugar. Probá con fotos más livianas."); }
 }
+// Pedidos hechos en la tienda desde este navegador (puente de la demo, ver importarPedidosWeb).
+function traerPedidosWeb() {
+  const n = importarPedidosWeb(db, leerJson("aukan_pedidos_panel", []));
+  if (n) avisar(n === 1 ? "Llegó 1 pedido nuevo de la tienda." : `Llegaron ${n} pedidos nuevos de la tienda.`);
+  return n;
+}
 guardar();
+addEventListener("storage", (e) => { if (e.key === "aukan_pedidos_panel" && conSesion() && traerPedidosWeb()) { guardar(); repintar(); } });
 const cliente = (id) => db.clientes.find((c) => c.id === id) || { nombre: "Sin cliente", whatsapp: "" };
 const usuario = (id) => db.usuarios.find((u) => u.id === id);
 const medio = (id) => db.medios.find((m) => m.id === id)?.nombre || "—";
@@ -60,7 +67,19 @@ const venta = (n) => db.ventas.find((v) => v.numero === n);
 const waDe = (tel) => "598" + String(tel).replace(/\D/g, "").replace(/^0/, "");
 
 let avisoT;
-function avisar(t) { const a = $("#aviso"); a.textContent = t; a.hidden = false; clearTimeout(avisoT); avisoT = setTimeout(() => (a.hidden = true), 3500); }
+// Con una ventana abierta, el resto de la página no se puede tocar: el aviso se mete en esa ventana
+// para que su "Deshacer" funcione.
+function mostrarAviso(si) {
+  const a = $("#aviso");
+  if (si) ([...document.querySelectorAll("dialog[open]")].pop() || document.body).append(a);
+  a.hidden = !si;
+}
+function avisar(t, deshacer) {
+  $("#aviso").replaceChildren(t, deshacer ? el("button", { type: "button", className: "link", textContent: "Deshacer", onclick: () => { deshacer(); guardar(); repintar(); mostrarAviso(false); } }) : "");
+  mostrarAviso(true);
+  clearTimeout(avisoT);
+  avisoT = setTimeout(() => mostrarAviso(false), deshacer ? 6000 : 3500);
+}
 
 // --- Navegación ---
 const VISTAS = { panel: "Panel principal", ventas: "Ventas y pedidos", pendientes: "Cuentas pendientes", clientes: "Clientes",
@@ -84,12 +103,12 @@ const kpi = (titulo, valor, pista, tono = "") => el("div", { className: "kpi" },
 function barras(filas) { // filas: [[etiqueta, valor, texto]]
   const max = Math.max(1, ...filas.map((f) => f[1]));
   return filas.length ? el("div", { className: "barras" }, ...filas.map(([t, n, txt]) => el("div", { className: "barra" },
-    el("span", { textContent: t }), el("i", { ariaHidden: "true" }, n ? el("b", { style: `width:${(n / max) * 100}%` }) : ""), el("span", { className: "num", textContent: txt }))))
+    el("span", { textContent: t, title: t }), el("i", { ariaHidden: "true" }, n ? el("b", { style: `width:${(n / max) * 100}%` }) : ""), el("span", { className: "num", textContent: txt }))))
     : el("p", { className: "vacio", textContent: "Sin datos este mes." });
 }
-function tabla(cabeza, filas, vacio) {
+function tabla(cabeza, filas, vacio, clase = "") {
   if (!filas.length) return el("p", { className: "vacio caja", textContent: vacio });
-  return el("div", { className: "tabla-caja" }, el("table", { className: "tabla" },
+  return el("div", { className: "tabla-caja" }, el("table", { className: "tabla " + clase },
     el("thead", {}, el("tr", {}, ...cabeza.map((c) => el("th", { textContent: c.replace(/^#/, ""), className: c.startsWith("#") ? "num" : "" })))),
     el("tbody", {}, ...filas)));
 }
@@ -97,7 +116,8 @@ const td = (t, cls = "") => el("td", { className: cls }, t);
 function filaVenta(v, extra = []) {
   const tr = el("tr", { className: "clic", tabIndex: 0, ariaLabel: `Abrir pedido ${v.numero}` },
     td(el("span", {}, el("b", { textContent: `N° ${v.numero}` }), el("small", { textContent: v.origen === "web" ? "Tienda web" : "En persona" }))),
-    td(fecha(v.fecha)), td(cliente(v.cliente).nombre), td(plata(totalVenta(v), v.moneda), "num"),
+    td(fecha(v.fecha)), td(cliente(v.cliente).nombre),
+    td(el("span", {}, plata(totalVenta(v), v.moneda), saldo(v) ? el("small", { className: "saldo-mini ambar", textContent: `Saldo ${plata(saldo(v), v.moneda)}` }) : ""), "num"),
     td(saldo(v) ? plata(saldo(v), v.moneda) : "—", "num" + (saldo(v) ? " ambar" : "")), td(pastilla(v)), ...extra);
   tr.addEventListener("click", (e) => { if (!e.target.closest("button, a")) abrirDetalle(v.numero); });
   tr.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target === tr) abrirDetalle(v.numero); });
@@ -120,7 +140,7 @@ PINTAR.panel = () => {
   const unidades = {};
   for (const v of r.ventas) for (const i of v.items) unidades[i.nombre] = (unidades[i.nombre] || 0) + i.cant;
   $("#top").replaceChildren(barras(Object.entries(unidades).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n, c]) => [n, c, String(c)])));
-  $("#ultimas").replaceChildren(tabla(CAB_VENTAS, db.ventas.slice(0, 6).map((v) => filaVenta(v)), "Todavía no hay ventas."));
+  $("#ultimas").replaceChildren(tabla(CAB_VENTAS, db.ventas.slice(0, 6).map((v) => filaVenta(v)), "Todavía no hay ventas.", "t-ventas"));
 };
 
 // --- Ventas ---
@@ -131,7 +151,7 @@ PINTAR.ventas = () => {
   const lista = db.ventas.filter((v) => (!org || v.origen === org)
     && (est === "" || (est === "saldo" ? saldo(v) > 0 : v.estado === +est))
     && (!q || normalizar([v.numero, cliente(v.cliente).nombre, ...v.items.map((i) => i.nombre)].join(" ")).includes(q)));
-  $("#ventas-lista").replaceChildren(tabla(CAB_VENTAS, lista.map((v) => filaVenta(v)), "No hay ventas con esos filtros."));
+  $("#ventas-lista").replaceChildren(tabla(CAB_VENTAS, lista.map((v) => filaVenta(v)), "No hay ventas con esos filtros.", "t-ventas"));
 };
 
 // Detalle de una venta: estado, pagos, WhatsApp.
@@ -140,7 +160,7 @@ function abrirDetalle(numero) {
   $("#d-detalle-t").textContent = `Pedido N° ${v.numero}`;
   const pasos = el("ol", { className: "pasos" }, ...ESTADOS.map((e, i) => el("li", {},
     el("button", { type: "button", className: i < v.estado ? "hecho" : i === v.estado ? "actual" : "", ariaCurrent: i === v.estado ? "step" : null,
-      textContent: i === 1 && !v.sena ? "Pagado" : e, onclick: () => { v.estado = i; guardar(); abrirDetalle(numero); repintar(); } }))));
+      textContent: i === 1 && !v.sena ? "Pagado" : e, onclick: () => cambiarEstado(v, i) }))));
   const msg = `Hola ${c.nombre.split(" ")[0]}! Te escribimos de Aukan3D por tu pedido N° ${v.numero}: ${ESTADOS[v.estado].toLowerCase()}.`
     + (saldo(v) ? ` Saldo a pagar: ${plata(saldo(v), v.moneda)}.` : "");
   $("#detalle-cuerpo").replaceChildren(
@@ -160,6 +180,13 @@ function abrirDetalle(numero) {
       el("tfoot", {}, el("tr", {}, td("Total"), td(plata(totalVenta(v), v.moneda), "num")))),
     v.nota ? el("p", { className: "nota", textContent: `Nota: ${v.nota}` }) : "");
   if (!d.open) d.showModal();
+}
+
+function cambiarEstado(v, i) {
+  const antes = v.estado;
+  if (i === antes) return;
+  v.estado = i; guardar(); repintar(); abrirDetalle(v.numero);
+  avisar(`Pedido N° ${v.numero}: pasó a ${ESTADOS[i]}.`, () => { v.estado = antes; if ($("#d-detalle").open) abrirDetalle(v.numero); });
 }
 
 // Registrar un pago sobre el saldo.
@@ -187,13 +214,21 @@ $("#f-pago").addEventListener("submit", (e) => {
 
 // Nueva venta (en persona o en una feria).
 const fv = $("#f-venta");
-let itemsVenta = [];
-const productoPorNombre = (t) => db.productos.find((p) => `${p.nombre} · ${p.categoria}` === t || p.nombre.toLowerCase() === t.trim().toLowerCase());
+let itemsVenta = null; // null = no hay venta a medio cargar; queda como borrador si se cierra sin guardar
+// Cada opción lleva el N° del producto: hay nombres repetidos (dos "ANGEL" de crochet a distinto precio).
+const opcionProducto = (p) => `${p.nombre} · ${p.categoria} · N° ${p.id}`;
+function productoPorNombre(t) {
+  const id = t.match(/· N° (\S+)$/)?.[1];
+  if (id) return db.productos.find((p) => p.id === id);
+  const iguales = db.productos.filter((p) => p.nombre.toLowerCase() === t.trim().toLowerCase());
+  return iguales.length === 1 ? iguales[0] : null; // nombre escrito a mano: solo si no hay dudas
+}
 function pintarItemsVenta() {
   const usd = fv.moneda.value === "USD";
   $("#venta-items").replaceChildren(...itemsVenta.map((it, n) => el("tr", {}, td(it.nombre),
     td(el("input", { type: "number", min: 1, max: 99, value: it.cant, className: "mini", ariaLabel: `Cantidad de ${it.nombre}`, oninput: (e) => { it.cant = Math.min(Math.max(+e.target.value || 1, 1), 99); total(); } }), "num"),
-    td(el("input", { type: "number", min: 0, value: it.precio, className: "mini", ariaLabel: `Precio de ${it.nombre}`, oninput: (e) => { it.precio = Math.max(+e.target.value || 0, 0); total(); } }), "num"),
+    td(el("input", { type: "number", min: 0, value: it.precio, className: "mini", ariaLabel: `Precio de ${it.nombre}`, step: 1, oninput: (e) => { it.precio = Math.max(Math.round(+e.target.value || 0), 0); total(); },
+      onchange: (e) => (e.target.value = it.precio) }), "num"),
     td("", "num sub-item"),
     td(el("button", { type: "button", className: "x", ariaLabel: `Quitar ${it.nombre}`, textContent: "×", onclick: () => { itemsVenta.splice(n, 1); pintarItemsVenta(); } })))));
   function total() {
@@ -203,13 +238,14 @@ function pintarItemsVenta() {
   total();
 }
 function abrirVenta() {
-  fv.reset();
-  itemsVenta = [];
+  const borrador = itemsVenta ? { cliente: fv.cliente.value, vendedor: fv.vendedor.value, medio: fv.medio.value } : null;
+  if (!borrador) { fv.reset(); itemsVenta = []; }
   fv.cliente.replaceChildren(el("option", { value: "", textContent: "Elegí un cliente" }), el("option", { value: "nuevo", textContent: "+ Cliente nuevo…" }),
     ...[...db.clientes].sort((a, b) => a.nombre.localeCompare(b.nombre)).map((c) => el("option", { value: c.id, textContent: c.nombre })));
   fv.vendedor.replaceChildren(...db.usuarios.map((u) => el("option", { value: u.id, textContent: u.nombre })));
   opcionesMedios(fv.medio);
-  $("#lista-productos").replaceChildren(...db.productos.map((p) => el("option", { value: `${p.nombre} · ${p.categoria}` })));
+  if (borrador) for (const k in borrador) if ([...fv[k].options].some((o) => o.value === borrador[k])) fv[k].value = borrador[k];
+  $("#lista-productos").replaceChildren(...db.productos.map((p) => el("option", { value: opcionProducto(p) })));
   $("#venta-error").textContent = $("#venta-item-error").textContent = "";
   pintarItemsVenta();
   $("#d-venta").showModal();
@@ -217,7 +253,7 @@ function abrirVenta() {
 for (const b of document.querySelectorAll("[data-nueva-venta]")) b.addEventListener("click", abrirVenta);
 function agregarItem() {
   const p = productoPorNombre(fv.buscar.value);
-  if (!p) { $("#venta-item-error").textContent = "Elegí un producto de la lista."; return; }
+  if (!p) { $("#venta-item-error").textContent = fv.buscar.value.trim() ? "Elegí el producto de la lista (hay nombres repetidos, como ANGEL o PIKACHU)." : ""; return; }
   const ya = itemsVenta.find((i) => i.id === p.id);
   if (ya) ya.cant = Math.min(ya.cant + 1, 99);
   else itemsVenta.push({ id: p.id, nombre: p.nombre, cant: 1, precio: fv.moneda.value === "USD" ? 0 : p.precio });
@@ -228,8 +264,13 @@ function agregarItem() {
 }
 $("#agregar-item").addEventListener("click", agregarItem);
 fv.buscar.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); agregarItem(); } });
-fv.buscar.addEventListener("change", () => productoPorNombre(fv.buscar.value) && agregarItem());
-fv.moneda.addEventListener("change", pintarItemsVenta);
+// Los precios del catálogo son en pesos: en dólares se ponen a mano.
+fv.moneda.addEventListener("change", () => {
+  const usd = fv.moneda.value === "USD";
+  for (const it of itemsVenta) it.precio = usd ? 0 : db.productos.find((p) => p.id === it.id)?.precio || 0;
+  $("#venta-item-error").textContent = usd && itemsVenta.length ? "Poné los precios en dólares." : "";
+  pintarItemsVenta();
+});
 fv.cliente.addEventListener("change", () => { if (fv.cliente.value === "nuevo") { fv.cliente.value = ""; abrirCliente(null, (c) => { abrirVentaCliente(c); }); } });
 function abrirVentaCliente(c) { fv.cliente.append(el("option", { value: c.id, textContent: c.nombre })); fv.cliente.value = c.id; }
 for (const b of document.querySelectorAll("[data-pago]")) b.addEventListener("click", () => {
@@ -243,13 +284,15 @@ fv.addEventListener("submit", (e) => {
   if (!itemsVenta.length) return error("Agregá al menos un producto.");
   if (itemsVenta.some((i) => !(i.precio > 0))) return error("Hay productos sin precio.");
   const v = { numero: nuevoNumero(db), fecha: new Date().toISOString(), origen: "local", cliente: fv.cliente.value, vendedor: fv.vendedor.value,
-    moneda: fv.moneda.value, items: itemsVenta.map((i) => ({ ...i })), pagos: [], estado: 0, sena: true, entrega: fv.entrega.value, nota: fv.nota.value.trim() };
+    moneda: fv.moneda.value, items: itemsVenta.map((i) => ({ ...i })), pagos: [], estado: 0, sena: true, entrega: fv.entrega.value, nota: fv.nota.value.trim(),
+    comision: usuario(fv.vendedor.value)?.comision ?? 0 };
   const pago = Math.round(+fv.pago.value || 0);
   if (pago < 0 || pago > totalVenta(v)) { db.ultimo--; return error(`El pago tiene que ser entre 0 y ${plata(totalVenta(v), v.moneda)}.`); }
   if (pago) { registrarPago(v, pago, fv.medio.value); v.sena = pago < totalVenta(v); }
   // Lo que había listo en stock se descuenta; lo demás se imprime a pedido.
   for (const i of v.items) { const p = db.productos.find((x) => x.id === i.id); if (p) p.stock = Math.max((p.stock || 0) - i.cant, 0); }
   db.ventas.unshift(v);
+  itemsVenta = null;
   guardar(); repintar();
   avisar(`Venta N° ${v.numero} guardada.`);
 });
@@ -268,7 +311,7 @@ PINTAR.pendientes = () => {
     return filaVenta(v, [td(`${diasDesde(v.fecha)} días`, diasDesde(v.fecha) > 15 ? "ambar" : ""), td(el("span", { className: "acciones" },
       el("button", { type: "button", className: "btn chico", textContent: "Cobrar", onclick: () => abrirPago(v.numero) }),
       c.whatsapp ? el("a", { className: "btn sec chico", href: `https://wa.me/${waDe(c.whatsapp)}?text=${encodeURIComponent(msg)}`, target: "_blank", rel: "noopener", textContent: "Recordar", ariaLabel: `Recordarle a ${c.nombre} por WhatsApp` }) : ""))]);
-  }), "No hay nada pendiente de cobro."));
+  }), "No hay nada pendiente de cobro.", "t-ventas"));
 };
 
 // --- Clientes ---
@@ -508,9 +551,7 @@ PINTAR.reportes = () => {
 function borrarGasto(g) {
   const i = db.gastos.indexOf(g);
   db.gastos.splice(i, 1); guardar(); PINTAR.reportes();
-  const a = $("#aviso");
-  avisar(`Borramos "${g.concepto}". `);
-  a.append(el("button", { type: "button", className: "link", textContent: "Deshacer", onclick: () => { db.gastos.splice(i, 0, g); guardar(); PINTAR.reportes(); a.hidden = true; } }));
+  avisar(`Borramos "${g.concepto}".`, () => db.gastos.splice(i, 0, g));
 }
 $("#nuevo-gasto").addEventListener("click", () => { const f = $("#f-gasto"); f.reset(); f.fecha.value = hoy(); $("#gasto-error").textContent = ""; $("#d-gasto").showModal(); });
 $("#f-gasto").addEventListener("submit", (e) => {
@@ -528,4 +569,5 @@ $("#reiniciar").addEventListener("click", () => {
   avisar("Volvimos a los datos de ejemplo.");
 });
 
+if (traerPedidosWeb()) guardar();
 mostrarApp();

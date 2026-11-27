@@ -44,5 +44,5 @@ Prueba del script: `node apps-script/test.js`.
 
 ## Panel de gestión (`admin/`)
 Backoffice para Aukan3D: ventas y pedidos, cuentas pendientes, clientes, productos y stock, medios de pago, comisiones y reportes. Se abre en `/admin/` (en la demo: `.../Aukan3D-APP/admin/`).
-Por ahora es una vista previa: ingreso de muestra `admin` / `admin` y datos de ejemplo guardados en el navegador ("Volver a los datos de ejemplo" los reinicia). Con la base de datos va el ingreso real y los pedidos de la tienda en vivo.
+Por ahora es una vista previa: ingreso de muestra `admin` / `admin` y datos de ejemplo guardados en el navegador ("Volver a los datos de ejemplo" los reinicia). Los pedidos hechos en la tienda desde el mismo navegador aparecen en el panel (puente de la demo). Con la base de datos va el ingreso real y los pedidos de todos los dispositivos.
 Prueba: `node admin/test.js`.

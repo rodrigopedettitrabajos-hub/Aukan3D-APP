@@ -1,4 +1,5 @@
 // node admin/test.js
+process.env.TZ = "America/Montevideo"; // las fechas se cuentan con la hora de Uruguay
 const assert = require("assert");
 const fs = require("fs");
 global.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
@@ -31,4 +32,23 @@ const com = d.comisiones(db, "2026-11");
 const rom = com.find((u) => u.nombre === "Romina");
 assert.strictEqual(rom.comision.UYU, Math.round(rom.vendido.UYU * 0.1));
 assert.ok(com.every((u) => db.ventas.filter((x) => x.origen === "web").every((x) => x.vendedor !== u.id))); // la web no comisiona
+// El mes se cuenta en hora de Uruguay: el 30/11 a las 22:00 (01:00 UTC del 1/12) es de noviembre.
+assert.strictEqual(d.mesDe("2026-12-01T01:00:00.000Z"), "2026-11");
+assert.strictEqual(d.mesDe("2026-12-01T03:30:00.000Z"), "2026-12");
+assert.strictEqual(d.mesDe("2026-11-30"), "2026-11");
+// La comisión usa el % que regía al vender, no el actual.
+const db2 = { usuarios: [{ id: "u", nombre: "R", comision: 12 }], ventas: [
+  { vendedor: "u", fecha: "2026-11-10T15:00:00.000Z", moneda: "UYU", comision: 10, items: [{ precio: 1000, cant: 1 }], pagos: [] },
+  { vendedor: "u", fecha: "2026-11-11T15:00:00.000Z", moneda: "UYU", items: [{ precio: 1000, cant: 1 }], pagos: [] }] };
+assert.strictEqual(d.comisiones(db2, "2026-11")[0].comision.UYU, 100 + 120); // la vieja sin % guardado usa el actual
+// Puente de la demo: un pedido de la tienda entra una sola vez, con cliente nuevo y precios saneados.
+const db3 = { ventas: [], clientes: [] };
+const ped = { numero: "WABC12", fecha: "2026-11-27T20:00:00.000Z", total: 800, sena: true, entrega: "Retiro coordinado",
+  cliente: { nombre: "Ana", whatsapp: "099 111 222" }, items: [{ id: "4", nombre: "PIKACHU", precio: "400", cant: 2 }] };
+assert.strictEqual(d.importarPedidosWeb(db3, [ped]), 1);
+assert.strictEqual(d.importarPedidosWeb(db3, [ped]), 0);
+assert.strictEqual(d.totalVenta(db3.ventas[0]), 800);
+assert.strictEqual(db3.clientes[0].nombre, "Ana");
+assert.strictEqual(d.importarPedidosWeb(db3, [{ ...ped, numero: "W2" }]), 1);
+assert.strictEqual(db3.clientes.length, 1); // mismo WhatsApp, mismo cliente
 console.log("admin: ok");
