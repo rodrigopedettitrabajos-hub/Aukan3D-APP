@@ -1,5 +1,7 @@
 // Pegar en la Google Sheet: Extensiones > Apps Script. Implementar > Nueva implementación >
 // Aplicación web, "Ejecutar como: yo", "Acceso: cualquier persona". Copiar la URL a config.js (pedidosUrl).
+// Mercado Pago: Configuración del proyecto > Propiedades del script > MP_ACCESS_TOKEN = el Access Token
+// (de prueba "TEST-..." mientras se prueba). Sin esa propiedad, el pedido se guarda igual pero sin link de pago.
 // La planilla necesita las pestañas "Productos" (id, categoria, subcategoria, nombre, precio, foto, activo) y "Pedidos".
 
 function doPost(e) {
@@ -19,24 +21,44 @@ function doPost(e) {
     filas.forEach((r) => { catalogo[String(r[h.indexOf("id")])] = { nombre: r[h.indexOf("nombre")], precio: Number(r[h.indexOf("precio")]) }; });
 
     let total = 0;
-    const detalle = body.items.map((i) => {
+    const lineas = body.items.map((i) => {
       const p = catalogo[String(i.id)];
       const cant = Math.min(Math.max(parseInt(i.cant, 10) || 0, 1), 99);
-      if (!p) throw new Error("producto");
+      if (!p || !(p.precio > 0)) throw new Error("producto");
       total += p.precio * cant;
-      return cant + " x " + p.nombre + " ($" + p.precio + ")";
-    }).join("\n");
+      return { title: String(p.nombre).slice(0, 120), quantity: cant, unit_price: p.precio, currency_id: "UYU" };
+    });
+    const detalle = lineas.map((l) => l.quantity + " x " + l.title + " ($" + l.unit_price + ")").join("\n");
 
     const pedidos = hoja("Pedidos");
-    if (pedidos.getLastRow() === 0) pedidos.appendRow(["fecha", "nombre", "whatsapp", "email", "entrega", "comentario", "detalle", "total", "estado"]);
+    if (pedidos.getLastRow() === 0) pedidos.appendRow(["fecha", "nombre", "whatsapp", "email", "entrega", "comentario", "detalle", "total", "estado", "pago"]);
+    const numero = pedidos.getLastRow(); // número de pedido = fila de datos
+    const pago = linkPago(lineas, "AUKAN-" + numero, limpio(c.email, 120));
     pedidos.appendRow([new Date(), nombre, whatsapp, limpio(c.email, 120), limpio(c.entrega, 40),
-      limpio(c.comentario, 500), detalle, total, "NUEVO"].map(seguro));
-    return json({ ok: true, total: total });
+      limpio(c.comentario, 500), detalle, total, "NUEVO", pago].map(seguro));
+    return json({ ok: true, total: total, numero: numero, pago: pago });
   } catch (err) {
     return json({ ok: false, error: "invalido" });
   } finally {
     lock.releaseLock();
   }
+}
+
+// Crea el cobro en Mercado Pago (Checkout Pro) con los precios de la planilla. Devuelve el link o "" si falla.
+function linkPago(items, referencia, email) {
+  const token = PropertiesService.getScriptProperties().getProperty("MP_ACCESS_TOKEN");
+  if (!token) return "";
+  const pref = { items: items, external_reference: referencia };
+  if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) pref.payer = { email: email };
+  const res = UrlFetchApp.fetch("https://api.mercadopago.com/checkout/preferences", {
+    method: "post", contentType: "application/json", muteHttpExceptions: true,
+    headers: { Authorization: "Bearer " + token, "X-Idempotency-Key": referencia },
+    payload: JSON.stringify(pref),
+  });
+  if (res.getResponseCode() >= 300) { console.error("Mercado Pago", res.getResponseCode(), res.getContentText()); return ""; }
+  const r = JSON.parse(res.getContentText());
+  // Con credenciales de prueba el link que sirve es el de sandbox.
+  return /^TEST-/.test(token) ? r.sandbox_init_point : r.init_point;
 }
 
 function hoja(n) { return SpreadsheetApp.getActive().getSheetByName(n) || SpreadsheetApp.getActive().insertSheet(n); }

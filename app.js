@@ -152,22 +152,59 @@ async function enviar(ev) {
   ev.preventDefault();
   const cliente = Object.fromEntries(new FormData(ev.target));
   const items = itemsCarrito();
-  // Abrimos la ventana antes del await para que el navegador no la bloquee como popup.
-  const wa = window.open("", "_blank");
-  if (cfg.pedidosUrl) {
-    try {
-      // text/plain evita el preflight CORS que Apps Script no responde.
-      await fetch(cfg.pedidosUrl, { method: "POST", headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ cliente, items: items.map((i) => ({ id: i.id, cant: i.cant })) }) });
-    } catch { /* el pedido igual sale por WhatsApp */ }
+  const texto = resumenPedido(items, cliente);
+  if (!cfg.pedidosUrl) { // sin servidor: directo a WhatsApp
+    window.open(waLink(texto), "_blank");
+    return terminar(ev.target);
   }
-  const url = `https://wa.me/${cfg.whatsapp}?text=${encodeURIComponent(resumenPedido(items, cliente))}`;
-  wa ? (wa.location = url) : (location.href = url);
-  carrito.clear();
-  ev.target.reset();
-  $("#carrito").close();
-  pintar();
+  $("#enviar").disabled = true;
+  $("#enviar").textContent = "Enviando…";
+  let r = {};
+  try {
+    // text/plain evita el preflight CORS que Apps Script no responde.
+    const res = await fetch(cfg.pedidosUrl, { method: "POST", headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ cliente, items: items.map((i) => ({ id: i.id, cant: i.cant })) }) });
+    r = await res.json();
+  } catch { /* el pedido igual sale por WhatsApp */ }
+  $("#enviar").textContent = "Enviar pedido por WhatsApp";
+  const pago = /^https:\/\/([\w-]+\.)*mercadopago\.com(\.[a-z]{2})?\//.test(r.pago || "") ? r.pago : "";
+  mostrarPago(pago, r.ok ? pesos(r.total) : $("#total").textContent,
+    texto + (r.numero ? `\nPedido N° ${r.numero}` : "") + (pago ? `\nLink de pago: ${pago}` : ""));
+  terminar(ev.target);
 }
+
+const waLink = (texto) => `https://wa.me/${cfg.whatsapp}?text=${encodeURIComponent(texto)}`;
+
+function terminar(form) {
+  carrito.clear();
+  form.reset();
+  pintar();
+  if ($("#pago").hidden) $("#carrito").close();
+}
+
+// Pantalla final del carrito: QR y botón de Mercado Pago, más el aviso por WhatsApp.
+function mostrarPago(pago, total, texto) {
+  for (const e of [$("#items"), $(".total"), $("#checkout")]) e.hidden = true;
+  $("#pago").hidden = false;
+  $("#pago-total").textContent = total;
+  $("#pago-wa").href = waLink(texto);
+  $("#pago-link").hidden = $("#pago-qr").hidden = !pago;
+  $("#pago-texto").textContent = pago
+    ? "Pagalo con Mercado Pago: escaneá el QR con el celular o tocá el botón."
+    : "Mandanos el pedido por WhatsApp y te pasamos cómo pagarlo.";
+  if (!pago) return;
+  $("#pago-link").href = pago;
+  const qr = qrcode(0, "M");
+  qr.addData(pago);
+  qr.make();
+  $("#pago-qr").src = qr.createDataURL(6, 2);
+}
+
+$("#carrito").addEventListener("close", () => {
+  for (const e of [$("#items"), $(".total"), $("#checkout")]) e.hidden = false;
+  $("#pago").hidden = true;
+});
+$("#wa-flotante").href = waLink("Hola Aukan3D! Quería hacer una consulta.");
 
 const verCarrito = () => $("#carrito").showModal();
 $("#buscar").addEventListener("input", (e) => { filtro.q = e.target.value; pintar(); });

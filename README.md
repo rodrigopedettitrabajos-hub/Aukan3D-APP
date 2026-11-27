@@ -32,3 +32,12 @@ Sin foto por ahora: Rumi/Zoey/Mira, Mazinger Z y San Expedito (el sitio no las t
 python3 -m http.server 8080   # abrir http://localhost:8080
 node test.js
 ```
+
+## Pagos con Mercado Pago (modo prueba)
+Al enviar un pedido, el Apps Script crea un cobro de Checkout Pro con los precios de la planilla y la app muestra el link y su QR.
+1. En Mercado Pago Developers, crear una aplicación y copiar el **Access Token de prueba** (empieza con `TEST-`).
+2. En Apps Script: Configuración del proyecto > Propiedades del script > `MP_ACCESS_TOKEN` = ese token. Nunca va en `config.js`.
+3. Volver a implementar la app web y poner su URL en `pedidosUrl`.
+4. Para pasar a cobros reales, cambiar la propiedad por el Access Token de producción (`APP_USR-...`).
+
+Prueba del script: `node apps-script/test.js`.

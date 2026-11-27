@@ -2,6 +2,11 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número y actualiza `version` en `config.js`.
 
+## V0.05 · 2026-11-27
+- Pago con Mercado Pago: al enviar el pedido se genera el link de pago con el total y su QR (modo prueba; necesita el servidor de pedidos y el token de Mercado Pago).
+- El mensaje de WhatsApp incluye el número de pedido y el link de pago.
+- Botón flotante de WhatsApp para consultas.
+
 ## V0.04 · 2026-11-27
 - Categorías en un menú arriba, dentro del encabezado. Crochet se despliega por personaje.
 - Se quitan las filas de filtros debajo del buscador.
