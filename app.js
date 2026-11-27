@@ -212,6 +212,7 @@ $("#carrito").addEventListener("close", () => {
 });
 // Registro opcional: desde el carrito o después de pedir como invitado.
 $("#invitado-ingresar").addEventListener("click", () => { elegirTab(false); $("#cuenta").showModal(); });
+$("#invitado-registro").addEventListener("click", () => { elegirTab(true); $("#cuenta").showModal(); });
 $("#crear-cuenta").addEventListener("click", () => {
   const f = $("#form-registro");
   for (const k of ["nombre", "whatsapp", "email"]) f[k].value = ultimoCliente?.[k] || "";

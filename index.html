@@ -84,7 +84,15 @@
     <p class="total">Total <strong id="total">$0</strong></p>
 
     <form id="checkout" class="checkout">
-      <p id="invitado" class="invitado">No hace falta cuenta para pedir. ¿Ya tenés una? <button id="invitado-ingresar" class="enlace" type="button">Ingresá</button> y se completan tus datos.</p>
+      <div id="invitado" class="invitado">
+        <strong>Creá tu cuenta y pedí más rápido</strong>
+        <span>Tus datos se completan solos en cada pedido.</span>
+        <div class="invitado-acciones">
+          <button id="invitado-registro" class="primary-sm azul" type="button">Crear cuenta</button>
+          <button id="invitado-ingresar" class="enlace" type="button">Ya tengo cuenta</button>
+        </div>
+        <small>¿Apurado? Podés pedir como invitado completando abajo.</small>
+      </div>
       <label>Nombre *<input name="nombre" required maxlength="80" autocomplete="name"></label>
       <label>WhatsApp *<input name="whatsapp" required maxlength="20" inputmode="tel" pattern="\+?[0-9 ]{8,20}" autocomplete="tel" placeholder="09X XXX XXX"></label>
       <label>Correo electrónico<input name="email" type="email" maxlength="120" autocomplete="email"></label>
