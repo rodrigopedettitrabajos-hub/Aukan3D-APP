@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src https: data:; connect-src 'self' https:; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; form-action 'none'; base-uri 'none'">
+  <title>Pedidos Aukan3D</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-row">
+      <h1>AUKAN<span>3D</span></h1>
+      <button id="ver-carrito" class="cart-btn" aria-label="Ver carrito">
+        Carrito <span id="cart-count" class="badge">0</span>
+      </button>
+    </div>
+    <p class="wrap tagline">Tu idea, hecha realidad en 3D. Armá tu pedido y lo coordinamos por WhatsApp.</p>
+  </header>
+
+  <main class="wrap">
+    <div class="tools">
+      <input id="buscar" type="search" placeholder="Buscar: Pikachu, llavero, Naruto..." aria-label="Buscar productos">
+      <nav id="categorias" class="chips" aria-label="Categorías"></nav>
+    </div>
+    <p id="estado" class="estado" role="status">Cargando catálogo…</p>
+    <section id="grilla" class="grid"></section>
+  </main>
+
+  <dialog id="carrito" class="sheet" aria-labelledby="carrito-titulo">
+    <form method="dialog" class="sheet-head">
+      <h2 id="carrito-titulo">Tu pedido</h2>
+      <button class="icon" aria-label="Cerrar">✕</button>
+    </form>
+    <ul id="items" class="items"></ul>
+    <p class="total">Total <strong id="total">$0</strong></p>
+
+    <form id="checkout" class="checkout">
+      <label>Nombre *<input name="nombre" required maxlength="80" autocomplete="name"></label>
+      <label>WhatsApp *<input name="whatsapp" required maxlength="20" inputmode="tel" pattern="\+?[0-9 ]{8,20}" autocomplete="tel" placeholder="09X XXX XXX"></label>
+      <label>Correo electrónico<input name="email" type="email" maxlength="120" autocomplete="email"></label>
+      <fieldset>
+        <legend>Entrega *</legend>
+        <label class="radio"><input type="radio" name="entrega" value="Retiro coordinado" required checked> Retiro coordinado</label>
+        <label class="radio"><input type="radio" name="entrega" value="Envío por agencia"> Envío por agencia</label>
+      </fieldset>
+      <label>Comentario<textarea name="comentario" rows="2" maxlength="500" placeholder="Colores, tamaño, fecha..."></textarea></label>
+      <button id="enviar" class="primary" type="submit">Enviar pedido por WhatsApp</button>
+      <p class="fine">El pago se coordina por WhatsApp (Mercado Pago o transferencia).</p>
+    </form>
+  </dialog>
+
+  <script src="config.js"></script>
+  <script src="catalogo.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

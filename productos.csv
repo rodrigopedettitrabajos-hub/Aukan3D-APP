@@ -1,0 +1,162 @@
+id,categoria,subcategoria,nombre,precio,foto,activo
+1,Figuras,,CHARIZARD,1600,,SI
+2,Figuras,,VENUSAUR,1800,,SI
+3,Figuras,,BLASTOISE,1600,,SI
+4,Figuras,,PIKACHU,400,,SI
+5,Figuras,,HAUNTER,300,,SI
+6,Figuras,,CUBONE,250,,SI
+7,Figuras,,MAGIKARP,250,,SI
+8,Figuras,,TOGEPI,500,,SI
+9,Figuras,,KIRBY,400,,SI
+10,Figuras,,GROOKEY,500,,SI
+11,Figuras,,SCORBUNNY,500,,SI
+12,Figuras,,SOBBLE,500,,SI
+13,Figuras,,BARRIL DK,380,,SI
+14,Figuras,,PLANTA PIRAÑA,400,,SI
+15,Figuras,,KOOPA,300,,SI
+16,Figuras,,MELODY,250,,SI
+17,Figuras,,HELLO KITTY,300,,SI
+18,Figuras,,LUIGI IRON MAN,700,,SI
+19,Figuras,,DERPY,900,,SI
+20,Figuras,,"RUMI, ZOEY Y MIRA (C/U)",400,,SI
+21,Figuras,,MAZINGER Z (20CM),1000,,SI
+22,Figuras,,CHIMUELO,380,,SI
+23,Figuras,,BOONIE (FNAF),1200,,SI
+24,Figuras,,SAN EXPEDITO,400,,SI
+25,Figuras,,SASUKE,1000,,SI
+26,Soportes y exhibidores,,GOING MERRY,650,,SI
+27,Soportes y exhibidores,,THOUSAND SUNNY,650,,SI
+28,Soportes y exhibidores,,MANO DE MAJIN BOO,1000,,SI
+29,Soportes y exhibidores,,SOPORTE DE SPIDERMAN (PS),380,,SI
+30,Soportes y exhibidores,,NUBE VOLADORA,600,,SI
+31,Soportes y exhibidores,,SOPORTE XBOX Y AUDIFONOS,900,,SI
+32,Soportes y exhibidores,,EXHIBIDOR DE LLAVEROS,400,,SI
+33,Soportes y exhibidores,,EXHIBIDOR DE LLAVEROS (2p),490,,SI
+34,Soportes y exhibidores,,BOO (SOPORTE DE CELULAR),500,,SI
+35,Soportes y exhibidores,,SOPORTE JOYSTICK HALO,1000,,SI
+36,Soportes y exhibidores,,SOPORTE AURICULARES,1000,,SI
+37,Soportes y exhibidores,,SOPORTE JOYSTICK BATMAN,1000,,SI
+38,Cuadros 3D,,EL SEÑOR DE LOS ANILLOS,700,,SI
+39,Cuadros 3D,,SATORU GOJO,600,,SI
+40,Cuadros 3D,,CUADRO HALLOWEEN,500,,SI
+41,Llaveros,,CUBO SUPER MARIO,80,,SI
+42,Llaveros,,ESCUDO CAPITAN AMERICA (MARVEL),80,,SI
+43,Llaveros,,SOMBRERO DE LUFFY (ONE PIECE),80,,SI
+44,Llaveros,,"MANCUERNA, PESA RUSA, DISCO",80,,SI
+45,Llaveros,,CARATULA DE JUEGOS (PERSONALIZADO),120,,SI
+46,Llaveros,,KURAMA (NARUTO),120,,SI
+47,Llaveros,,GUANTE DE BOXEO,100,,SI
+48,Llaveros,,PATIN,120,,SI
+49,Llaveros,,SHUKAKU (NARUTO),120,,SI
+50,Llaveros,,PENYWASE (IT),120,,SI
+51,Llaveros,,OOGIE,120,,SI
+52,Llaveros,,ESQUELETO (MINECRAFT),120,,SI
+53,Llaveros,,GATO CALABAZA,120,,SI
+54,Llaveros,,GAMEBOY,80,,SI
+55,Llaveros,,SCREAM,120,,SI
+56,Llaveros,,GIZMO (GREMLINS),120,,SI
+57,Llaveros,,LA PARCA,120,,SI
+58,Llaveros,,FREDDY KRUEGER,120,,SI
+59,Llaveros,,MIKE MYERS,120,,SI
+60,Llaveros,,VIDA (MINECRAFT),80,,SI
+61,Llaveros,,CREEPER (MINECRAFT),120,,SI
+62,Llaveros,,YOSHI (SUPER MARIO),120,,SI
+63,Llaveros,,HONGO SUPER MARIO (PASTILLERO),120,,SI
+64,Crochet,Super Mario,MARIO,650,,SI
+65,Crochet,Super Mario,LUIGI,650,,SI
+66,Crochet,Super Mario,BOWSER (26CM),1600,,SI
+67,Crochet,Super Mario,PEACH,700,,SI
+68,Crochet,Super Mario,YOSHI,700,,SI
+69,Crochet,Super Mario,TOAD,450,,SI
+70,Crochet,Super Mario,ESTRELLA,350,,SI
+71,Crochet,Super Mario,BOMBA,420,,SI
+72,Crochet,Super Mario,HONGO,390,,SI
+73,Crochet,Super Mario,GORRA WALUIGI,380,,SI
+74,Crochet,Super Mario,GORRA MARIO,380,,SI
+75,Crochet,Super Mario,GORRA LUIGI,380,,SI
+76,Crochet,Super Mario,GORRA WARIO,380,,SI
+77,Crochet,Demon Slayer,TANJIRO,700,,SI
+78,Crochet,Demon Slayer,ZENITZU,700,,SI
+79,Crochet,Demon Slayer,INOSUKE,700,,SI
+80,Crochet,Demon Slayer,RENGOKU,700,,SI
+81,Crochet,Demon Slayer,AKAZA,700,,SI
+82,Crochet,Demon Slayer,NEZUKO,700,,SI
+83,Crochet,One Piece,LUFFY,700,,SI
+84,Crochet,One Piece,CHOPPER,700,,SI
+85,Crochet,One Piece,ZORO,700,,SI
+86,Crochet,One Piece,ROBIN,700,,SI
+87,Crochet,One Piece,NAMI,700,,SI
+88,Crochet,One Piece,BROCK,700,,SI
+89,Crochet,One Piece,SANJI,700,,SI
+90,Crochet,One Piece,USOPP,700,,SI
+91,Crochet,One Piece,JIMBE,700,,SI
+92,Crochet,One Piece,FRANKY,700,,SI
+93,Crochet,Naruto,SAKURA,700,,SI
+94,Crochet,Naruto,NARUTO,700,,SI
+95,Crochet,Naruto,SASUKE,700,,SI
+96,Crochet,Naruto,ITACHI,700,,SI
+97,Crochet,Naruto,KAKASHI,700,,SI
+98,Crochet,Naruto,JIRAIYA,700,,SI
+99,Crochet,Pokémon,PIKACHU,700,,SI
+100,Crochet,Pokémon,BULBASAUR,700,,SI
+101,Crochet,Pokémon,GENGAR,700,,SI
+102,Crochet,Pokémon,SQUIRTLE,700,,SI
+103,Crochet,Pokémon,SNORLAX,800,,SI
+104,Crochet,Pokémon,CHARMANDER,700,,SI
+105,Crochet,Pokémon,CHARMELEON,700,,SI
+106,Crochet,Pokémon,EEVEE,700,,SI
+107,Crochet,Pokémon,TOTODILE,700,,SI
+108,Crochet,Pokémon,ASH,600,,SI
+109,Crochet,Pokémon,CUBONE,700,,SI
+110,Crochet,Dragon Ball,VEGETA,500,,SI
+111,Crochet,Dragon Ball,GOKU,500,,SI
+112,Crochet,Dragon Ball,MAJIN BOO,500,,SI
+113,Crochet,Dragon Ball,KID BUU,450,,SI
+114,Crochet,Dragon Ball,FREEZER,450,,SI
+115,Crochet,Películas y series,GROGU,900,,SI
+116,Crochet,Películas y series,STORMTROOPER,650,,SI
+117,Crochet,Películas y series,GROGU XS,400,,SI
+118,Crochet,Películas y series,MICKEY,600,,SI
+119,Crochet,Películas y series,MINNIE,600,,SI
+120,Crochet,Películas y series,GRINCH,600,,SI
+121,Crochet,Películas y series,TIGGER,700,,SI
+122,Crochet,Películas y series,WINNIE POOH,700,,SI
+123,Crochet,Películas y series,DEMOGORGON,700,,SI
+124,Crochet,Películas y series,SULLIVAN,550,,SI
+125,Crochet,Películas y series,BOO (XS),350,,SI
+126,Crochet,Películas y series,MIKE,450,,SI
+127,Crochet,Películas y series,CHIMUELO,480,,SI
+128,Crochet,Películas y series,FURIA,480,,SI
+129,Crochet,Películas y series,RUMI,600,,SI
+130,Crochet,Stitch,LILO,550,,SI
+131,Crochet,Stitch,ANGEL,550,,SI
+132,Crochet,Stitch,STITCH DE PIE,550,,SI
+133,Crochet,Stitch,STITCH,600,,SI
+134,Crochet,Stitch,ANGEL,600,,SI
+135,Crochet,Videojuegos,DONKEY KONG,1000,,SI
+136,Crochet,Videojuegos,SONIC,500,,SI
+137,Crochet,Videojuegos,SHADOW,500,,SI
+138,Crochet,Videojuegos,LINK,700,,SI
+139,Crochet,Videojuegos,ZELDA,700,,SI
+140,Crochet,Videojuegos,MEGAMAN,550,,SI
+141,Crochet,Hello Kitty,HELLO KITTY,890,,SI
+142,Crochet,Hello Kitty,KUROMI,890,,SI
+143,Crochet,Anime,INUYASHA,700,,SI
+144,Crochet,Anime,POCHITA,700,,SI
+145,Crochet,Anime,EREN TITAN,600,,SI
+146,Crochet,Anime,SATORU GOJO,600,,SI
+147,Crochet,Marvel y DC,WOLVERINE,700,,SI
+148,Crochet,Marvel y DC,DEADPOOL,700,,SI
+149,Crochet,Marvel y DC,BATMAN XS,380,,SI
+150,Crochet,Marvel y DC,SPIDERMAN,600,,SI
+151,Crochet,Marvel y DC,VENOM,700,,SI
+152,Crochet,Marvel y DC,BATMAN,700,,SI
+153,Crochet,Marvel y DC,HULK,700,,SI
+154,Crochet,Harry Potter,HARRY POTTER,700,,SI
+155,Crochet,Harry Potter,HERMIONE,700,,SI
+156,Crochet,Harry Potter,RON,700,,SI
+157,Crochet,Harry Potter,SIRIUS,700,,SI
+158,Crochet,Harry Potter,SNAPE,700,,SI
+159,Crochet,Harry Potter,DRACO,700,,SI
+160,Crochet,Harry Potter,HAGRID,800,,SI
+161,Crochet,Harry Potter,DOBBY,700,,SI
