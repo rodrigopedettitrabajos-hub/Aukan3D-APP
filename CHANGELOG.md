@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.16 · 2026-11-27
+- Todas las fotos de la ficha del producto (incluido el carrusel) y de la Galería se agrandan al tocarlas.
+
 ## V0.15 · 2026-11-27
 - Al agregar un producto, la foto vuela hasta el carrito y el contador late. Mientras vuela, las mascotas miran hacia arriba y vuelven al frente cuando llega.
 - Mascotas una arriba de la otra (también en celulares chicos).

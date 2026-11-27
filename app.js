@@ -346,6 +346,17 @@ function verGrande(src, alt) {
   Object.assign($("#visor-img"), { src, alt });
   $("#visor").showModal();
 }
+// Cualquier foto de la ficha o de la galería se agranda al tocarla (o con Enter).
+const AMPLIABLE = ".carrusel img, #galeria img";
+document.querySelectorAll("#galeria img").forEach((i) => Object.assign(i, { tabIndex: 0, role: "button" }));
+const ampliar = (e) => {
+  const img = e.target.closest?.(AMPLIABLE);
+  if (!img || (e.type === "keydown" && e.key !== "Enter")) return;
+  e.preventDefault(); // si no, el Enter "aprieta" el botón cerrar del visor recién abierto
+  verGrande(img.currentSrc || img.src, img.alt);
+};
+document.addEventListener("click", ampliar);
+document.addEventListener("keydown", ampliar);
 
 // Eventos (config.js): tarjeta en el inicio y pantalla "Eventos" con mapa.
 const eventos = cfg.eventos || [];
