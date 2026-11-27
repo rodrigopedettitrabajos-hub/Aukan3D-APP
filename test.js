@@ -17,4 +17,8 @@ assert.ok(real.length > 150 && real.every((p) => p.precio > 0));
 
 const r = resumenPedido([{ nombre: "Kirby", precio: 400, cant: 2 }], { nombre: "Ana", entrega: "Retiro coordinado" });
 assert.ok(r.includes("2 x Kirby") && r.includes("Total: $800"));
+// productos.js tiene que ser copia exacta de productos.csv
+const ctx = { window: {} };
+require("vm").runInNewContext(fs.readFileSync(__dirname + "/productos.js", "utf8"), ctx);
+assert.strictEqual(ctx.window.PRODUCTOS_CSV, fs.readFileSync(__dirname + "/productos.csv", "utf8"), "Regenerar productos.js desde productos.csv");
 console.log("ok");

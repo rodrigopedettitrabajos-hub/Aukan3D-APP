@@ -14,11 +14,14 @@ function el(tag, props = {}, ...hijos) {
 }
 
 async function cargar() {
-  const url = cfg.catalogoCsvUrl || "productos.csv";
   try {
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) throw new Error(res.status);
-    productos = productosDesdeCsv(await res.text());
+    let csv = window.PRODUCTOS_CSV; // copia local, funciona abriendo index.html con doble clic
+    if (cfg.catalogoCsvUrl) {
+      const res = await fetch(cfg.catalogoCsvUrl, { cache: "no-store" });
+      if (!res.ok) throw new Error(res.status);
+      csv = await res.text();
+    }
+    productos = productosDesdeCsv(csv);
   } catch (e) {
     $("#estado").textContent = "No pudimos cargar el catálogo. Probá recargar la página.";
     return;
