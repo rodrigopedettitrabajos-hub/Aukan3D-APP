@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.19 · 2026-11-27
+- Eventos: el mapa se carga recién al abrir la pantalla (cargado oculto, Google lo dibujaba chiquito en una esquina en celulares).
+
 ## V0.18 · 2026-11-27
 - Foto en grande con carrusel: si viene de un carrusel (galería o ficha del producto), se pasa a las otras con flechas, deslizando o con las teclas ← →, y muestra "2 / 4".
 

@@ -72,6 +72,17 @@ function mostrarVista() {
   vista ? (document.body.dataset.vista = vista) : delete document.body.dataset.vista;
   pintarFiltros();
   scrollTo(0, 0);
+  cargarMapas();
+}
+// El mapa se carga recién cuando su pantalla está visible: cargado oculto, Google lo dibuja chiquito (iPhone).
+function cargarMapas() {
+  if (location.hash === "#eventos") requestAnimationFrame(() =>
+    document.querySelectorAll("iframe[data-src]:not([src])").forEach((f) => { f.src = f.dataset.src; }));
+}
+function mapaDiferido(ev) {
+  const f = el("iframe", { className: "evento-mapa", title: `Mapa: ${ev.lugar}`, referrerPolicy: "no-referrer-when-downgrade" });
+  f.dataset.src = mapaUrl(ev);
+  return f;
 }
 
 function verCatalogo() {
@@ -408,9 +419,10 @@ $("#eventos-lista").replaceChildren(...(eventos.length ? eventos.map((ev) =>
     el("button", { className: "flyer-btn", type: "button", ariaLabel: `Ver afiche de ${ev.nombre} en grande`, onclick: () => verGrande(ev.foto, `Afiche de ${ev.nombre}`) },
       el("img", { className: "evento-flyer", src: ev.foto, alt: `Afiche de ${ev.nombre}`, loading: "lazy" })),
     el("div", {}, datosEvento(ev),
-      ev.mapa ? el("iframe", { className: "evento-mapa", src: mapaUrl(ev), title: `Mapa: ${ev.lugar}`, loading: "lazy", referrerPolicy: "no-referrer-when-downgrade" }) : "",
+      ev.mapa ? mapaDiferido(ev) : "",
       ev.mapa ? el("a", { className: "secundario", href: lugarUrl(ev), target: "_blank", rel: "noopener", textContent: "Cómo llegar" }) : "")))
   : [el("p", { textContent: "Por ahora no hay eventos agendados. Seguinos en Instagram para enterarte." })]));
+cargarMapas();
 
 const waHola = waLink("Hola Aukan3D! Quería hacer una consulta.");
 document.querySelectorAll("#wa-flotante, #nosotros-wa, .wa-link").forEach((a) => (a.href = waHola));
