@@ -20,11 +20,11 @@ Google Sheet "Productos"  --CSV publicado-->  app  --pedido-->  Apps Script --> 
 
 ## Fotos
 
-Las fotos del Google Site no se pueden enlazar desde afuera (Google las sirve con enlaces temporales). La columna `foto` acepta:
-- un archivo dentro del repo, por ejemplo `fotos/charizard.webp`, o
-- una URL `https://` pública.
+Las fotos están en `fotos/` (WebP, 480px), copiadas del Google Site. El sitio no deja enlazarlas desde afuera, por eso van dentro de la app. La columna `foto` acepta un archivo de `fotos/` o una URL `https://` pública. Sin foto, la tarjeta muestra un recuadro "3D".
 
-Sin foto, la tarjeta muestra un recuadro "3D".
+Para un producto nuevo: subir la foto a `fotos/` y poner su nombre en la planilla (ej. `fotos/162-goku.webp`). `bajar-fotos.ps1` vuelve a bajar todas las fotos del sitio en Windows.
+
+Sin foto por ahora: Rumi/Zoey/Mira, Mazinger Z y San Expedito (el sitio no las tiene como imagen normal).
 
 ## Probar
 
