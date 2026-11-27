@@ -7,6 +7,7 @@ Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el núm
 - La tienda toma el catálogo y manda los pedidos al servidor (los precios se recalculan allá). Cada pedido aparece en el panel de gestión desde cualquier dispositivo, en menos de 20 segundos.
 - El panel pide usuario y contraseña al servidor (contraseña cifrada, sesión de 12 horas, límite de intentos). Ventas, clientes, productos, stock, medios de pago, usuarios y gastos se guardan en la base y se ven igual en todas las computadoras y celulares.
 - Los números de venta del panel y de la tienda son una sola serie. Las fotos nuevas de productos se publican solas en la tienda.
+- "Ver la tienda" en el panel abre la tienda en otra pestaña.
 - Sin `apiUrl` en `config.js` todo sigue funcionando como demo (admin / admin y datos de ejemplo en el navegador).
 
 ## V0.28 · 2026-11-27
