@@ -417,3 +417,6 @@ input[type=search]::-webkit-search-cancel-button { display: none; }
 .user-btn { min-height: 36px; }
 :is([data-vista="mis-pedidos"], [data-vista="historial"], [data-vista="mis-datos"]) #ver-cuenta { border-color: var(--brand); background: rgb(3 146 202 / .18); }
 p, li, .plazo-chip { text-wrap: pretty; }
+
+/* Modo pruebas (lo activa el usuario dev desde el panel) */
+.banda-pruebas { margin: 0; position: sticky; top: 0; z-index: 100; background: #c25e00; color: #fff; text-align: center; font-weight: 600; font-size: 14px; padding: 8px 16px; }

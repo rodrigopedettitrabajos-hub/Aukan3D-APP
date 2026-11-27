@@ -19,7 +19,10 @@ export default {
         "Access-Control-Allow-Headers": "Content-Type, Authorization", "Access-Control-Max-Age": "86400" } });
     }
     try {
-      const r = await rutear(req, env, url);
+      // ?e=pruebas usa la base de pruebas (DB_PRUEBAS): datos de mentira para probar sin tocar los reales.
+      const pruebas = url.searchParams.get("e") === "pruebas";
+      if (pruebas && !env.DB_PRUEBAS) return json({ ok: false, error: "entorno" }, 503, cors);
+      const r = await rutear(req, pruebas ? { ...env, DB: env.DB_PRUEBAS, PRUEBAS: true } : env, url);
       for (const [k, v] of Object.entries(cors)) r.headers.set(k, v);
       return r;
     } catch (err) {
@@ -36,7 +39,9 @@ async function rutear(req, env, url) {
   if (m === "POST" && p === "/api/pedidos") return nuevoPedido(req, env);
   if (m === "POST" && p === "/api/login") return login(req, env);
   if (p.startsWith("/api/admin/")) {
-    if (!(await tokenValido(req, env))) return json({ ok: false, error: "sesion" }, 401);
+    const quien = await tokenValido(req, env);
+    if (!quien) return json({ ok: false, error: "sesion" }, 401);
+    if (env.PRUEBAS && quien !== "dev") return json({ ok: false, error: "entorno" }, 403); // solo el usuario dev entra a pruebas
     if (m === "GET" && p === "/api/admin/datos") return datos(env, Number(url.searchParams.get("desde")) || 0);
     if (m === "POST" && p === "/api/admin/lote") return lote(req, env);
     if (m === "POST" && p === "/api/admin/numero") return json({ ok: true, numero: await contador(env) });
@@ -170,21 +175,26 @@ function mismo(a, b) { // comparación de tiempo constante
   for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return d === 0;
 }
+// Cuentas: la del negocio (ADMIN_USUARIO / ADMIN_CLAVE_HASH) y "dev" (DEV_CLAVE_HASH), que además puede usar la base de pruebas.
 async function login(req, env) {
   const ip = req.headers.get("CF-Connecting-IP") || "local";
   if (!(await pasaLimite(env, "login:" + ip, 10, 900_000))) return json({ ok: false, error: "limite" }, 429);
   let b;
   try { b = await leerJson(req, 2000); } catch { return json({ ok: false, error: "invalido" }, 400); }
-  const usuarioOk = mismo(limpio(b.usuario, 60).toLowerCase(), String(env.ADMIN_USUARIO || "").toLowerCase());
-  const claveOk = await claveCorrecta(String(b.clave || ""), env.ADMIN_CLAVE_HASH);
-  if (!usuarioOk || !claveOk) return json({ ok: false, error: "credenciales" }, 401);
-  const datos = b64url(texto(JSON.stringify({ u: env.ADMIN_USUARIO, exp: Date.now() + 12 * 3600_000 })));
-  return json({ ok: true, token: `${datos}.${await hmac(env.FIRMA, datos)}` });
+  const usuario = limpio(b.usuario, 60).toLowerCase();
+  const cuentas = [[String(env.ADMIN_USUARIO || "").toLowerCase(), env.ADMIN_CLAVE_HASH], ["dev", env.DEV_CLAVE_HASH]];
+  const cuenta = cuentas.find(([u, hash]) => u && hash && mismo(usuario, u));
+  // Sin cuenta igual se calcula un hash, para que la respuesta tarde lo mismo.
+  const claveOk = await claveCorrecta(String(b.clave || ""), cuenta ? cuenta[1] : env.ADMIN_CLAVE_HASH);
+  if (!cuenta || !claveOk) return json({ ok: false, error: "credenciales" }, 401);
+  const datos = b64url(texto(JSON.stringify({ u: cuenta[0], exp: Date.now() + 12 * 3600_000 })));
+  return json({ ok: true, usuario: cuenta[0], token: `${datos}.${await hmac(env.FIRMA, datos)}` });
 }
+// Devuelve el usuario del token, o "" si no es válido o venció.
 async function tokenValido(req, env) {
   const [datos, firma] = (req.headers.get("Authorization") || "").replace(/^Bearer /, "").split(".");
-  if (!datos || !firma || !env.FIRMA || !mismo(await hmac(env.FIRMA, datos), firma)) return false;
-  try { return JSON.parse(new TextDecoder().decode(deB64(datos))).exp > Date.now(); } catch { return false; }
+  if (!datos || !firma || !env.FIRMA || !mismo(await hmac(env.FIRMA, datos), firma)) return "";
+  try { const t = JSON.parse(new TextDecoder().decode(deB64(datos))); return t.exp > Date.now() ? String(t.u) : ""; } catch { return ""; }
 }
 
 // ---------- datos del panel ----------
