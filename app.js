@@ -29,20 +29,35 @@ async function cargar() {
   pintar();
 }
 
-function chips(nav, opciones, actual, elegir) {
-  nav.replaceChildren(...opciones.map(([valor, texto]) =>
-    el("button", { className: "chip", textContent: texto, type: "button", ariaPressed: String(valor === actual),
-      onclick: () => elegir(valor) })));
+function opcion(texto, activo, elegir) {
+  return el("button", { className: "menu-item", type: "button", textContent: texto, ariaPressed: String(activo),
+    onclick: () => { elegir(); cerrarMenu(); pintar(); } });
 }
 
-function pintarFiltros() {
-  chips($("#categorias"), ["Todo", ...new Set(productos.map((p) => p.categoria))].map((c) => [c, c]), filtro.cat,
-    (c) => { filtro.cat = c; filtro.sub = ""; pintar(); });
-  const subs = [...new Set(productos.filter((p) => p.categoria === filtro.cat && p.subcategoria).map((p) => p.subcategoria))];
-  $("#subcategorias").hidden = !subs.length;
-  chips($("#subcategorias"), [["", "Todos"], ...subs.map((s) => [s, s])], filtro.sub,
-    (s) => { filtro.sub = s; pintar(); });
+function cerrarMenu() {
+  document.querySelectorAll("#menu details[open]").forEach((d) => d.removeAttribute("open"));
 }
+
+// Menú de categorías arriba; las que tienen subcategorías (Crochet) se despliegan por personaje.
+function pintarFiltros() {
+  const cats = ["Todo", ...new Set(productos.map((p) => p.categoria))];
+  $("#menu").replaceChildren(...cats.map((c) => {
+    const subs = [...new Set(productos.filter((p) => p.categoria === c && p.subcategoria).map((p) => p.subcategoria))];
+    const elegida = filtro.cat === c;
+    if (!subs.length) return opcion(c, elegida, () => { filtro.cat = c; filtro.sub = ""; });
+    const titulo = el("summary", { className: "menu-item" + (elegida ? " on" : "") }, c);
+    const panel = el("div", { className: "drop-panel" },
+      opcion(`Todo ${c}`, elegida && !filtro.sub, () => { filtro.cat = c; filtro.sub = ""; }),
+      ...subs.map((s) => opcion(s, elegida && filtro.sub === s, () => { filtro.cat = c; filtro.sub = s; })));
+    return el("details", { className: "drop" }, titulo, panel);
+  }));
+}
+
+document.addEventListener("click", (e) => { if (!e.target.closest("#menu details")) cerrarMenu(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarMenu(); });
+$("#menu").addEventListener("toggle", (e) => { // una sola abierta a la vez
+  if (e.target.open) document.querySelectorAll("#menu details[open]").forEach((d) => d !== e.target && d.removeAttribute("open"));
+}, true);
 
 function visibles() {
   const q = filtro.q.toLowerCase();

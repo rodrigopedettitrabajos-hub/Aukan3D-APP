@@ -2,6 +2,10 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número y actualiza `version` en `config.js`.
 
+## V0.04 · 2026-11-27
+- Categorías en un menú arriba, dentro del encabezado. Crochet se despliega por personaje.
+- Se quitan las filas de filtros debajo del buscador.
+
 ## V0.03 · 2026-11-27
 - Modo claro y oscuro con botón en el encabezado. Arranca según el sistema y recuerda la elección.
 
