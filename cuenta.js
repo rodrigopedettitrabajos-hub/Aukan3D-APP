@@ -17,7 +17,13 @@ function pintarCuenta() {
   $("#cuenta-sesion").hidden = !activo;
   $("#cuenta-forms").hidden = activo;
   $("#invitado").hidden = activo;
-  if (activo) $("#cuenta-nombre").textContent = p.nombre;
+  $("#cuenta").classList.toggle("con-sesion", activo);
+  if (activo) {
+    $("#cuenta-nombre").textContent = p.nombre;
+    const fd = $("#form-datos");
+    for (const k of ["nombre", "whatsapp", "email", "direccion"]) fd[k].value = p[k] || "";
+    pintarPedidos();
+  }
   // Completa el formulario del pedido con los datos de la cuenta.
   const f = $("#checkout");
   for (const k of ["nombre", "whatsapp", "email"]) if (activo && !f[k].value) f[k].value = p[k];
@@ -30,7 +36,79 @@ function elegirTab(registro) {
   $("#form-ingreso").hidden = registro;
 }
 
-$("#ver-cuenta").addEventListener("click", () => $("#cuenta").showModal());
+// Pedidos de la cuenta (vista previa: localStorage). Cuando haya base de datos, el estado viene del servidor.
+const CLAVE_PEDIDOS = "aukan_pedidos";
+const ESTADOS = ["Recibido", "Seña pagada", "En impresión", "Listo para entregar", "Entregado"];
+function leerPedidos() {
+  try { return JSON.parse(localStorage.getItem(CLAVE_PEDIDOS)) || []; } catch { return []; }
+}
+function guardarPedidos(lista) {
+  try { localStorage.setItem(CLAVE_PEDIDOS, JSON.stringify(lista.slice(0, 50))); } catch { /* sin almacenamiento */ }
+}
+// Lo llama app.js al enviar un pedido; solo se guarda si hay sesión.
+function guardarPedido(pedido) {
+  if (!leerPerfil()?.activo) return;
+  const lista = leerPedidos();
+  guardarPedidos([{ fecha: new Date().toISOString(), estado: 0, ...pedido, numero: pedido.numero || `W${lista.length + 1}` }, ...lista]);
+}
+
+const fechaCorta = (iso) => new Date(iso).toLocaleDateString("es-UY", { day: "numeric", month: "short", year: "numeric" });
+function tarjetaPedido(p) {
+  const pasos = ESTADOS.map((e, i) => (i === 1 && !p.sena ? "Pagado" : e));
+  const entregado = p.estado >= ESTADOS.length - 1;
+  return el("article", { className: "pedido" },
+    el("div", { className: "pedido-cab" },
+      el("strong", { textContent: `Pedido N° ${p.numero}` }),
+      el("span", { textContent: fechaCorta(p.fecha) })),
+    el("ul", { className: "pedido-items" }, ...p.items.map((i) => el("li", { textContent: `${i.cant} x ${i.nombre}` }))),
+    entregado ? "" : el("ol", { className: "pasos", ariaLabel: `Estado: ${pasos[p.estado]}` },
+      ...pasos.map((t, i) => el("li", { textContent: t, className: i < p.estado ? "hecho" : i === p.estado ? "actual" : "",
+        ariaCurrent: i === p.estado ? "step" : null }))),
+    el("div", { className: "pedido-pie" },
+      el("span", { textContent: `${entregado ? "Entregado" : pasos[p.estado]} · Total ${pesos(p.total)}` }),
+      entregado ? el("button", { className: "secundario chico", type: "button", textContent: "Repetir pedido", onclick: () => repetir(p) }) : ""));
+}
+function repetir(p) {
+  for (const i of p.items) if (productos.some((x) => x.id === i.id && x.precio)) cambiar(i.id, i.cant);
+  $("#cuenta").close();
+  $("#ver-carrito").click();
+}
+function pintarPedidos() {
+  const lista = leerPedidos();
+  const fin = ESTADOS.length - 1;
+  const curso = lista.filter((p) => p.estado < fin), hist = lista.filter((p) => p.estado >= fin);
+  $("#pedidos-curso").replaceChildren(...(curso.length ? curso.map(tarjetaPedido) : [el("p", { className: "vacio", textContent: "No tenés pedidos en curso." })]));
+  $("#pedidos-historial").replaceChildren(...(hist.length ? hist.map(tarjetaPedido) : [el("p", { className: "vacio", textContent: "Todavía no hay pedidos entregados." })]));
+  $("#pedidos-ejemplo").hidden = lista.some((p) => p.ejemplo);
+}
+$("#pedidos-ejemplo").addEventListener("click", () => {
+  const item = (id, cant) => { const x = productos.find((p) => p.id === id) || {}; return { id, cant, nombre: x.nombre || "Figura", precio: x.precio || 0 }; };
+  const pedido = (numero, dias, estado, sena, items) => ({ numero, fecha: new Date(Date.now() - dias * 864e5).toISOString(), estado, sena, ejemplo: true,
+    items, total: items.reduce((s, i) => s + i.precio * i.cant, 0) });
+  const [a, b, c] = productos.filter((p) => p.precio).map((p) => p.id);
+  guardarPedidos([...leerPedidos(), pedido("E-2", 2, 2, true, [item(a, 1), item(b, 2)]), pedido("E-1", 30, 4, false, [item(c, 1)])]);
+  pintarPedidos();
+});
+
+function elegirPanel(pedidos) {
+  $("#tab-pedidos").ariaSelected = String(pedidos);
+  $("#tab-datos").ariaSelected = String(!pedidos);
+  $("#panel-pedidos").hidden = !pedidos;
+  $("#form-datos").hidden = pedidos;
+}
+$("#tab-pedidos").addEventListener("click", () => elegirPanel(true));
+$("#tab-datos").addEventListener("click", () => elegirPanel(false));
+$("#form-datos").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const d = Object.fromEntries(new FormData(e.target));
+  guardarPerfil({ ...leerPerfil(), nombre: d.nombre.trim(), whatsapp: d.whatsapp.trim(), email: d.email.trim().toLowerCase(), direccion: d.direccion.trim() });
+  const f = $("#checkout");
+  for (const k of ["nombre", "whatsapp", "email"]) f[k].value = ""; // que el pedido tome los datos nuevos
+  pintarCuenta();
+  $("#datos-ok").textContent = "Listo, guardamos tus datos.";
+});
+
+$("#ver-cuenta").addEventListener("click", () => { $("#datos-ok").textContent = ""; pintarCuenta(); $("#cuenta").showModal(); });
 $("#tab-registro").addEventListener("click", () => elegirTab(true));
 $("#tab-ingreso").addEventListener("click", () => elegirTab(false));
 

@@ -284,7 +284,10 @@ async function enviar(ev) {
   const sena = cliente.modo !== "total";
   const montos = (total, aPagar) => sena ? `Seña ${pesos(aPagar)} · total ${pesos(total)}` : `Total ${pesos(total)}`;
   ultimoCliente = cliente;
+  const registro = (numero, total = suma) => guardarPedido({ numero, total, sena, entrega: cliente.entrega,
+    items: items.map(({ id, nombre, precio, cant }) => ({ id, nombre, precio, cant })) });
   if (!cfg.pedidosUrl) { // sin servidor: directo a WhatsApp
+    registro();
     window.open(waLink(texto), "_blank");
     mostrarPago("", montos(suma, montoSena(suma)), texto, sena);
     $("#pago-titulo").textContent = "¡Pedido listo!";
@@ -300,6 +303,7 @@ async function enviar(ev) {
     r = await res.json();
   } catch { /* el pedido igual sale por WhatsApp */ }
   $("#enviar").textContent = "Enviar pedido por WhatsApp";
+  registro(r.numero, r.ok ? r.total : suma);
   const pago = /^https:\/\/([\w-]+\.)*mercadopago\.com(\.[a-z]{2})?\//.test(r.pago || "") ? r.pago : "";
   // Los montos del servidor mandan; sin respuesta, los calculamos acá.
   mostrarPago(pago, r.ok ? montos(r.total, r.aPagar) : montos(suma, montoSena(suma)),

@@ -10,8 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
   <link rel="icon" href="favicon.png">
   <meta name="theme-color" content="#000000">
-  <link rel="stylesheet" href="styles.css?v=0.19">
-  <script src="tema.js?v=0.19"></script>
+  <link rel="stylesheet" href="styles.css?v=0.20">
+  <script src="tema.js?v=0.20"></script>
 </head>
 <body>
   <!-- Íconos: Simple Icons (CC0) -->
@@ -219,9 +219,31 @@
       <img src="logo.webp" alt="" width="64" height="64" class="cuenta-logo">
       <h2 id="cuenta-titulo">Tu cuenta Aukan3D</h2>
 
-      <div id="cuenta-sesion" hidden>
-        <p>Hola, <strong id="cuenta-nombre"></strong>. Tus datos se completan solos al hacer un pedido.</p>
+      <div id="cuenta-sesion" class="panel" hidden>
+        <p>Hola, <strong id="cuenta-nombre"></strong>.</p>
+        <div class="tabs" role="tablist">
+          <button id="tab-pedidos" role="tab" aria-selected="true" aria-controls="panel-pedidos" type="button">Mis pedidos</button>
+          <button id="tab-datos" role="tab" aria-selected="false" aria-controls="form-datos" type="button">Mis datos</button>
+        </div>
+
+        <div id="panel-pedidos" role="tabpanel" aria-labelledby="tab-pedidos">
+          <h3>En curso</h3>
+          <div id="pedidos-curso" class="pedidos"></div>
+          <h3>Historial</h3>
+          <div id="pedidos-historial" class="pedidos"></div>
+          <button id="pedidos-ejemplo" class="link-btn" type="button">Ver con pedidos de ejemplo</button>
+        </div>
+
+        <form id="form-datos" class="checkout" role="tabpanel" aria-labelledby="tab-datos" hidden>
+          <label>Nombre *<input name="nombre" required maxlength="80" autocomplete="name"></label>
+          <label>WhatsApp *<input name="whatsapp" required maxlength="20" inputmode="tel" pattern="\+?[0-9 ]{8,20}" autocomplete="tel"></label>
+          <label>Correo electrónico *<input name="email" type="email" required maxlength="120" autocomplete="email"></label>
+          <label>Barrio o dirección de entrega<input name="direccion" maxlength="120" autocomplete="street-address" placeholder="Opcional"></label>
+          <p id="datos-ok" class="ok" role="status"></p>
+          <button class="primary azul" type="submit">Guardar cambios</button>
+        </form>
         <button id="cuenta-salir" class="secundario" type="button">Cerrar sesión</button>
+        <p class="fine">Vista previa: tus datos y pedidos se guardan solo en este dispositivo. El estado lo va a actualizar Aukan3D cuando esté el sistema de pedidos.</p>
       </div>
 
       <div id="cuenta-forms">
@@ -251,11 +273,11 @@
     </div>
   </dialog>
 
-  <script src="config.js?v=0.19"></script>
-  <script src="catalogo.js?v=0.19"></script>
-  <script src="productos.js?v=0.19"></script>
-  <script src="qrcode.js?v=0.19"></script>
-  <script src="app.js?v=0.19"></script>
-  <script src="cuenta.js?v=0.19"></script>
+  <script src="config.js?v=0.20"></script>
+  <script src="catalogo.js?v=0.20"></script>
+  <script src="productos.js?v=0.20"></script>
+  <script src="qrcode.js?v=0.20"></script>
+  <script src="app.js?v=0.20"></script>
+  <script src="cuenta.js?v=0.20"></script>
 </body>
 </html>

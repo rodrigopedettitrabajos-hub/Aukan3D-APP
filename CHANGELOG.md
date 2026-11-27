@@ -2,6 +2,11 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.20 · 2026-11-27
+- Panel de usuario al ingresar: "Mis pedidos" (en curso con estado paso a paso: Recibido, Seña pagada, En impresión, Listo para entregar, Entregado; e historial con "Repetir pedido") y "Mis datos" para editar nombre, WhatsApp, correo y barrio.
+- Los pedidos hechos con sesión iniciada quedan en el panel. Botón "Ver con pedidos de ejemplo" para mostrarlo.
+- Vista previa: todo se guarda en el dispositivo; el estado real llega con la base de datos.
+
 ## V0.19 · 2026-11-27
 - Eventos: el mapa se carga recién al abrir la pantalla (cargado oculto, Google lo dibujaba chiquito en una esquina en celulares).
 
