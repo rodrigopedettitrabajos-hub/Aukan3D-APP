@@ -167,7 +167,7 @@ function control(p, pre = "") {
 }
 
 const precioTexto = (p) => (p.precio ? pesos(p.precio) : "Consultar");
-const waConsulta = (p) => waLink(`Hola Aukan3D! Quiero consultar por: ${p.nombre}`);
+const waConsulta = (p) => waLink(`¡Hola, Aukan3D! Quiero consultar por: ${p.nombre}`);
 
 function tarjeta(p) {
   const fav = favs.has(p.id);
@@ -404,7 +404,7 @@ function comprobante(p) {
       el("thead", {}, el("tr", {}, ...["Cant.", "Producto", "Precio", "Subtotal"].map((t) => el("th", { textContent: t })))),
       el("tbody", {}, ...p.items.map((i) => fila(String(i.cant), i.nombre, pesos(i.precio), pesos(i.precio * i.cant)))),
       el("tfoot", {}, fila("", "Total", "", pesos(p.total)),
-        p.sena ? fila("", "Seña 50% a pagar", "", pesos(aPagar)) : fila("", "Pago total", "", pesos(aPagar)),
+        p.sena ? fila("", "Seña 50 % a pagar", "", pesos(aPagar)) : fila("", "Pago total", "", pesos(aPagar)),
         p.sena ? fila("", "Saldo al entregar", "", pesos(p.total - aPagar)) : "")),
     el("p", { className: "comp-pie", textContent: `Aukan3D · Montevideo, Uruguay · WhatsApp ${cfg.whatsapp.replace(/^598/, "0")} · Instagram @aukan3d` }),
     el("p", { className: "comp-pie", textContent: "Este comprobante resume tu pedido; no es una factura." }));
@@ -545,7 +545,7 @@ $("#eventos-lista").replaceChildren(...(eventos.length ? eventos.map((ev) =>
   : [el("p", { textContent: "Por ahora no hay eventos agendados. Seguinos en Instagram para enterarte." })]));
 cargarMapas();
 
-const waHola = waLink("Hola Aukan3D! Quería hacer una consulta.");
+const waHola = waLink("¡Hola, Aukan3D! Quería hacer una consulta.");
 document.querySelectorAll("#wa-flotante, #nosotros-wa, .wa-link").forEach((a) => (a.href = waHola));
 
 const verCarrito = () => $("#carrito").showModal();
