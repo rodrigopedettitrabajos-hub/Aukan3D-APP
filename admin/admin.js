@@ -129,12 +129,14 @@ function sincronizar() {
     .finally(() => { enviando = null; if (otraVez) { otraVez = false; sincronizar(); } });
   return enviando;
 }
-setInterval(async () => {
+async function actualizar() {
   if (!API || !conSesion() || document.hidden) return;
   await sincronizar();
   if (document.querySelector("dialog[open]")) return; // no cambiar datos debajo de un formulario abierto
   try { const n = await traerServidor(); avisoPedidos(n); repintar(); } catch { /* reintenta en la próxima vuelta */ }
-}, 20000);
+}
+setInterval(actualizar, 20000);
+addEventListener("visibilitychange", actualizar); // al volver a la pestaña, sin esperar los 20 s
 
 function guardar() {
   if (API) return void sincronizar();
