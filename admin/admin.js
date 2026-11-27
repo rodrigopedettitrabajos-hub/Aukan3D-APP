@@ -11,6 +11,7 @@ const dosMonedas = (r) => plata(r.UYU) + (r.USD ? ` · ${plata(r.USD, "USD")}` :
 const fecha = (iso) => new Date(iso).toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" });
 const mesActual = () => hoy().slice(0, 7);
 const nombreMes = (m) => new Date(m + "-15").toLocaleDateString("es-UY", { month: "long", year: "numeric" });
+const plural = (n, palabra, varias = palabra + "s") => `${n} ${n === 1 ? palabra : varias}`; // "1 venta", "3 ventas"
 const diasDesde = (iso) => Math.floor((Date.now() - new Date(iso)) / 864e5);
 // La primera foto de la lista "a|b"; las de la tienda están un nivel arriba. Las subidas acá son data:image/webp.
 function foto(f) {
@@ -49,7 +50,8 @@ function mostrarApp() {
   let dev = false;
   try { dev = API && sessionStorage.getItem(USUARIO) === "dev"; } catch { /* sin almacenamiento */ }
   for (const b of document.querySelectorAll("[data-entorno]")) b.hidden = !dev;
-  $(".user b").textContent = dev ? "Dev" : "Administrador";
+  $(".user-nombre b").textContent = dev ? "Dev" : "Administrador";
+  $(".user .avatar").textContent = dev ? "D" : "A";
   $("#login").hidden = ok;
   $(".app").hidden = !ok;
   if (ok) mostrarVista(); else $("#f-login").usuario.focus();
@@ -206,7 +208,7 @@ addEventListener("hashchange", () => { mostrarVista(); scrollTo(0, 0); });
 const repintar = () => { PINTAR[location.hash.slice(1) in VISTAS ? location.hash.slice(1) : "panel"](); pintarCampana(); };
 
 // --- Campana: pedidos de la tienda en "Recibido" que todavía no se abrieron en este navegador ---
-const VISTOS = "aukan_vistos";
+const VISTOS = PRUEBAS ? "aukan_vistos_pruebas" : "aukan_vistos"; // los números se repiten entre la base real y la de pruebas
 const vistos = new Set(leerJson(VISTOS, []).map(String));
 const nuevos = () => db.ventas.filter((v) => v.origen === "web" && v.estado === 0 && !vistos.has(String(v.numero)));
 function marcarVistos(numeros) {
@@ -280,10 +282,10 @@ PINTAR.panel = () => {
   const curso = db.ventas.filter((v) => v.estado < 4);
   $("#panel-sub").textContent = `Resumen de ${nombreMes(mesActual())}.`;
   $("#kpis").replaceChildren(
-    kpi("Vendido este mes", plata(r.vendido.UYU), `${r.ventas.length} ventas${r.vendido.USD ? ` · ${plata(r.vendido.USD, "USD")}` : ""}`),
+    kpi("Vendido este mes", plata(r.vendido.UYU), `${plural(r.ventas.length, "venta")}${r.vendido.USD ? ` · ${plata(r.vendido.USD, "USD")}` : ""}`),
     kpi("Cobrado este mes", plata(r.cobrado.UYU), r.cobrado.USD ? plata(r.cobrado.USD, "USD") : "Pesos", "verde"),
-    kpi("Pendiente de cobro", plata(pendiente.UYU), `${db.ventas.filter(saldo).length} ventas con saldo`, "ambar"),
-    kpi("Pedidos en curso", String(curso.length), `${curso.filter((v) => v.estado === 3).length} listos para entregar`));
+    kpi("Pendiente de cobro", plata(pendiente.UYU), `${plural(db.ventas.filter(saldo).length, "venta")} con saldo`, "ambar"),
+    kpi("Pedidos en curso", String(curso.length), plural(curso.filter((v) => v.estado === 3).length, "listo", "listos") + " para entregar"));
   $("#embudo").replaceChildren(barras(ESTADOS.slice(0, 4).map((e, i) => { const n = curso.filter((v) => v.estado === i).length; return [e, n, String(n)]; })));
   const unidades = {};
   for (const v of r.ventas) for (const i of v.items) unidades[i.nombre] = (unidades[i.nombre] || 0) + i.cant;
@@ -329,7 +331,7 @@ function abrirDetalle(numero) {
   const pasos = el("ol", { className: "pasos" }, ...ESTADOS.map((e, i) => el("li", {},
     el("button", { type: "button", className: i < v.estado ? "hecho" : i === v.estado ? "actual" : "", ariaCurrent: i === v.estado ? "step" : null,
       textContent: i === 1 && !v.sena ? "Pagado" : e, onclick: () => cambiarEstado(v, i) }))));
-  const msg = `Hola ${c.nombre.split(" ")[0]}! Te escribimos de Aukan3D por tu pedido N° ${v.numero}: ${ESTADOS[v.estado].toLowerCase()}.`
+  const msg = `¡Hola, ${c.nombre.split(" ")[0]}! Te escribimos de Aukan3D por tu pedido N° ${v.numero}: ${ESTADOS[v.estado].toLowerCase()}.`
     + (saldo(v) ? ` Saldo a pagar: ${plata(saldo(v), v.moneda)}.` : "");
   $("#detalle-cuerpo").replaceChildren(
     el("p", { className: "sub", textContent: `${fecha(v.fecha)} · ${ORIGEN[v.origen] || "En persona"}${usuario(v.vendedor) ? ` · Vendió ${usuario(v.vendedor).nombre}` : ""} · ${v.entrega}` }),
@@ -623,7 +625,7 @@ $("#f-cerrar").addEventListener("submit", (e) => {
   ticket.clear();
   guardar(); PINTAR.feria();
   const r = resumenCaja(db, caja);
-  avisar(`Caja cerrada: ${r.ventas.length} ventas por ${plata(r.total)}.${r.diferencia ? (r.diferencia < 0 ? ` Faltaron ${plata(-r.diferencia)}.` : ` Sobraron ${plata(r.diferencia)}.`) : " Cerró justa."}`);
+  avisar(`Caja cerrada: ${plural(r.ventas.length, "venta")} por ${plata(r.total)}.${r.diferencia ? (r.diferencia < 0 ? ` Faltaron ${plata(-r.diferencia)}.` : ` Sobraron ${plata(r.diferencia)}.`) : " Cerró justa."}`);
 });
 
 PINTAR.feria = () => {
@@ -655,13 +657,13 @@ PINTAR.pendientes = () => {
   const lista = db.ventas.filter(saldo).sort((a, b) => a.fecha.localeCompare(b.fecha));
   const total = porMoneda(lista, saldo), viejas = lista.filter((v) => diasDesde(v.fecha) > 15);
   $("#kpis-deuda").replaceChildren(
-    kpi("Por cobrar", plata(total.UYU), total.USD ? plata(total.USD, "USD") : `${lista.length} ventas`, "ambar"),
+    kpi("Por cobrar", plata(total.UYU), total.USD ? plata(total.USD, "USD") : plural(lista.length, "venta"), "ambar"),
     kpi("Hace más de 15 días", String(viejas.length), viejas.length ? plata(porMoneda(viejas, saldo).UYU) : "Nada atrasado"),
     kpi("Listos sin pagar", String(lista.filter((v) => v.estado >= 3).length), "Cobrar al entregar"));
   $("#pendientes-lista").replaceChildren(tabla([...CAB_VENTAS, "Hace", ""], lista.map((v) => {
     const c = cliente(v.cliente);
-    const msg = `Hola ${c.nombre.split(" ")[0]}! Te recordamos que del pedido N° ${v.numero} de Aukan3D queda un saldo de ${plata(saldo(v), v.moneda)}. ¡Gracias!`;
-    return filaVenta(v, [td(`${diasDesde(v.fecha)} días`, diasDesde(v.fecha) > 15 ? "ambar" : ""), td(el("span", { className: "acciones" },
+    const msg = `¡Hola, ${c.nombre.split(" ")[0]}! Te recordamos que del pedido N° ${v.numero} de Aukan3D queda un saldo de ${plata(saldo(v), v.moneda)}. ¡Gracias!`;
+    return filaVenta(v, [td(plural(diasDesde(v.fecha), "día"), diasDesde(v.fecha) > 15 ? "ambar" : ""), td(el("span", { className: "acciones" },
       el("button", { type: "button", className: "btn chico", textContent: "Cobrar", onclick: () => abrirPago(v.numero) }),
       c.whatsapp ? el("a", { className: "btn sec chico", href: `https://wa.me/${waDe(c.whatsapp)}?text=${encodeURIComponent(msg)}`, target: "_blank", rel: "noopener", textContent: "Recordar", ariaLabel: `Recordarle a ${c.nombre} por WhatsApp` }) : ""))]);
   }), "No hay nada pendiente de cobro.", "t-ventas"));
@@ -809,7 +811,7 @@ PINTAR.medios = () => {
   $("#medios-lista").replaceChildren(...db.medios.map((m) => el("article", { className: "caja medio" },
     m.qr ? el("img", { src: m.qr, alt: `QR de ${m.nombre}`, width: 96, height: 96 }) : el("span", { className: "qr-vacio", textContent: "Sin QR" }),
     el("div", {}, el("h2", { textContent: m.nombre }), m.detalle ? el("p", { className: "sub", textContent: m.detalle }) : "",
-      el("p", { className: "sub chico", textContent: `Usado en ${usos(m.id)} ventas` }),
+      el("p", { className: "sub chico", textContent: `Usado en ${plural(usos(m.id), "venta")}` }),
       el("span", { className: "acciones" },
         el("button", { type: "button", className: "btn sec chico", textContent: "Editar", onclick: () => abrirMedio(m) }),
         usos(m.id) ? "" : el("button", { type: "button", className: "btn sec chico peligro", textContent: "Quitar", onclick: () => { db.medios = db.medios.filter((x) => x !== m); guardar(); PINTAR.medios(); avisar(`Quitamos ${m.nombre}.`); } }))))));
@@ -850,7 +852,7 @@ PINTAR.usuarios = () => {
   const lista = comisiones(db, mes);
   const total = suma(lista, (u) => u.comision.UYU);
   $("#usuarios-lista").replaceChildren(tabla(["Usuario", "Rol", "#Comisión", "#Ventas", "#Vendido", "#A liquidar", ""], lista.map((u) => el("tr", {},
-    td(el("b", { textContent: u.nombre })), td(u.rol), td(`${u.comision}%`, "num"), td(String(u.cantidad), "num"),
+    td(el("b", { textContent: u.nombre })), td(u.rol), td(`${u.porcentaje}%`, "num"), td(String(u.cantidad), "num"),
     td(dosMonedas(u.vendido), "num"), td(dosMonedas(u.comision), "num verde"),
     td(el("button", { type: "button", className: "btn sec chico", textContent: "Editar", onclick: () => abrirUsuario(db.usuarios.find((x) => x.id === u.id)) })))),
   "Todavía no hay usuarios."),
@@ -922,14 +924,14 @@ PINTAR.reportes = () => {
   $("#rep-sig").disabled = !rango && hasta >= hoy();
   const usd = r.cobrado.USD || r.gastado.USD;
   $("#kpis-reporte").replaceChildren(
-    kpi("Vendido", plata(r.vendido.UYU), r.vendido.USD ? plata(r.vendido.USD, "USD") : `${r.ventas.length} ventas`),
+    kpi("Vendido", plata(r.vendido.UYU), r.vendido.USD ? plata(r.vendido.USD, "USD") : plural(r.ventas.length, "venta")),
     kpi("Cobrado", plata(r.cobrado.UYU), r.cobrado.USD ? plata(r.cobrado.USD, "USD") : "Pesos", "verde"),
-    kpi("Gastos", plata(r.gastado.UYU), r.gastado.USD ? plata(r.gastado.USD, "USD") : `${r.gastos.length} gastos`, "rojo"),
+    kpi("Gastos", plata(r.gastado.UYU), r.gastado.USD ? plata(r.gastado.USD, "USD") : plural(r.gastos.length, "gasto"), "rojo"),
     kpi("Resultado", plata(r.resultado.UYU), usd ? `${plata(r.resultado.USD, "USD")} en dólares` : "Cobrado menos gastos", r.resultado.UYU >= 0 ? "verde" : "rojo"));
   // Un día: la lista de sus ventas. Hasta 2 meses: por día. Más largo: por mes.
   const dias = (new Date(hasta) - new Date(desde)) / 864e5 + 1;
   if (dias === 1) {
-    $("#serie-t").textContent = "Ventas del día"; $("#serie-sub").textContent = `${r.ventas.length} ventas`;
+    $("#serie-t").textContent = "Ventas del día"; $("#serie-sub").textContent = plural(r.ventas.length, "venta");
     $("#rep-serie").replaceChildren(tabla(CAB_VENTAS, r.ventas.map((v) => filaVenta(v)), "No hubo ventas este día.", "t-ventas"));
   } else {
     const porMes = dias > 62, serie = serieVentas(r.ventas, desde, hasta, porMes ? 7 : 10);
@@ -945,15 +947,15 @@ PINTAR.reportes = () => {
   const pesos = r.ventas.filter((v) => v.moneda === "UYU");
   const cuantas = sumar(r.ventas, (v) => ORIGEN[v.origen] || "En persona", () => 1);
   $("#por-origen").replaceChildren(barras(Object.entries(sumar(pesos, (v) => ORIGEN[v.origen] || "En persona", totalVenta)).sort((a, b) => b[1] - a[1])
-    .map(([k, n]) => [k, n, `${plata(n)} · ${cuantas[k]} ${cuantas[k] === 1 ? "venta" : "ventas"}`])));
+    .map(([k, n]) => [k, n, `${plata(n)} · ${plural(cuantas[k], "venta")}`])));
   $("#por-medio").replaceChildren(barrasDe(sumar(r.pagos.filter((p) => p.moneda === "UYU"), (p) => medio(p.medio), (p) => p.monto)));
   const porCat = {};
   for (const v of pesos) for (const i of v.items) { const c = db.productos.find((p) => p.id === i.id)?.categoria || "Otros"; porCat[c] = (porCat[c] || 0) + i.precio * i.cant; }
   $("#por-cat").replaceChildren(barrasDe(porCat));
   $("#gastos-lista").replaceChildren(tabla(["Fecha", "Concepto", "#Monto", ""], [...r.gastos].sort((a, b) => b.fecha.localeCompare(a.fecha)).map((g) => el("tr", {},
-    td(fecha(g.fecha + "T12:00")), td(g.concepto), td(plata(g.monto, g.moneda), "num"),
+    td(fecha(g.fecha + "T12:00")), td(el("span", {}, g.concepto, el("small", { className: "fecha-movil", textContent: fecha(g.fecha + "T12:00") }))), td(plata(g.monto, g.moneda), "num"),
     td(el("button", { type: "button", className: "btn sec chico peligro", textContent: "Borrar", ariaLabel: `Borrar gasto ${g.concepto}`, onclick: () => borrarGasto(g) })))),
-  "No hay gastos cargados en este período."));
+  "No hay gastos cargados en este período.", "t-gastos"));
 };
 function borrarGasto(g) {
   const i = db.gastos.indexOf(g);

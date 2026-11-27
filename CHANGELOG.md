@@ -2,6 +2,16 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.36 · 2026-11-27
+- Revisión de textos cortados y encimados en tienda y panel (PC, tablet y dos tamaños de celular):
+  - Arriba en el panel, "Administrador" y "Vista previa…" salían pegados (desde la campana); ahora uno debajo del otro. En tablet se oculta el subtítulo para que no se parta.
+  - Usuarios: la columna Comisión mostraba "[object Object]%"; ahora el % de cada vendedor.
+  - Barras de reportes y panel: los nombres largos pasan a dos líneas en vez de cortarse.
+  - Celular chico: estados de las tablas, "Nuevo medio de pago" y los botones de Cuentas pendientes ya no se salen de la pantalla. Gastos muestra la fecha bajo el concepto.
+  - "N° 1042" ya no se parte en dos renglones.
+- Ortografía: "¡Hola, …!" en los mensajes de WhatsApp, "50 %" igual en todos lados, "…" en los ejemplos y plurales correctos ("1 venta", "1 día").
+- La lista de pedidos vistos de la campana es aparte para la base de pruebas.
+
 ## V0.35 · 2026-11-27
 - Panel, Reportes: período a elegir (día, mes, trimestre, semestre, año o entre fechas) con flechas para ir hacia atrás y adelante, y botón "Hoy".
 - Reportes nuevos: ventas por día (o por mes si el período es largo; en un día, la lista de ventas), productos más vendidos, ventas por tipo (tienda web, en persona, feria) y cobrado por forma de pago, todos del período elegido.

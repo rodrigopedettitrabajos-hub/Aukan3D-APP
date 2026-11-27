@@ -22,7 +22,7 @@ const multi = productosDesdeCsv("id,nombre,precio,foto\n1,A,10,fotos/a.webp| fot
 assert.deepStrictEqual([multi[0].foto, multi[0].fotos], ["fotos/a.webp", ["fotos/a.webp", "fotos/b.webp"]]);
 
 const r = resumenPedido([{ nombre: "Kirby", precio: 400, cant: 2 }], { nombre: "Ana", entrega: "Retiro coordinado" });
-assert.ok(r.includes("2 x Kirby") && r.includes("Total: $800") && r.includes("seña del 50% ($400)"));
+assert.ok(r.includes("2 x Kirby") && r.includes("Total: $800") && r.includes("seña del 50 % ($400)"));
 assert.strictEqual(montoSena(1250), 625); assert.strictEqual(montoSena(1251), 626);
 assert.ok(resumenPedido([{ nombre: "Kirby", precio: 400, cant: 1 }], { nombre: "Ana", entrega: "x", modo: "total" }).includes("Pago: todo ($400)"));
 // productos.js tiene que ser copia exacta de productos.csv

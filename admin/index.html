@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.35">
-  <script src="../tema.js?v=0.35"></script>
+  <link rel="stylesheet" href="admin.css?v=0.36">
+  <script src="../tema.js?v=0.36"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -61,7 +61,7 @@
     <p class="banda-pruebas" id="banda-pruebas" hidden>Modo pruebas: estás usando la base de pruebas. Nada de esto afecta los datos reales.</p>
     <header class="top">
       <p class="crumb">Aukan3D Gestión / <b id="crumb">Panel principal</b></p>
-      <div class="user"><button type="button" class="campana" data-campana aria-label="Pedidos nuevos" aria-expanded="false" aria-controls="notis"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1Z"/></svg><b class="campana-n" hidden></b></button><span class="avatar" aria-hidden="true">A</span><span><b>Administrador</b><small id="user-sub">Vista previa con datos de ejemplo</small></span><button type="button" class="btn sec chico" data-salir>Salir</button></div>
+      <div class="user"><button type="button" class="campana" data-campana aria-label="Pedidos nuevos" aria-expanded="false" aria-controls="notis"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1Z"/></svg><b class="campana-n" hidden></b></button><span class="avatar" aria-hidden="true">A</span><span class="user-nombre"><b>Administrador</b><small id="user-sub">Vista previa con datos de ejemplo</small></span><button type="button" class="btn sec chico" data-salir>Salir</button></div>
     </header>
 
     <div class="content">
@@ -224,7 +224,7 @@
       <label>Pago ahora <input name="pago" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></label>
       <label>Medio de pago <select name="medio"></select></label>
     </div>
-    <div class="atajos"><button type="button" class="chip" data-pago="0">Sin pago</button><button type="button" class="chip" data-pago="50">Seña 50%</button><button type="button" class="chip" data-pago="100">Todo</button></div>
+    <div class="atajos"><button type="button" class="chip" data-pago="0">Sin pago</button><button type="button" class="chip" data-pago="50">Seña 50 %</button><button type="button" class="chip" data-pago="100">Todo</button></div>
     <label class="campo-solo">Nota interna <input name="nota" maxlength="200" placeholder="Color, tamaño, fecha de entrega…"></label>
     <p class="error" id="venta-error" aria-live="polite"></p>
     <footer><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok" id="guardar-venta">Guardar venta</button></footer>
@@ -274,7 +274,7 @@
         <label>Categoría <input name="categoria" list="lista-cats" required maxlength="40"></label>
         <label>Subcategoría <input name="subcategoria" maxlength="40" placeholder="Opcional"></label>
         <datalist id="lista-cats"></datalist>
-        <label>Precio ($) <input name="precio" type="number" min="0" step="1" inputmode="numeric" placeholder="Vacío: Consultar"></label>
+        <label>Precio ($) <input name="precio" type="number" min="0" step="1" inputmode="numeric" placeholder="Vacío = Consultar"></label>
         <label>Stock listo <input name="stock" type="number" min="0" step="1" inputmode="numeric" placeholder="0 = a pedido"></label>
         <label>Tamaño <input name="tamano" maxlength="40" placeholder="Ej. 12 cm de alto"></label>
         <label>Material <input name="material" maxlength="40" placeholder="Ej. PLA"></label>
@@ -366,10 +366,10 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.35"></script>
-<script src="../productos.js?v=0.35"></script>
-<script src="../catalogo.js?v=0.35"></script>
-<script src="datos.js?v=0.35"></script>
-<script src="admin.js?v=0.35"></script>
+<script src="../config.js?v=0.36"></script>
+<script src="../productos.js?v=0.36"></script>
+<script src="../catalogo.js?v=0.36"></script>
+<script src="datos.js?v=0.36"></script>
+<script src="admin.js?v=0.36"></script>
 </body>
 </html>

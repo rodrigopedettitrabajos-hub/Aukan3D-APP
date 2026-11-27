@@ -41,6 +41,7 @@ assert.ok(top.length === 3 && top[0].cant >= top[1].cant);
 const com = d.comisiones(db, "2026-11");
 const rom = com.find((u) => u.nombre === "Romina");
 assert.strictEqual(rom.comision.UYU, Math.round(rom.vendido.UYU * 0.1));
+assert.strictEqual(rom.porcentaje, 10); // el % del usuario sigue a mano para la tabla
 assert.ok(com.every((u) => db.ventas.filter((x) => x.origen === "web").every((x) => x.vendedor !== u.id))); // la web no comisiona
 // El mes se cuenta en hora de Uruguay: el 30/11 a las 22:00 (01:00 UTC del 1/12) es de noviembre.
 assert.strictEqual(d.mesDe("2026-12-01T01:00:00.000Z"), "2026-11");
