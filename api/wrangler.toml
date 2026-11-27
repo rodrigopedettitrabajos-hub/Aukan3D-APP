@@ -12,7 +12,7 @@ database_id = "d1577ca7-6179-4adc-ab09-0f126d9f6292"
 [[d1_databases]]
 binding = "DB_PRUEBAS"
 database_name = "aukan3d-pruebas"
-database_id = "REEMPLAZAR_CON_EL_ID_DE_LA_BASE_DE_PRUEBAS"
+database_id = "e99190b9-a5b7-4a45-ba9b-650e71ef45e2"
 
 [vars]
 # Páginas que pueden usar el servidor (la tienda y el panel). Separadas por coma.
