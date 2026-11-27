@@ -2,6 +2,17 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.25 · 2026-11-27
+Primera versión del panel de gestión (backoffice) en `admin/`, basada en el prototipo de Rodrigo. Pantallas con datos de ejemplo guardados en el navegador; la base de datos viene después.
+- Ingreso con usuario y contraseña de muestra (`admin` / `admin`).
+- Panel principal: vendido, cobrado y pendiente del mes, pedidos en curso por estado, más vendidos y últimas ventas.
+- Ventas y pedidos: los de la tienda web y los hechos en persona o en ferias, en pesos o dólares. Detalle con estado paso a paso, pagos, saldo y botón para escribirle al cliente por WhatsApp. Nueva venta con buscador de productos, seña 50% o pago total y descuento de stock.
+- Cuentas pendientes: ventas con saldo de la más vieja a la más nueva, cobrar y recordar por WhatsApp.
+- Clientes: compras, total comprado, saldo y última compra.
+- Productos y stock: el catálogo de la tienda con stock listo (+ / −), alta y edición, foto optimizada a 600 × 600 WebP y "Descargar CSV" para pegar en la planilla.
+- Medios de pago con imagen de QR, usuarios con comisión (10% por defecto) y reportes del mes con gastos, por categoría y por medio de pago.
+- Mismos colores que la tienda, modo oscuro y celular.
+
 ## V0.24 · 2026-11-27
 Cambios aprobados de las auditorías (Ponytail, seguridad de Cloudflare e impeccable).
 - Pantalla final honesta: "Falta un paso: mandanos el mensaje" con número de pedido, resumen, los 3 pasos que siguen y "Ya lo mandé". El carrito queda guardado (también al recargar) hasta confirmar. Avisa si el navegador bloqueó WhatsApp o si falló el servidor.

@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data: blob:; connect-src 'self' https:; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; form-action 'none'; base-uri 'none'">
+  <title>Aukan3D Gestión</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="../favicon.png">
+  <link rel="stylesheet" href="admin.css?v=0.25">
+  <script src="../tema.js?v=0.25"></script>
+</head>
+<body>
+<div id="login" class="login" hidden>
+  <form id="f-login" class="login-caja" novalidate>
+    <img src="../logo.webp" alt="" width="64" height="64">
+    <h1>AUKAN<span>3D</span> <small>GESTIÓN</small></h1>
+    <label>Usuario <input name="usuario" autocomplete="username" required autofocus></label>
+    <label>Contraseña <input name="clave" type="password" autocomplete="current-password" required></label>
+    <p class="error" id="login-error" aria-live="polite"></p>
+    <button class="btn" type="submit">Ingresar</button>
+    <p class="sub chico">Versión de muestra: usuario <b>admin</b>, contraseña <b>admin</b>.</p>
+  </form>
+</div>
+<div class="app" hidden>
+  <aside class="side">
+    <a class="brand" href="#panel">
+      <img src="../logo.webp" alt="" width="44" height="44">
+      <span><strong>AUKAN<span>3D</span></strong><small>GESTIÓN</small></span>
+    </a>
+    <nav class="nav" aria-label="Secciones">
+      <a href="#panel">Panel principal</a>
+      <a href="#ventas">Ventas y pedidos</a>
+      <a href="#pendientes">Cuentas pendientes</a>
+      <a href="#clientes">Clientes</a>
+      <a href="#productos">Productos y stock</a>
+      <a href="#medios">Medios de pago</a>
+      <a href="#usuarios">Usuarios y comisiones</a>
+      <a href="#reportes">Reportes y gastos</a>
+    </nav>
+    <div class="side-pie">
+      <button id="tema" class="tema-btn" type="button"></button>
+      <a href="../" class="side-link">Ver la tienda ↗</a>
+    </div>
+  </aside>
+
+  <main>
+    <header class="top">
+      <p class="crumb">Aukan3D Gestión / <b id="crumb">Panel principal</b></p>
+      <div class="user"><span class="avatar" aria-hidden="true">A</span><span><b>Administrador</b><small>Vista previa con datos de ejemplo</small></span><button type="button" class="btn sec chico" id="salir">Salir</button></div>
+    </header>
+
+    <div class="content">
+      <section id="v-panel" class="vista">
+        <div class="cabeza"><div><p class="eyebrow">Resumen del negocio</p><h1>Hola, Aukan3D</h1><p class="sub" id="panel-sub"></p></div>
+          <button class="btn" type="button" data-nueva-venta>+ Registrar venta</button></div>
+        <div class="kpis" id="kpis"></div>
+        <div class="grilla">
+          <div class="caja"><h2>Pedidos en curso</h2><p class="sub">Por estado, de la tienda y en persona</p><div id="embudo"></div></div>
+          <div class="caja"><h2>Más vendidos del mes</h2><p class="sub">Unidades</p><div id="top"></div></div>
+        </div>
+        <div class="caja"><div class="caja-cab"><h2>Últimas ventas</h2><a href="#ventas">Ver todas</a></div><div id="ultimas"></div></div>
+      </section>
+
+      <section id="v-ventas" class="vista" hidden>
+        <div class="cabeza"><div><p class="eyebrow">Operaciones</p><h1>Ventas y pedidos</h1><p class="sub">Los pedidos de la tienda llegan solos. Las ventas en persona o en ferias se cargan acá.</p></div>
+          <button class="btn" type="button" data-nueva-venta>+ Nueva venta</button></div>
+        <div class="filtros">
+          <input id="ventas-q" type="search" placeholder="Buscar por cliente, número o producto" aria-label="Buscar ventas">
+          <select id="ventas-estado" aria-label="Estado"><option value="">Todos los estados</option></select>
+          <select id="ventas-origen" aria-label="Origen"><option value="">Tienda y en persona</option><option value="web">Solo tienda web</option><option value="local">Solo en persona</option></select>
+        </div>
+        <div id="ventas-lista"></div>
+      </section>
+
+      <section id="v-pendientes" class="vista" hidden>
+        <div class="cabeza"><div><p class="eyebrow">Cuentas por cobrar</p><h1>Cuentas pendientes</h1><p class="sub">Ventas con saldo, de la más vieja a la más nueva.</p></div></div>
+        <div class="kpis" id="kpis-deuda"></div>
+        <div id="pendientes-lista"></div>
+      </section>
+
+      <section id="v-clientes" class="vista" hidden>
+        <div class="cabeza"><div><p class="eyebrow">Contactos</p><h1>Clientes</h1><p class="sub">Datos de contacto e historial de compras.</p></div>
+          <button class="btn" type="button" id="nuevo-cliente">+ Nuevo cliente</button></div>
+        <div class="filtros"><input id="clientes-q" type="search" placeholder="Buscar por nombre, WhatsApp o barrio" aria-label="Buscar clientes"></div>
+        <div id="clientes-lista"></div>
+      </section>
+
+      <section id="v-productos" class="vista" hidden>
+        <div class="cabeza"><div><p class="eyebrow">Catálogo</p><h1>Productos y stock</h1><p class="sub">El mismo catálogo de la tienda. Los cambios se bajan en un CSV para pegar en la planilla.</p></div>
+          <div class="botones"><button class="btn sec" type="button" id="bajar-csv">Descargar CSV</button><button class="btn" type="button" id="nuevo-producto">+ Producto</button></div></div>
+        <div class="filtros">
+          <input id="prod-q" type="search" placeholder="Buscar producto" aria-label="Buscar productos">
+          <select id="prod-cat" aria-label="Categoría"><option value="">Todas las categorías</option></select>
+          <select id="prod-stock" aria-label="Stock"><option value="">Con y sin stock</option><option value="sin">Sin stock (se imprime a pedido)</option><option value="con">Con stock</option><option value="oculto">Ocultos en la tienda</option></select>
+        </div>
+        <div id="prod-lista"></div>
+      </section>
+
+      <section id="v-medios" class="vista" hidden>
+        <div class="cabeza"><div><p class="eyebrow">Configuración</p><h1>Medios de pago</h1><p class="sub">Efectivo, transferencias, Mercado Pago y los que quieras, con su QR.</p></div>
+          <button class="btn" type="button" id="nuevo-medio">+ Agregar medio</button></div>
+        <div id="medios-lista" class="tarjetas"></div>
+      </section>
+
+      <section id="v-usuarios" class="vista" hidden>
+        <div class="cabeza"><div><p class="eyebrow">Equipo</p><h1>Usuarios y comisiones</h1><p class="sub">Ventas y comisión de cada vendedor en el mes elegido.</p></div>
+          <button class="btn" type="button" id="nuevo-usuario">+ Nuevo usuario</button></div>
+        <div class="filtros"><input id="usuarios-mes" type="month" aria-label="Mes"></div>
+        <div id="usuarios-lista"></div>
+      </section>
+
+      <section id="v-reportes" class="vista" hidden>
+        <div class="cabeza"><div><p class="eyebrow">Finanzas</p><h1>Reportes y gastos</h1><p class="sub">Lo cobrado menos los gastos, en pesos y en dólares por separado.</p></div>
+          <button class="btn" type="button" id="nuevo-gasto">+ Registrar gasto</button></div>
+        <div class="filtros"><input id="reportes-mes" type="month" aria-label="Mes"></div>
+        <div class="kpis" id="kpis-reporte"></div>
+        <div class="grilla">
+          <div class="caja"><h2>Ventas por categoría</h2><p class="sub">Pesos vendidos en el mes</p><div id="por-cat"></div></div>
+          <div class="caja"><h2>Cobrado por medio de pago</h2><p class="sub">Pesos cobrados en el mes</p><div id="por-medio"></div></div>
+        </div>
+        <div class="caja"><h2>Gastos del mes</h2><div id="gastos-lista"></div></div>
+      </section>
+
+      <p class="demo-pie">Vista previa: los datos son de ejemplo y se guardan solo en este navegador.
+        <button type="button" class="link" id="reiniciar">Volver a los datos de ejemplo</button></p>
+    </div>
+  </main>
+</div>
+
+<!-- Ventanas -->
+<dialog id="d-venta" class="ventana ancha" aria-labelledby="d-venta-t">
+  <form method="dialog" id="f-venta" novalidate>
+    <header><h2 id="d-venta-t">Nueva venta</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
+    <div class="campos dos">
+      <label>Cliente <select name="cliente" required></select></label>
+      <label>Vendedor <select name="vendedor" required></select></label>
+      <label>Moneda <select name="moneda"><option value="UYU">Pesos uruguayos ($)</option><option value="USD">Dólares (USD)</option></select></label>
+      <label>Entrega <select name="entrega"><option>Retiro coordinado</option><option>En la feria</option><option>Envío por agencia</option></select></label>
+    </div>
+    <fieldset class="items-venta"><legend>Productos</legend>
+      <div class="agregar-item">
+        <input name="buscar" list="lista-productos" placeholder="Escribí para buscar un producto" aria-label="Producto">
+        <datalist id="lista-productos"></datalist>
+        <button type="button" class="btn sec" id="agregar-item">Agregar</button>
+      </div>
+      <p class="error" id="venta-item-error" aria-live="polite"></p>
+      <table class="tabla"><thead><tr><th>Producto</th><th class="num">Cant.</th><th class="num">Precio</th><th class="num">Subtotal</th><th><span class="sr">Quitar</span></th></tr></thead><tbody id="venta-items"></tbody>
+        <tfoot><tr><td colspan="3">Total</td><td class="num" id="venta-total">$ 0</td><td></td></tr></tfoot></table>
+    </fieldset>
+    <div class="campos dos">
+      <label>Pago ahora <input name="pago" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></label>
+      <label>Medio de pago <select name="medio"></select></label>
+    </div>
+    <div class="atajos"><button type="button" class="chip" data-pago="0">Sin pago</button><button type="button" class="chip" data-pago="50">Seña 50%</button><button type="button" class="chip" data-pago="100">Todo</button></div>
+    <label class="campo-solo">Nota interna <input name="nota" maxlength="200" placeholder="Color, tamaño, fecha de entrega…"></label>
+    <p class="error" id="venta-error" aria-live="polite"></p>
+    <footer><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok" id="guardar-venta">Guardar venta</button></footer>
+  </form>
+</dialog>
+
+<dialog id="d-detalle" class="ventana ancha" aria-labelledby="d-detalle-t">
+  <form method="dialog">
+    <header><h2 id="d-detalle-t">Pedido</h2><button class="x" value="cancel" aria-label="Cerrar">×</button></header>
+    <div id="detalle-cuerpo"></div>
+  </form>
+</dialog>
+
+<dialog id="d-pago" class="ventana" aria-labelledby="d-pago-t">
+  <form method="dialog" id="f-pago" novalidate>
+    <header><h2 id="d-pago-t">Registrar pago</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
+    <p id="pago-saldo" class="sub"></p>
+    <div class="campos">
+      <label>Monto <input name="monto" type="number" min="1" step="1" inputmode="numeric" required></label>
+      <label>Medio de pago <select name="medio"></select></label>
+    </div>
+    <p class="error" id="pago-error" aria-live="polite"></p>
+    <footer><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok">Guardar pago</button></footer>
+  </form>
+</dialog>
+
+<dialog id="d-cliente" class="ventana" aria-labelledby="d-cliente-t">
+  <form method="dialog" id="f-cliente" novalidate>
+    <header><h2 id="d-cliente-t">Cliente</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
+    <div class="campos">
+      <label>Nombre <input name="nombre" required maxlength="80" autocomplete="off"></label>
+      <label>WhatsApp <input name="whatsapp" inputmode="tel" maxlength="20" placeholder="099 123 456"></label>
+      <label>Correo <input name="email" type="email" maxlength="120"></label>
+      <label>Ciudad o barrio <input name="zona" maxlength="80"></label>
+    </div>
+    <p class="error" id="cliente-error" aria-live="polite"></p>
+    <footer><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok">Guardar</button></footer>
+  </form>
+</dialog>
+
+<dialog id="d-producto" class="ventana ancha" aria-labelledby="d-producto-t">
+  <form method="dialog" id="f-producto" novalidate>
+    <header><h2 id="d-producto-t">Producto</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
+    <div class="producto-form">
+      <div class="campos dos">
+        <label class="todo">Nombre <input name="nombre" required maxlength="80"></label>
+        <label>Categoría <input name="categoria" list="lista-cats" required maxlength="40"></label>
+        <label>Subcategoría <input name="subcategoria" maxlength="40" placeholder="Opcional"></label>
+        <datalist id="lista-cats"></datalist>
+        <label>Precio ($) <input name="precio" type="number" min="0" step="1" inputmode="numeric" placeholder="Vacío: Consultar"></label>
+        <label>Stock listo <input name="stock" type="number" min="0" step="1" inputmode="numeric" placeholder="0 = a pedido"></label>
+        <label>Tamaño <input name="tamano" maxlength="40" placeholder="Ej. 12 cm de alto"></label>
+        <label>Material <input name="material" maxlength="40" placeholder="Ej. PLA"></label>
+        <label class="check todo"><input name="activo" type="checkbox"> Se muestra en la tienda</label>
+      </div>
+      <div class="foto-sube">
+        <p class="etiqueta">Foto</p>
+        <label class="foto-caja" for="foto-input"><img id="foto-prev" alt="" hidden><span id="foto-vacia">+ Elegir foto</span></label>
+        <input id="foto-input" type="file" accept="image/jpeg,image/png,image/webp" class="sr">
+        <p class="sub chico" id="foto-estado">Se ajusta a 600 × 600 px en WebP liviano, sin recortar.</p>
+      </div>
+    </div>
+    <p class="error" id="producto-error" aria-live="polite"></p>
+    <footer><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok">Guardar</button></footer>
+  </form>
+</dialog>
+
+<dialog id="d-medio" class="ventana" aria-labelledby="d-medio-t">
+  <form method="dialog" id="f-medio" novalidate>
+    <header><h2 id="d-medio-t">Medio de pago</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
+    <div class="campos">
+      <label>Nombre <input name="nombre" required maxlength="40" placeholder="Ej. Transferencia Itaú"></label>
+      <label>Datos para el cliente <input name="detalle" maxlength="120" placeholder="Ej. Cuenta 123456, a nombre de…"></label>
+      <label>Imagen del QR (opcional) <input name="qr" type="file" accept="image/jpeg,image/png,image/webp"></label>
+    </div>
+    <p class="error" id="medio-error" aria-live="polite"></p>
+    <footer><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok">Guardar</button></footer>
+  </form>
+</dialog>
+
+<dialog id="d-usuario" class="ventana" aria-labelledby="d-usuario-t">
+  <form method="dialog" id="f-usuario" novalidate>
+    <header><h2 id="d-usuario-t">Usuario</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
+    <div class="campos">
+      <label>Nombre <input name="nombre" required maxlength="60"></label>
+      <label>Rol <select name="rol"><option>Vendedor</option><option>Administrador</option></select></label>
+      <label>Comisión (%) <input name="comision" type="number" min="0" max="100" step="0.5" value="10" inputmode="decimal"></label>
+    </div>
+    <p class="error" id="usuario-error" aria-live="polite"></p>
+    <footer><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok">Guardar</button></footer>
+  </form>
+</dialog>
+
+<dialog id="d-gasto" class="ventana" aria-labelledby="d-gasto-t">
+  <form method="dialog" id="f-gasto" novalidate>
+    <header><h2 id="d-gasto-t">Registrar gasto</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
+    <div class="campos">
+      <label>Concepto <input name="concepto" required maxlength="80" list="lista-gastos" placeholder="Ej. Filamento PLA"></label>
+      <datalist id="lista-gastos"><option>Filamento PLA</option><option>Filamento PETG</option><option>Hilo para crochet</option><option>Luz</option><option>Envíos</option><option>Stand en feria</option><option>Repuestos impresora</option></datalist>
+      <label>Fecha <input name="fecha" type="date" required></label>
+      <label>Monto <input name="monto" type="number" min="1" step="1" inputmode="numeric" required></label>
+      <label>Moneda <select name="moneda"><option value="UYU">Pesos ($)</option><option value="USD">Dólares (USD)</option></select></label>
+    </div>
+    <p class="error" id="gasto-error" aria-live="polite"></p>
+    <footer><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok">Guardar</button></footer>
+  </form>
+</dialog>
+
+<div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
+
+<script src="../productos.js?v=0.25"></script>
+<script src="../catalogo.js?v=0.25"></script>
+<script src="datos.js?v=0.25"></script>
+<script src="admin.js?v=0.25"></script>
+</body>
+</html>

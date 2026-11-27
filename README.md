@@ -41,3 +41,8 @@ Al enviar un pedido, el Apps Script crea un cobro de Checkout Pro con los precio
 4. Para pasar a cobros reales, cambiar la propiedad por el Access Token de producción (`APP_USR-...`).
 
 Prueba del script: `node apps-script/test.js`.
+
+## Panel de gestión (`admin/`)
+Backoffice para Aukan3D: ventas y pedidos, cuentas pendientes, clientes, productos y stock, medios de pago, comisiones y reportes. Se abre en `/admin/` (en la demo: `.../Aukan3D-APP/admin/`).
+Por ahora es una vista previa: ingreso de muestra `admin` / `admin` y datos de ejemplo guardados en el navegador ("Volver a los datos de ejemplo" los reinicia). Con la base de datos va el ingreso real y los pedidos de la tienda en vivo.
+Prueba: `node admin/test.js`.
