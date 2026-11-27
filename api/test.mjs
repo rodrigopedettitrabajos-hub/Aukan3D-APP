@@ -23,6 +23,10 @@ assert.strictEqual(cat.r.status, 200);
 assert.match(cat.t, /^id,categoria,subcategoria,nombre,precio,foto,activo/);
 assert.strictEqual(cat.r.headers.get("access-control-allow-origin"), ORIGEN);
 assert.strictEqual((await pedir("/api/productos.csv", { origen: "https://otro.com" })).r.headers.get("access-control-allow-origin"), null);
+const cors = async (o) => (await pedir("/api/productos.csv", { origen: o })).r.headers.get("access-control-allow-origin");
+assert.strictEqual(await cors("https://abc123.aukan3d.pages.dev"), "https://abc123.aukan3d.pages.dev"); // vista previa de Pages
+assert.strictEqual(await cors("https://aukan3d.pages.dev"), "https://aukan3d.pages.dev");
+assert.strictEqual(await cors("https://otroaukan3d.pages.dev"), null);
 const [, primera] = cat.t.split("\r\n");
 const idProd = primera.split(",")[0], precioProd = Number(primera.split(",")[4]);
 

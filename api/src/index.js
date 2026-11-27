@@ -10,7 +10,9 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     const origen = req.headers.get("Origin") || "";
-    const permitido = (env.ORIGENES || "").split(",").map((s) => s.trim()).includes(origen);
+    // "https://*.algo.dev" acepta cualquier subdominio (las vistas previas de Cloudflare Pages).
+    const permitido = (env.ORIGENES || "").split(",").map((s) => s.trim()).some((o) =>
+      o === origen || (o.startsWith("https://*.") && /^https:\/\/[a-z0-9-]+\./.test(origen) && origen.endsWith(o.slice(9)) && !/[/:@]/.test(origen.slice(8))));
     const cors = permitido ? { "Access-Control-Allow-Origin": origen, "Vary": "Origin" } : {};
     if (req.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: { ...cors, "Access-Control-Allow-Methods": "GET, POST",
