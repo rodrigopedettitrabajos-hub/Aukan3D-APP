@@ -198,7 +198,7 @@ legend { font-size: 14px; color: var(--muted); padding: 0 4px; }
 .acciones { display: flex; gap: 8px; align-items: center; }
 .user-btn { background: none; color: #fff; border: 1px solid #444; border-radius: 999px; padding: 7px 14px; font: 500 15px Oswald, sans-serif; letter-spacing: .02em; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .user-btn:hover { border-color: #888; }
-.cuenta { width: min(440px, calc(100% - 24px)); }
+.cuenta { width: min(440px, calc(100% - 24px)); max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }
 .cuenta-body { padding: 28px 8px 8px; text-align: center; }
 .cuenta-body > p { padding: 0 16px; }
 .cuenta-logo { border-radius: 50%; }
@@ -208,9 +208,15 @@ legend { font-size: 14px; color: var(--muted); padding: 0 4px; }
 .tabs { display: grid; grid-template-columns: 1fr 1fr; margin: 0 16px 8px; background: var(--soft); border-radius: 999px; padding: 4px; }
 .tabs button { border: 0; background: none; color: var(--muted); border-radius: 999px; padding: 8px; font: 500 15px Oswald, sans-serif; }
 .tabs button[aria-selected="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
-.cuenta.con-sesion { width: min(560px, calc(100% - 24px)); }
-.panel { text-align: left; padding: 0 8px; }
-.panel > p:first-child { text-align: center; margin-top: 0; }
+.panel > * { max-width: 640px; }
+.panel h2 + .seccion-intro { margin-top: -4px; }
+.fine.izq { text-align: left; margin-top: 16px; }
+.user-menu { position: relative; }
+.user-drop { position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; min-width: 210px; display: grid; padding: 6px; background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 18px 40px -12px rgb(0 0 0 / .45); }
+.user-drop[hidden] { display: none; }
+.user-drop a, .user-drop button { display: block; text-align: left; padding: 10px 12px; border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; font-size: 15px; text-decoration: none; }
+.user-drop a:hover, .user-drop button:hover, .user-drop :focus-visible { background: var(--soft); }
+.user-drop button { border-top: 1px solid var(--line); border-radius: 0 0 10px 10px; margin-top: 4px; color: var(--muted); }
 .panel .tabs { margin: 0 0 16px; }
 .panel h3 { font: 500 16px Oswald, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
 .pedidos { display: grid; gap: 10px; }
@@ -235,7 +241,6 @@ legend { font-size: 14px; color: var(--muted); padding: 0 4px; }
 .panel .fine { margin-top: 12px; }
 .link-btn { border: 0; background: none; color: var(--brand-ink); text-decoration: underline; padding: 8px 0; font: inherit; font-size: 14px; }
 .ok { color: #1f9d55; min-height: 1em; margin: 0; }
-#cuenta-salir { display: block; margin: 16px auto 0; }
 .primary.azul { background: var(--brand-ink); color: var(--on-brand); }
 .secundario { border: 1px solid var(--line); background: var(--soft); color: var(--ink); border-radius: 999px; padding: 10px 18px; margin-bottom: 16px; }
 .error { margin: 0; color: #c62828; font-size: 14px; min-height: 0; }

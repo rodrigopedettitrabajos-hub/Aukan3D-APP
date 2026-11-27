@@ -14,12 +14,9 @@ function pintarCuenta() {
   const p = leerPerfil();
   const activo = !!p?.activo;
   $("#ver-cuenta").textContent = activo ? `Hola, ${p.nombre.split(" ")[0]}` : "Ingresar";
-  $("#cuenta-sesion").hidden = !activo;
   $("#cuenta-forms").hidden = activo;
   $("#invitado").hidden = activo;
-  $("#cuenta").classList.toggle("con-sesion", activo);
   if (activo) {
-    $("#cuenta-nombre").textContent = p.nombre;
     const fd = $("#form-datos");
     for (const k of ["nombre", "whatsapp", "email", "departamento", "ciudad", "direccion"]) fd[k].value = p[k] || "";
     elegirBarrios(p.barrio);
@@ -71,7 +68,6 @@ function tarjetaPedido(p) {
 }
 function repetir(p) {
   for (const i of p.items) if (productos.some((x) => x.id === i.id && x.precio)) cambiar(i.id, i.cant);
-  $("#cuenta").close();
   $("#ver-carrito").click();
 }
 function pintarPedidos() {
@@ -91,14 +87,6 @@ $("#pedidos-ejemplo").addEventListener("click", () => {
   pintarPedidos();
 });
 
-function elegirPanel(pedidos) {
-  $("#tab-pedidos").ariaSelected = String(pedidos);
-  $("#tab-datos").ariaSelected = String(!pedidos);
-  $("#panel-pedidos").hidden = !pedidos;
-  $("#form-datos").hidden = pedidos;
-}
-$("#tab-pedidos").addEventListener("click", () => elegirPanel(true));
-$("#tab-datos").addEventListener("click", () => elegirPanel(false));
 // Barrio: lista de los 62 barrios si la ciudad es Montevideo; si no, texto libre.
 const esMvd = (t) => t.trim().toLowerCase() === "montevideo";
 function elegirBarrios(valor) {
@@ -126,7 +114,38 @@ $("#form-datos").addEventListener("submit", (e) => {
   $("#datos-ok").textContent = "Listo, guardamos tus datos.";
 });
 
-$("#ver-cuenta").addEventListener("click", () => { $("#datos-ok").textContent = ""; pintarCuenta(); $("#cuenta").showModal(); });
+// Con sesión, "Hola, X" abre un desplegable con las pantallas de la cuenta; sin sesión, la ventanita de ingreso.
+const menuCuenta = $("#menu-cuenta");
+function abrirMenu(si) {
+  menuCuenta.hidden = !si;
+  $("#ver-cuenta").ariaExpanded = String(si);
+  if (si) menuCuenta.querySelector("a").focus();
+}
+function irACuenta(hash = "#mis-pedidos") {
+  $("#cuenta").close();
+  abrirMenu(false);
+  $("#datos-ok").textContent = "";
+  location.hash === hash ? mostrarVista() : (location.hash = hash);
+}
+$("#ver-cuenta").addEventListener("click", () => {
+  if (!leerPerfil()?.activo) return $("#cuenta").showModal();
+  abrirMenu(menuCuenta.hidden);
+});
+menuCuenta.addEventListener("click", (e) => { if (e.target.closest("a")) abrirMenu(false); });
+document.addEventListener("click", (e) => { if (!e.target.closest(".user-menu")) abrirMenu(false); });
+menuCuenta.addEventListener("keydown", (e) => {
+  const items = [...menuCuenta.children], i = items.indexOf(document.activeElement);
+  if (e.key === "Escape") { abrirMenu(false); $("#ver-cuenta").focus(); }
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); items[(i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length].focus(); }
+});
+// Si entran a una pantalla de la cuenta sin sesión, vuelven al catálogo con la ventanita de ingreso.
+function cuidarCuenta() {
+  if (!CUENTA.includes(location.hash) || leerPerfil()?.activo) return;
+  verCatalogo();
+  elegirTab(false);
+  $("#cuenta").showModal();
+}
+addEventListener("hashchange", () => { cuidarCuenta(); $("#datos-ok").textContent = ""; });
 $("#tab-registro").addEventListener("click", () => elegirTab(true));
 $("#tab-ingreso").addEventListener("click", () => elegirTab(false));
 
@@ -138,6 +157,7 @@ $("#form-registro").addEventListener("submit", (e) => {
   guardarPerfil({ nombre: d.nombre.trim(), whatsapp: d.whatsapp.trim(), email: d.email.trim().toLowerCase(), activo: true });
   e.target.reset();
   pintarCuenta();
+  irACuenta();
 });
 
 $("#form-ingreso").addEventListener("submit", (e) => {
@@ -149,14 +169,18 @@ $("#form-ingreso").addEventListener("submit", (e) => {
   guardarPerfil({ ...p, activo: true });
   e.target.reset();
   pintarCuenta();
+  irACuenta();
 });
 
 $("#cuenta-salir").addEventListener("click", () => {
+  abrirMenu(false);
   const p = leerPerfil();
   if (p) guardarPerfil({ ...p, activo: false });
   pintarCuenta();
   elegirTab(false);
+  verCatalogo();
 });
 
 $("#version").textContent = cfg.version;
 pintarCuenta();
+cuidarCuenta();

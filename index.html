@@ -10,8 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
   <link rel="icon" href="favicon.png">
   <meta name="theme-color" content="#000000">
-  <link rel="stylesheet" href="styles.css?v=0.21">
-  <script src="tema.js?v=0.21"></script>
+  <link rel="stylesheet" href="styles.css?v=0.22">
+  <script src="tema.js?v=0.22"></script>
 </head>
 <body>
   <!-- Íconos: Simple Icons (CC0) -->
@@ -24,7 +24,15 @@
       </a>
       <div class="acciones">
         <button id="tema" class="tema-btn" type="button"></button>
-        <button id="ver-cuenta" class="user-btn" type="button">Ingresar</button>
+        <div class="user-menu">
+          <button id="ver-cuenta" class="user-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="menu-cuenta">Ingresar</button>
+          <div id="menu-cuenta" class="user-drop" role="menu" hidden>
+            <a role="menuitem" href="#mis-pedidos">Mis pedidos</a>
+            <a role="menuitem" href="#historial">Historial de compras</a>
+            <a role="menuitem" href="#mis-datos">Mis datos</a>
+            <button id="cuenta-salir" role="menuitem" type="button">Cerrar sesión</button>
+          </div>
+        </div>
         <button id="ver-carrito" class="cart-btn" aria-label="Ver carrito">
           Carrito <span id="cart-count" class="badge">0</span>
         </button>
@@ -118,6 +126,43 @@
       <details><summary>¿Realizan envíos?</summary><p>Sí, entregamos en puntos de encuentro en Montevideo y enviamos al interior del país.</p></details>
       <details><summary>¿Se pueden personalizar los modelos?</summary><p>Sí. Ofrecemos opciones de personalización en colores y tamaños, según disponibilidad.</p></details>
     </div>
+  </section>
+
+  <section id="mis-pedidos" class="seccion wrap panel" hidden aria-labelledby="mis-pedidos-titulo">
+    <h2 id="mis-pedidos-titulo">Mis pedidos</h2>
+    <p class="seccion-intro">Tus pedidos en curso y en qué paso está cada uno.</p>
+    <div id="pedidos-curso" class="pedidos"></div>
+    <button id="pedidos-ejemplo" class="link-btn" type="button">Ver con pedidos de ejemplo</button>
+    <p class="fine izq">Vista previa: tus datos y pedidos se guardan solo en este dispositivo. El estado lo va a actualizar Aukan3D cuando esté el sistema de pedidos.</p>
+  </section>
+
+  <section id="historial" class="seccion wrap panel" hidden aria-labelledby="historial-titulo">
+    <h2 id="historial-titulo">Historial de compras</h2>
+    <p class="seccion-intro">Tus pedidos entregados. Podés repetir cualquiera con un toque.</p>
+    <div id="pedidos-historial" class="pedidos"></div>
+  </section>
+
+  <section id="mis-datos" class="seccion wrap panel" hidden aria-labelledby="mis-datos-titulo">
+    <h2 id="mis-datos-titulo">Mis datos</h2>
+    <p class="seccion-intro">Se usan para completar tus pedidos.</p>
+    <form id="form-datos" class="checkout">
+      <label>Nombre *<input name="nombre" required maxlength="80" autocomplete="name"></label>
+      <label>WhatsApp *<input name="whatsapp" required maxlength="20" inputmode="tel" pattern="\+?[0-9 ]{8,20}" autocomplete="tel"></label>
+      <label>Correo electrónico *<input name="email" type="email" required maxlength="120" autocomplete="email"></label>
+      <fieldset class="domicilio">
+        <legend>Dirección de entrega <span>(opcional)</span></legend>
+        <label>Departamento<select name="departamento"><option value="">Elegí…</option><option>Artigas</option><option>Canelones</option><option>Cerro Largo</option><option>Colonia</option><option>Durazno</option><option>Flores</option><option>Florida</option><option>Lavalleja</option><option>Maldonado</option><option>Montevideo</option><option>Paysandú</option><option>Río Negro</option><option>Rivera</option><option>Rocha</option><option>Salto</option><option>San José</option><option>Soriano</option><option>Tacuarembó</option><option>Treinta y Tres</option></select></label>
+        <label>Ciudad o localidad<input name="ciudad" maxlength="60" autocomplete="address-level2"></label>
+        <label>Barrio
+          <select id="barrio-mvd" name="barrio" aria-label="Barrio" hidden disabled><option value="">Elegí tu barrio…</option><option>Aguada</option><option>Aires Puros</option><option>Atahualpa</option><option>Bañados de Carrasco</option><option>Barrio Sur</option><option>Belvedere</option><option>Brazo Oriental</option><option>Buceo</option><option>Capurro, Bella Vista</option><option>Carrasco</option><option>Carrasco Norte</option><option>Casabó, Pajas Blancas</option><option>Casavalle</option><option>Castro, P. Castellanos</option><option>Centro</option><option>Cerrito</option><option>Ciudad Vieja</option><option>Colón Centro y Noroeste</option><option>Colón Sureste, Abayubá</option><option>Conciliación</option><option>Cordón</option><option>Flor de Maroñas</option><option>Ituzaingó</option><option>Jacinto Vera</option><option>Jardines del Hipódromo</option><option>La Blanqueada</option><option>La Comercial</option><option>La Figurita</option><option>La Paloma, Tomkinson</option><option>La Teja</option><option>Larrañaga</option><option>Las Acacias</option><option>Las Canteras</option><option>Lezica, Melilla</option><option>Malvín</option><option>Malvín Norte</option><option>Manga</option><option>Manga, Toledo Chico</option><option>Maroñas, Guaraní</option><option>Mercado Modelo, Bolívar</option><option>Nuevo París</option><option>Palermo</option><option>Parque Batlle, Villa Dolores</option><option>Parque Rodó</option><option>Paso de la Arena</option><option>Paso de las Duranas</option><option>Peñarol, Lavalleja</option><option>Piedras Blancas</option><option>Pocitos</option><option>Prado, Nueva Savona</option><option>Punta Carretas</option><option>Punta de Rieles, Bella Italia</option><option>Punta Gorda</option><option>Reducto</option><option>Sayago</option><option>Tres Cruces</option><option>Tres Ombúes, Victoria</option><option>Unión</option><option>Villa del Cerro</option><option>Villa Española</option><option>Villa García, Manga Rural</option><option>Villa Muñoz, Retiro</option></select>
+          <input id="barrio-txt" name="barrio" aria-label="Barrio" maxlength="60" autocomplete="address-level3">
+        </label>
+        <label>Dirección<input name="direccion" maxlength="120" autocomplete="street-address" placeholder="Calle, número, apto."></label>
+      </fieldset>
+      <p id="datos-ok" class="ok" role="status"></p>
+      <button class="primary azul" type="submit">Guardar cambios</button>
+    </form>
+    <p class="fine izq">Vista previa: tus datos y pedidos se guardan solo en este dispositivo. El estado lo va a actualizar Aukan3D cuando esté el sistema de pedidos.</p>
   </section>
 
   <footer class="pie">
@@ -219,42 +264,6 @@
       <img src="logo.webp" alt="" width="64" height="64" class="cuenta-logo">
       <h2 id="cuenta-titulo">Tu cuenta Aukan3D</h2>
 
-      <div id="cuenta-sesion" class="panel" hidden>
-        <p>Hola, <strong id="cuenta-nombre"></strong>.</p>
-        <div class="tabs" role="tablist">
-          <button id="tab-pedidos" role="tab" aria-selected="true" aria-controls="panel-pedidos" type="button">Mis pedidos</button>
-          <button id="tab-datos" role="tab" aria-selected="false" aria-controls="form-datos" type="button">Mis datos</button>
-        </div>
-
-        <div id="panel-pedidos" role="tabpanel" aria-labelledby="tab-pedidos">
-          <h3>En curso</h3>
-          <div id="pedidos-curso" class="pedidos"></div>
-          <h3>Historial</h3>
-          <div id="pedidos-historial" class="pedidos"></div>
-          <button id="pedidos-ejemplo" class="link-btn" type="button">Ver con pedidos de ejemplo</button>
-        </div>
-
-        <form id="form-datos" class="checkout" role="tabpanel" aria-labelledby="tab-datos" hidden>
-          <label>Nombre *<input name="nombre" required maxlength="80" autocomplete="name"></label>
-          <label>WhatsApp *<input name="whatsapp" required maxlength="20" inputmode="tel" pattern="\+?[0-9 ]{8,20}" autocomplete="tel"></label>
-          <label>Correo electrónico *<input name="email" type="email" required maxlength="120" autocomplete="email"></label>
-          <fieldset class="domicilio">
-            <legend>Dirección de entrega <span>(opcional)</span></legend>
-            <label>Departamento<select name="departamento"><option value="">Elegí…</option><option>Artigas</option><option>Canelones</option><option>Cerro Largo</option><option>Colonia</option><option>Durazno</option><option>Flores</option><option>Florida</option><option>Lavalleja</option><option>Maldonado</option><option>Montevideo</option><option>Paysandú</option><option>Río Negro</option><option>Rivera</option><option>Rocha</option><option>Salto</option><option>San José</option><option>Soriano</option><option>Tacuarembó</option><option>Treinta y Tres</option></select></label>
-            <label>Ciudad o localidad<input name="ciudad" maxlength="60" autocomplete="address-level2"></label>
-            <label>Barrio
-              <select id="barrio-mvd" name="barrio" aria-label="Barrio" hidden disabled><option value="">Elegí tu barrio…</option><option>Aguada</option><option>Aires Puros</option><option>Atahualpa</option><option>Bañados de Carrasco</option><option>Barrio Sur</option><option>Belvedere</option><option>Brazo Oriental</option><option>Buceo</option><option>Capurro, Bella Vista</option><option>Carrasco</option><option>Carrasco Norte</option><option>Casabó, Pajas Blancas</option><option>Casavalle</option><option>Castro, P. Castellanos</option><option>Centro</option><option>Cerrito</option><option>Ciudad Vieja</option><option>Colón Centro y Noroeste</option><option>Colón Sureste, Abayubá</option><option>Conciliación</option><option>Cordón</option><option>Flor de Maroñas</option><option>Ituzaingó</option><option>Jacinto Vera</option><option>Jardines del Hipódromo</option><option>La Blanqueada</option><option>La Comercial</option><option>La Figurita</option><option>La Paloma, Tomkinson</option><option>La Teja</option><option>Larrañaga</option><option>Las Acacias</option><option>Las Canteras</option><option>Lezica, Melilla</option><option>Malvín</option><option>Malvín Norte</option><option>Manga</option><option>Manga, Toledo Chico</option><option>Maroñas, Guaraní</option><option>Mercado Modelo, Bolívar</option><option>Nuevo París</option><option>Palermo</option><option>Parque Batlle, Villa Dolores</option><option>Parque Rodó</option><option>Paso de la Arena</option><option>Paso de las Duranas</option><option>Peñarol, Lavalleja</option><option>Piedras Blancas</option><option>Pocitos</option><option>Prado, Nueva Savona</option><option>Punta Carretas</option><option>Punta de Rieles, Bella Italia</option><option>Punta Gorda</option><option>Reducto</option><option>Sayago</option><option>Tres Cruces</option><option>Tres Ombúes, Victoria</option><option>Unión</option><option>Villa del Cerro</option><option>Villa Española</option><option>Villa García, Manga Rural</option><option>Villa Muñoz, Retiro</option></select>
-              <input id="barrio-txt" name="barrio" aria-label="Barrio" maxlength="60" autocomplete="address-level3">
-            </label>
-            <label>Dirección<input name="direccion" maxlength="120" autocomplete="street-address" placeholder="Calle, número, apto."></label>
-          </fieldset>
-          <p id="datos-ok" class="ok" role="status"></p>
-          <button class="primary azul" type="submit">Guardar cambios</button>
-        </form>
-        <button id="cuenta-salir" class="secundario" type="button">Cerrar sesión</button>
-        <p class="fine">Vista previa: tus datos y pedidos se guardan solo en este dispositivo. El estado lo va a actualizar Aukan3D cuando esté el sistema de pedidos.</p>
-      </div>
-
       <div id="cuenta-forms">
         <div class="tabs" role="tablist">
           <button id="tab-registro" role="tab" aria-selected="true" aria-controls="form-registro" type="button">Crear cuenta</button>
@@ -282,11 +291,11 @@
     </div>
   </dialog>
 
-  <script src="config.js?v=0.21"></script>
-  <script src="catalogo.js?v=0.21"></script>
-  <script src="productos.js?v=0.21"></script>
-  <script src="qrcode.js?v=0.21"></script>
-  <script src="app.js?v=0.21"></script>
-  <script src="cuenta.js?v=0.21"></script>
+  <script src="config.js?v=0.22"></script>
+  <script src="catalogo.js?v=0.22"></script>
+  <script src="productos.js?v=0.22"></script>
+  <script src="qrcode.js?v=0.22"></script>
+  <script src="app.js?v=0.22"></script>
+  <script src="cuenta.js?v=0.22"></script>
 </body>
 </html>

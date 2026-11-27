@@ -64,11 +64,13 @@ const INFO = [["#eventos", "Eventos"], ["#galeria", "Galería"], ["#nosotros", "
 const enlacesInfo = (clase) => INFO.map(([href, texto]) =>
   el("a", { className: `menu-item ${clase}`, href, textContent: clase && href === "#preguntas" ? "Preguntas" : texto, ariaCurrent: location.hash === href ? "page" : null, onclick: cerrarMenu }));
 
+const CUENTA = ["#mis-pedidos", "#historial", "#mis-datos"]; // pantallas de la cuenta (menú del usuario)
+const VISTAS = [...INFO.map(([h]) => h), ...CUENTA];
 function mostrarVista() {
-  const vista = INFO.some(([h]) => h === location.hash) ? location.hash.slice(1) : "";
+  const vista = VISTAS.includes(location.hash) ? location.hash.slice(1) : "";
   $("#hero").hidden = $("#catalogo").hidden = !!vista;
   $("#proximo").hidden = !!vista || !eventos.length;
-  for (const [h] of INFO) $(h).hidden = h.slice(1) !== vista;
+  for (const h of VISTAS) $(h).hidden = h.slice(1) !== vista;
   vista ? (document.body.dataset.vista = vista) : delete document.body.dataset.vista;
   pintarFiltros();
   scrollTo(0, 0);

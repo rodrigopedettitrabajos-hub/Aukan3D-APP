@@ -2,6 +2,10 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.22 · 2026-11-27
+- La cuenta deja de ser una ventanita: al tocar "Hola, …" se abre un desplegable con Mis pedidos, Historial de compras, Mis datos y Cerrar sesión, y cada uno es una pantalla aparte.
+- Ingresar y crear cuenta siguen en la ventanita (ahora se puede desplazar en pantallas bajas); al terminar llevan a Mis pedidos.
+
 ## V0.21 · 2026-11-27
 - Mis datos: dirección de entrega con Departamento, Ciudad o localidad, Barrio (lista de los 62 barrios si la ciudad es Montevideo) y Dirección.
 
