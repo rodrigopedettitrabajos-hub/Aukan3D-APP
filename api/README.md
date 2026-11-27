@@ -1,0 +1,36 @@
+# Servidor de Aukan3D (Cloudflare Workers + D1)
+
+Guarda el catálogo, los pedidos de la tienda y los datos del panel de gestión en una base D1 (SQLite) de Cloudflare.
+Plan gratis: alcanza de sobra para la tienda.
+
+## Rutas
+- `GET /api/productos.csv`: catálogo activo (lo lee la tienda).
+- `POST /api/pedidos`: alta de pedido (precios desde la base; límite 5 pedidos por WhatsApp cada 10 min).
+- `POST /api/login`: ingreso al panel (10 intentos por IP cada 15 min). Devuelve un token de 12 h.
+- `GET /api/admin/datos?desde=`, `POST /api/admin/lote`, `POST /api/admin/numero`: datos del panel (con token).
+
+## Probar en la computadora
+```
+npm install
+node clave.mjs "clave-de-prueba-123"     # pegar el resultado en .dev.vars como ADMIN_CLAVE_HASH
+# .dev.vars: ADMIN_USUARIO=admin, ADMIN_CLAVE_HASH=..., FIRMA=<texto largo al azar>
+node semilla.mjs
+npx wrangler d1 execute aukan3d --local --file=schema.sql
+npx wrangler d1 execute aukan3d --local --file=semilla.sql
+npm run dev            # en otra terminal: node test.mjs
+```
+
+## Publicar (una sola vez)
+```
+npx wrangler login
+npx wrangler d1 create aukan3d          # copiar el database_id en wrangler.toml
+npx wrangler d1 execute aukan3d --remote --file=schema.sql
+node semilla.mjs && npx wrangler d1 execute aukan3d --remote --file=semilla.sql
+npx wrangler secret put ADMIN_USUARIO     # ej. admin
+npx wrangler secret put ADMIN_CLAVE_HASH  # salida de: node clave.mjs "contraseña"
+npx wrangler secret put FIRMA             # texto largo al azar
+npx wrangler secret put MP_ACCESS_TOKEN   # opcional: token de Mercado Pago (TEST-... para pruebas)
+npx wrangler deploy
+```
+Después poner la dirección que muestra `deploy` (https://aukan3d-api.<cuenta>.workers.dev) en `apiUrl` de `config.js`.
+Los secretos nunca van en el repo ni en config.js.

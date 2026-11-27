@@ -1,0 +1,15 @@
+# Servidor de Aukan3D. Ver api/README.md para publicarlo.
+name = "aukan3d-api"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "aukan3d"
+database_id = "REEMPLAZAR_CON_EL_ID_DE_wrangler_d1_create"
+
+[vars]
+# Páginas que pueden usar el servidor (la tienda y el panel). Separadas por coma.
+ORIGENES = "https://rodrigopedettitrabajos-hub.github.io,http://localhost:8090"
+
+# Secretos (no van acá): npx wrangler secret put ADMIN_USUARIO / ADMIN_CLAVE_HASH / FIRMA / MP_ACCESS_TOKEN
