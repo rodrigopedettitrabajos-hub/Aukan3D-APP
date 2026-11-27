@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.28 · 2026-11-27
+- El panel de gestión muestra la versión (abajo en el menú y en la pantalla de ingreso), la misma que la tienda.
+
 ## V0.27 · 2026-11-27
 - Puente para la demo: los pedidos que se hacen en la tienda aparecen solos en el panel de gestión (Ventas y pedidos, como "Tienda web", con el cliente creado o encontrado por su WhatsApp), aunque el panel ya esté abierto. Solo ve los pedidos hechos desde el mismo navegador; con la base de datos van a llegar todos.
 

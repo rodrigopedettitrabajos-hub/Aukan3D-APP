@@ -46,6 +46,8 @@ button { cursor: pointer; }
 .nav a[aria-current="page"] { background: rgb(3 146 202 / .18); color: #fff; box-shadow: inset 3px 0 0 var(--brand); }
 .side-pie { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 6px; }
 .side-link { color: #c8cacd; font-size: 13px; }
+.version { font: 12px ui-monospace, Menlo, Consolas, monospace; color: #9aa0a6; margin: 0; }
+.side-pie { flex-wrap: wrap; }
 .tema-btn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid #333; background: none; color: #fff; font-size: 18px; }
 
 .top { min-height: 64px; background: var(--card); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 28px; }
