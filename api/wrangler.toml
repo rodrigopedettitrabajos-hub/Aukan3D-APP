@@ -8,8 +8,14 @@ binding = "DB"
 database_name = "aukan3d"
 database_id = "d1577ca7-6179-4adc-ab09-0f126d9f6292"
 
+# Base de pruebas (solo la usa el usuario dev, con ?e=pruebas). Misma estructura que la real.
+[[d1_databases]]
+binding = "DB_PRUEBAS"
+database_name = "aukan3d-pruebas"
+database_id = "REEMPLAZAR_CON_EL_ID_DE_LA_BASE_DE_PRUEBAS"
+
 [vars]
 # Páginas que pueden usar el servidor (la tienda y el panel). Separadas por coma.
 ORIGENES = "https://aukan3d.pages.dev,https://*.aukan3d.pages.dev,https://rodrigopedettitrabajos-hub.github.io,http://localhost:8090"
 
-# Secretos (no van acá): npx wrangler secret put ADMIN_USUARIO / ADMIN_CLAVE_HASH / FIRMA / MP_ACCESS_TOKEN
+# Secretos (no van acá): npx wrangler secret put ADMIN_USUARIO / ADMIN_CLAVE_HASH / DEV_CLAVE_HASH / FIRMA / MP_ACCESS_TOKEN

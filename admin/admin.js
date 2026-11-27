@@ -25,10 +25,20 @@ function foto(f) {
 // Sin apiUrl es la demo: admin / admin comparado en el navegador, con datos de ejemplo.
 const API = String(window.AUKAN_CONFIG?.apiUrl || "").replace(/\/+$/, "");
 const SESION = API ? "aukan_admin_token" : "aukan_admin_ok";
+// Modo pruebas (solo usuario dev): las llamadas llevan ?e=pruebas y el servidor usa la base de pruebas.
+// Queda guardado en este navegador; la tienda abierta acá también manda sus pedidos a pruebas.
+const ENTORNO = "aukan_entorno", USUARIO = "aukan_admin_usuario";
+const leerLocal = (k) => { try { return localStorage.getItem(k) || ""; } catch { return ""; } };
+const PRUEBAS = !!API && leerLocal(ENTORNO) === "pruebas";
+const conEntorno = (ruta) => (PRUEBAS ? ruta + (ruta.includes("?") ? "&" : "?") + "e=pruebas" : ruta);
+function cambiarEntorno(pruebas) {
+  try { if (pruebas) localStorage.setItem(ENTORNO, "pruebas"); else localStorage.removeItem(ENTORNO); } catch { /* sin almacenamiento */ }
+  location.reload();
+}
 const leerSesion = () => { try { return sessionStorage.getItem(SESION) || ""; } catch { return ""; } };
 const conSesion = () => (API ? !!leerSesion() : leerSesion() === "1");
 function cerrarSesion(motivo = "") {
-  try { sessionStorage.removeItem(SESION); } catch { /* sin almacenamiento */ }
+  try { sessionStorage.removeItem(SESION); sessionStorage.removeItem(USUARIO); } catch { /* sin almacenamiento */ }
   if (API) { db = dbVacia(); enviado.clear(); hasta = 0; }
   for (const d of document.querySelectorAll("dialog[open]")) d.close();
   $("#login-error").textContent = motivo;
@@ -36,6 +46,10 @@ function cerrarSesion(motivo = "") {
 }
 function mostrarApp() {
   const ok = conSesion();
+  let dev = false;
+  try { dev = API && sessionStorage.getItem(USUARIO) === "dev"; } catch { /* sin almacenamiento */ }
+  for (const b of document.querySelectorAll("[data-entorno]")) b.hidden = !dev;
+  $(".user b").textContent = dev ? "Dev" : "Administrador";
   $("#login").hidden = ok;
   $(".app").hidden = !ok;
   if (ok) mostrarVista(); else $("#f-login").usuario.focus();
@@ -48,7 +62,7 @@ $("#f-login").addEventListener("submit", async (e) => {
     boton.disabled = true;
     $("#login-error").textContent = "";
     try {
-      const res = await fetch(API + "/api/login", { method: "POST", headers: { "Content-Type": "application/json" },
+      const res = await fetch(API + conEntorno("/api/login"), { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ usuario: f.usuario.value.trim(), clave: f.clave.value }) });
       const r = await res.json();
       if (!r.ok) {
@@ -56,7 +70,8 @@ $("#f-login").addEventListener("submit", async (e) => {
         f.clave.select();
         return;
       }
-      try { sessionStorage.setItem(SESION, r.token); } catch { /* sin almacenamiento */ }
+      try { sessionStorage.setItem(SESION, r.token); sessionStorage.setItem(USUARIO, r.usuario || ""); } catch { /* sin almacenamiento */ }
+      if (PRUEBAS && r.usuario !== "dev") return cambiarEntorno(false); // pruebas es solo para dev
       f.reset();
       await traerServidor();
       mostrarApp();
@@ -89,9 +104,10 @@ const avisoPedidos = (n) => n && avisar(n === 1 ? "Llegó 1 pedido nuevo de la t
 const enviado = new Map();
 let hasta = 0, enviando = null, otraVez = false;
 async function llamar(ruta, body) {
-  const res = await fetch(API + ruta, { method: body ? "POST" : "GET", body: body && JSON.stringify(body),
+  const res = await fetch(API + conEntorno(ruta), { method: body ? "POST" : "GET", body: body && JSON.stringify(body),
     headers: { Authorization: "Bearer " + leerSesion(), ...(body ? { "Content-Type": "application/json" } : {}) } });
   if (res.status === 401) { cerrarSesion("La sesión venció. Volvé a ingresar."); throw new Error("sesion"); }
+  if (res.status === 403) { cambiarEntorno(false); throw new Error("sesion"); }
   const r = await res.json();
   if (!r.ok) throw new Error(r.error);
   return r;
@@ -843,7 +859,13 @@ $("#reiniciar").addEventListener("click", () => {
 for (const e of document.querySelectorAll("[data-version]")) e.textContent = window.AUKAN_CONFIG?.version || "";
 if (API) {
   for (const e of document.querySelectorAll("[data-demo]")) e.hidden = true;
-  $("#user-sub").textContent = "Conectado a la base de datos";
+  $("#user-sub").textContent = PRUEBAS ? "Base de PRUEBAS" : "Conectado a la base de datos";
+  document.documentElement.classList.toggle("pruebas", PRUEBAS);
+  $("#banda-pruebas").hidden = !PRUEBAS;
+  for (const b of document.querySelectorAll("[data-entorno]")) {
+    b.textContent = PRUEBAS ? "Volver a producción" : "Pasar a pruebas";
+    b.addEventListener("click", () => cambiarEntorno(!PRUEBAS));
+  }
   if (conSesion()) traerServidor().then(mostrarApp, (e) => { if (e.message !== "sesion") cerrarSesion("No pudimos traer los datos. Revisá la conexión y probá de nuevo."); });
   else mostrarApp();
 } else {

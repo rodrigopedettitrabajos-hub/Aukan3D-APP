@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.32 · 2026-11-27
+- Usuario "dev" con base de pruebas aparte: desde el panel pasa de producción a pruebas y vuelve con un botón. En pruebas se ve una franja naranja y nada afecta los datos reales. La tienda abierta en ese mismo navegador también manda sus pedidos a la base de pruebas (con aviso arriba). El usuario del negocio no puede entrar a pruebas.
+
 ## V0.31 · 2026-11-27
 - Menú del panel ordenado por grupos (Ventas, Catálogo, Administración). Modo feria queda abajo, separado y destacado.
 
