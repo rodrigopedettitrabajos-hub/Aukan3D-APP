@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.36">
-  <script src="../tema.js?v=0.36"></script>
+  <link rel="stylesheet" href="admin.css?v=0.37">
+  <script src="../tema.js?v=0.37"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -44,6 +44,7 @@
       <a href="#reportes">Reportes y gastos</a>
       <a href="#usuarios">Usuarios y comisiones</a>
       <a href="#medios">Medios de pago</a>
+      <a href="#base" data-solo-dev hidden>Base de datos</a>
       <hr class="nav-sep">
       <a href="#feria" class="nav-feria">Modo feria</a>
     </nav>
@@ -120,6 +121,7 @@
             </div>
             <p class="error" id="pos-error" aria-live="polite"></p>
             <button class="btn pos-cobrar" type="button" id="pos-cobrar">Cobrar</button>
+            <div class="pos-ultima" id="pos-ultima"></div>
             <div class="pos-resumen" id="pos-resumen"></div>
           </aside>
           <button type="button" class="btn pos-barra" id="pos-barra">Ver ticket</button>
@@ -163,6 +165,13 @@
           <button class="btn" type="button" id="nuevo-usuario">+ Nuevo usuario</button></div>
         <div class="filtros"><input id="usuarios-mes" type="month" aria-label="Mes"></div>
         <div id="usuarios-lista"></div>
+      </section>
+
+      <section id="v-base" class="vista" hidden>
+        <div class="cabeza"><div><p class="eyebrow">Solo dev</p><h1>Base de datos</h1><p class="sub">Uso de las bases de Cloudflare D1 (plan gratis: 500 MB cada una).</p></div>
+          <button class="btn sec" type="button" id="base-actualizar">Actualizar</button></div>
+        <div id="base-estado"><p class="vacio">Cargando…</p></div>
+        <p class="sub chico">Las lecturas y escrituras del día (límites de 5 millones y 100 mil) se ven en el tablero de Cloudflare: Storage &amp; Databases → D1 → aukan3d → Metrics.</p>
       </section>
 
       <section id="v-reportes" class="vista" hidden>
@@ -233,7 +242,7 @@
 
 <dialog id="d-detalle" class="ventana ancha" aria-labelledby="d-detalle-t">
   <form method="dialog">
-    <header><h2 id="d-detalle-t">Pedido</h2><button type="button" class="btn sec chico" id="detalle-imp">Imprimir</button><button class="x" value="cancel" aria-label="Cerrar">×</button></header>
+    <header><h2 id="d-detalle-t">Pedido</h2><span id="detalle-imp"></span><button class="x" value="cancel" aria-label="Cerrar">×</button></header>
     <div id="detalle-cuerpo"></div>
   </form>
 </dialog>
@@ -366,10 +375,10 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.36"></script>
-<script src="../productos.js?v=0.36"></script>
-<script src="../catalogo.js?v=0.36"></script>
-<script src="datos.js?v=0.36"></script>
-<script src="admin.js?v=0.36"></script>
+<script src="../config.js?v=0.37"></script>
+<script src="../productos.js?v=0.37"></script>
+<script src="../catalogo.js?v=0.37"></script>
+<script src="datos.js?v=0.37"></script>
+<script src="admin.js?v=0.37"></script>
 </body>
 </html>

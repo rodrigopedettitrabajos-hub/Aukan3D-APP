@@ -58,11 +58,11 @@ function pintarPedidos() {
   $("#pedidos-ejemplo").textContent = hayEjemplos ? "Quitar los pedidos de ejemplo" : "Ver con pedidos de ejemplo";
   actualizarEstados();
 }
-// Con servidor: trae el estado que marcó Aukan3D en el panel (como mucho cada 30 s).
+// Con servidor: trae el estado que marcó Aukan3D en el panel (como mucho cada 10 s).
 let estadosAl = 0;
 async function actualizarEstados() {
   const abiertos = leerPedidos().filter((p) => !p.ejemplo && /^\d+$/.test(p.numero) && p.estado < ESTADOS.length - 1 && p.cliente?.whatsapp);
-  if (!cfg.pedidosUrl || !abiertos.length || Date.now() - estadosAl < 30_000) return;
+  if (!cfg.pedidosUrl || !abiertos.length || Date.now() - estadosAl < 10_000) return;
   estadosAl = Date.now();
   try {
     const r = await fetch(cfg.pedidosUrl.replace("/api/pedidos", "/api/pedidos/estado"), { method: "POST", headers: { "Content-Type": "text/plain" },
@@ -73,6 +73,10 @@ async function actualizarEstados() {
     if (cambio) { guardarPedidos(lista); pintarPedidos(); }
   } catch { /* sin conexión: queda el último estado conocido */ }
 }
+// También al entrar a Mis pedidos / Historial o al volver a la pestaña, sin recargar la página.
+const enPedidos = () => ["#mis-pedidos", "#historial"].includes(location.hash) && sesion();
+addEventListener("hashchange", () => enPedidos() && actualizarEstados());
+document.addEventListener("visibilitychange", () => !document.hidden && enPedidos() && actualizarEstados());
 if (cfg.pedidosUrl) for (const n of document.querySelectorAll(".nota-estado"))
   n.textContent = "Tus pedidos se guardan en este dispositivo. El estado se actualiza solo cuando Aukan3D lo cambia.";
 $("#pedidos-ejemplo").addEventListener("click", () => {

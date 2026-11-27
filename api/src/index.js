@@ -22,7 +22,7 @@ export default {
       // ?e=pruebas usa la base de pruebas (DB_PRUEBAS): datos de mentira para probar sin tocar los reales.
       const pruebas = url.searchParams.get("e") === "pruebas";
       if (pruebas && !env.DB_PRUEBAS) return json({ ok: false, error: "entorno" }, 503, cors);
-      const r = await rutear(req, pruebas ? { ...env, DB: env.DB_PRUEBAS, PRUEBAS: true } : env, url);
+      const r = await rutear(req, pruebas ? { ...env, DB: env.DB_PRUEBAS, DB_REAL: env.DB, PRUEBAS: true } : env, url);
       for (const [k, v] of Object.entries(cors)) r.headers.set(k, v);
       return r;
     } catch (err) {
@@ -46,6 +46,7 @@ async function rutear(req, env, url) {
     if (m === "GET" && p === "/api/admin/datos") return datos(env, Number(url.searchParams.get("desde")) || 0);
     if (m === "POST" && p === "/api/admin/lote") return lote(req, env);
     if (m === "POST" && p === "/api/admin/numero") return json({ ok: true, numero: await contador(env) });
+    if (m === "GET" && p === "/api/admin/estado") return quien === "dev" ? estadoBases(env) : json({ ok: false, error: "solo dev" }, 403);
   }
   return json({ ok: false, error: "no existe" }, 404);
 }
@@ -96,6 +97,19 @@ async function foto(env, id) {
   if (!f || !f.startsWith("data:image/webp;base64,")) return new Response("No existe", { status: 404 });
   const bytes = Uint8Array.from(atob(f.slice(23)), (c) => c.charCodeAt(0));
   return new Response(bytes, { headers: { "Content-Type": "image/webp", "Cache-Control": "public, max-age=86400" } });
+}
+
+// ---------- uso de las bases (solo usuario dev) ----------
+// Tamaño (D1 lo informa en meta.size_after) y registros por colección. Las lecturas/escrituras del día solo están en el tablero de Cloudflare.
+async function usoBase(db) {
+  if (!db) return null;
+  const r = await db.prepare(`SELECT col, COUNT(*) AS n, SUM(CASE WHEN data LIKE '%"_borrado":true%' THEN 1 ELSE 0 END) AS borrados,
+      SUM(LENGTH(data)) AS bytes, SUM(CASE WHEN col = 'productos' AND data LIKE '%"foto":"data:%' THEN 1 ELSE 0 END) AS fotos FROM docs GROUP BY col`).all();
+  return { tamano: r.meta?.size_after ?? null, colecciones: r.results.map((x) => ({ col: x.col, n: x.n, borrados: x.borrados, bytes: x.bytes, fotos: x.fotos })) };
+}
+async function estadoBases(env) {
+  const [real, pruebas] = await Promise.all([usoBase(env.DB_REAL || env.DB), usoBase(env.DB_PRUEBAS)]);
+  return json({ ok: true, limite: 500 * 1024 * 1024, real, pruebas });
 }
 
 // ---------- estado de pedidos para "Mis pedidos" de la tienda ----------
