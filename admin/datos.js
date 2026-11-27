@@ -3,8 +3,10 @@
 
 const ESTADOS = ["Recibido", "Seña pagada", "En impresión", "Listo para entregar", "Entregado"];
 const CLAVE_DB = "aukan_admin_db";
-const hoy = () => new Date().toISOString().slice(0, 10);
-const mesDe = (fecha) => fecha.slice(0, 7); // "2026-11-27..." -> "2026-11"
+// Día y mes con la hora de este equipo (Uruguay), no en UTC: una venta del 30 a las 22:00 es del 30.
+const diaLocal = (d = new Date()) => d.toLocaleDateString("sv"); // "2026-11-27"
+const hoy = () => diaLocal();
+const mesDe = (fecha) => (fecha.length > 10 ? diaLocal(new Date(fecha)) : fecha).slice(0, 7); // fecha y hora ISO o "AAAA-MM-DD"
 
 const totalVenta = (v) => v.items.reduce((s, i) => s + i.precio * i.cant, 0);
 const cobrado = (v) => v.pagos.reduce((s, p) => s + p.monto, 0);
@@ -46,13 +48,13 @@ function resumenMes(db, mes) {
     resultado: { UYU: cobrados.UYU - gastado.UYU, USD: cobrados.USD - gastado.USD } };
 }
 
-// Comisión: % sobre lo vendido en el mes por cada vendedor (los pedidos de la tienda no tienen vendedor).
+// Comisión: % sobre lo vendido en el mes por cada vendedor, con el % guardado en cada venta (los pedidos de la tienda no tienen vendedor).
 function comisiones(db, mes) {
   return db.usuarios.map((u) => {
     const ventas = db.ventas.filter((v) => v.vendedor === u.id && mesDe(v.fecha) === mes);
-    const vendido = porMoneda(ventas, totalVenta);
-    return { ...u, cantidad: ventas.length, vendido,
-      comision: { UYU: Math.round(vendido.UYU * u.comision / 100), USD: Math.round(vendido.USD * u.comision / 100) } };
+    const comision = porMoneda(ventas, (v) => totalVenta(v) * (v.comision ?? u.comision) / 100); // el % que regía al vender
+    return { ...u, cantidad: ventas.length, vendido: porMoneda(ventas, totalVenta),
+      comision: { UYU: Math.round(comision.UYU), USD: Math.round(comision.USD) } };
   });
 }
 
@@ -104,11 +106,12 @@ function datosEjemplo(catalogo, ahora = Date.now()) {
     if (estado >= 1) registrarPago(v, web ? Math.ceil(total / 2) : total, web ? "m3" : elegir(["m1", "m2", "m4"]), fecha);
     if (estado === 4 && saldo(v) && azar() < 0.8) registrarPago(v, saldo(v), elegir(["m1", "m2"]), dias(Math.max(d - 3, 0)));
     v.estado = estado;
+    v.comision = usuarios.find((u) => u.id === v.vendedor)?.comision ?? 0;
     db.ventas.push(v);
   }
   const gastos = [["Filamento PLA", 2400], ["Hilo para crochet", 1350], ["Luz", 1900], ["Envíos", 620], ["Stand en feria", 1500], ["Filamento PETG", 1800]];
-  for (const back of [0, 30]) gastos.forEach(([concepto, monto], i) => db.gastos.push({ id: "g" + back + i, concepto, monto, moneda: "UYU", fecha: dias(back + i * 4).slice(0, 10) }));
-  db.gastos.push({ id: "gusd", concepto: "Repuestos impresora", monto: 38, moneda: "USD", fecha: dias(9).slice(0, 10) });
+  for (const back of [0, 30]) gastos.forEach(([concepto, monto], i) => db.gastos.push({ id: "g" + back + i, concepto, monto, moneda: "UYU", fecha: diaLocal(new Date(dias(back + i * 4))) }));
+  db.gastos.push({ id: "gusd", concepto: "Repuestos impresora", monto: 38, moneda: "USD", fecha: diaLocal(new Date(dias(9))) });
   db.ventas.sort((a, b) => a.fecha.localeCompare(b.fecha));
   for (const v of db.ventas) v.numero = nuevoNumero(db); // números en orden de fecha
   db.ventas.reverse(); // la más nueva primero
@@ -116,4 +119,4 @@ function datosEjemplo(catalogo, ahora = Date.now()) {
 }
 
 if (typeof module !== "undefined") module.exports = { ESTADOS, totalVenta, cobrado, saldo, porMoneda, catalogoDesdeCsv, catalogoACsv,
-  resumenMes, comisiones, registrarPago, datosEjemplo, nuevoNumero, mesDe, suma };
+  resumenMes, comisiones, registrarPago, datosEjemplo, nuevoNumero, mesDe, suma, hoy };
