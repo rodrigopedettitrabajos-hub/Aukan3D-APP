@@ -19,9 +19,12 @@
         <img src="logo.webp" alt="" width="44" height="44">
         <h1>AUKAN<span>3D</span></h1>
       </a>
-      <button id="ver-carrito" class="cart-btn" aria-label="Ver carrito">
-        Carrito <span id="cart-count" class="badge">0</span>
-      </button>
+      <div class="acciones">
+        <button id="ver-cuenta" class="user-btn" type="button">Ingresar</button>
+        <button id="ver-carrito" class="cart-btn" aria-label="Ver carrito">
+          Carrito <span id="cart-count" class="badge">0</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -41,6 +44,13 @@
     <p id="estado" class="estado" role="status">Cargando catálogo…</p>
     <section id="grilla" class="grid"></section>
   </main>
+
+  <footer class="pie">
+    <div class="wrap pie-row">
+      <span>© Aukan3D · Montevideo, Uruguay</span>
+      <span id="version" class="version"></span>
+    </div>
+  </footer>
 
   <div id="barra" class="barra" hidden>
     <span><strong id="barra-cant">0</strong> · <strong id="barra-total">$0</strong></span>
@@ -83,9 +93,48 @@
     </form>
   </dialog>
 
+  <dialog id="cuenta" class="modal cuenta" aria-labelledby="cuenta-titulo">
+    <form method="dialog"><button class="icon cerrar claro" aria-label="Cerrar">✕</button></form>
+    <div class="cuenta-body">
+      <img src="logo.webp" alt="" width="64" height="64" class="cuenta-logo">
+      <h2 id="cuenta-titulo">Tu cuenta Aukan3D</h2>
+
+      <div id="cuenta-sesion" hidden>
+        <p>Hola, <strong id="cuenta-nombre"></strong>. Tus datos se completan solos al hacer un pedido.</p>
+        <button id="cuenta-salir" class="secundario" type="button">Cerrar sesión</button>
+      </div>
+
+      <div id="cuenta-forms">
+        <div class="tabs" role="tablist">
+          <button id="tab-registro" role="tab" aria-selected="true" aria-controls="form-registro" type="button">Crear cuenta</button>
+          <button id="tab-ingreso" role="tab" aria-selected="false" aria-controls="form-ingreso" type="button">Ingresar</button>
+        </div>
+
+        <form id="form-registro" class="checkout" role="tabpanel" aria-labelledby="tab-registro">
+          <label>Nombre *<input name="nombre" required maxlength="80" autocomplete="name"></label>
+          <label>WhatsApp *<input name="whatsapp" required maxlength="20" inputmode="tel" pattern="\+?[0-9 ]{8,20}" autocomplete="tel" placeholder="09X XXX XXX"></label>
+          <label>Correo electrónico *<input name="email" type="email" required maxlength="120" autocomplete="email"></label>
+          <label>Contraseña *<input name="clave" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
+          <label>Repetir contraseña *<input name="clave2" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
+          <p id="registro-error" class="error" role="alert"></p>
+          <button class="primary azul" type="submit">Crear cuenta</button>
+        </form>
+
+        <form id="form-ingreso" class="checkout" role="tabpanel" aria-labelledby="tab-ingreso" hidden>
+          <label>Correo electrónico<input name="email" type="email" required maxlength="120" autocomplete="email"></label>
+          <label>Contraseña<input name="clave" type="password" required maxlength="72" autocomplete="current-password"></label>
+          <p id="ingreso-error" class="error" role="alert"></p>
+          <button class="primary azul" type="submit">Ingresar</button>
+        </form>
+        <p class="fine">Vista previa: por ahora la cuenta se guarda solo en este dispositivo y la contraseña no se guarda.</p>
+      </div>
+    </div>
+  </dialog>
+
   <script src="config.js"></script>
   <script src="catalogo.js"></script>
   <script src="productos.js"></script>
   <script src="app.js"></script>
+  <script src="cuenta.js"></script>
 </body>
 </html>
