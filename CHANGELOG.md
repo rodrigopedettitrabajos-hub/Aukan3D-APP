@@ -2,6 +2,36 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.30 · 2026-11-27
+- Modo feria en el panel de gestión: punto de venta con las fotos del catálogo, buscador y categorías (y "Con stock"). Se toca el producto, se elige cómo paga y se cobra; en efectivo calcula el vuelto con atajos de billetes. Cada venta queda registrada como "Feria", pagada y entregada, y descuenta stock. Con "Deshacer" por si fue un error.
+- Control de caja: se abre con el efectivo inicial y quién vende, se anotan retiros o ingresos de efectivo, y al cerrar se cuenta la plata y muestra si falta o sobra. Debajo quedan las cajas anteriores.
+- Ventas y pedidos: filtro "Solo feria".
+- Sin señal en la feria, las ventas salen con número propio (F + hora) y se suben al servidor cuando vuelve la conexión, mientras la página siga abierta.
+
+## V0.29 · 2026-11-27
+- Base de datos real: servidor propio en Cloudflare (Worker + base D1, plan gratis) en `api/`, publicado en https://aukan3d-api.aukan3d.workers.dev.
+- La tienda toma el catálogo y manda los pedidos al servidor (los precios se recalculan allá). Cada pedido aparece en el panel de gestión desde cualquier dispositivo, en menos de 20 segundos.
+- El panel pide usuario y contraseña al servidor (contraseña cifrada, sesión de 12 horas, límite de intentos). Ventas, clientes, productos, stock, medios de pago, usuarios y gastos se guardan en la base y se ven igual en todas las computadoras y celulares.
+- Los números de venta del panel y de la tienda son una sola serie. Las fotos nuevas de productos se publican solas en la tienda.
+- "Ver la tienda" en el panel abre la tienda en otra pestaña.
+- Sin `apiUrl` en `config.js` todo sigue funcionando como demo (admin / admin y datos de ejemplo en el navegador).
+
+## V0.28 · 2026-11-27
+- El panel de gestión muestra la versión (abajo en el menú y en la pantalla de ingreso), la misma que la tienda.
+
+## V0.27 · 2026-11-27
+- Puente para la demo: los pedidos que se hacen en la tienda aparecen solos en el panel de gestión (Ventas y pedidos, como "Tienda web", con el cliente creado o encontrado por su WhatsApp), aunque el panel ya esté abierto. Solo ve los pedidos hechos desde el mismo navegador; con la base de datos van a llegar todos.
+
+## V0.26 · 2026-11-27
+Cambios aprobados de las auditorías del panel de gestión (`auditorias/admin-v025.md`).
+- Los meses y el "hoy" se cuentan con la hora de Uruguay (antes, una venta del último día después de las 21:00 caía en el mes siguiente).
+- Nueva venta: al pasar a dólares los precios quedan para poner a mano y al volver a pesos vuelven los del catálogo; "Agregar" ya no muestra un error falso; los productos con el mismo nombre (dos ANGEL, dos PIKACHU) se eligen por número; los precios se redondean a pesos; si se cierra sin guardar, queda como borrador.
+- La comisión se guarda en cada venta: cambiar el % de un vendedor no cambia los meses pasados.
+- Cambiar el estado de un pedido muestra "Deshacer" (también con la ventana abierta).
+- "Entregado" en gris y "Listo para entregar" en verde; etiquetas con mejor contraste.
+- Celular: la tabla de ventas entra sin deslizar (el saldo va debajo del total), "Salir" en la barra negra y botones de stock de 44 px.
+- Los nombres cortados muestran el nombre completo al pasar el mouse.
+
 ## V0.25 · 2026-11-27
 Primera versión del panel de gestión (backoffice) en `admin/`, basada en el prototipo de Rodrigo. Pantallas con datos de ejemplo guardados en el navegador; la base de datos viene después.
 - Ingreso con usuario y contraseña de muestra (`admin` / `admin`).

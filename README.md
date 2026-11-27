@@ -44,5 +44,6 @@ Prueba del script: `node apps-script/test.js`.
 
 ## Panel de gestión (`admin/`)
 Backoffice para Aukan3D: ventas y pedidos, cuentas pendientes, clientes, productos y stock, medios de pago, comisiones y reportes. Se abre en `/admin/` (en la demo: `.../Aukan3D-APP/admin/`).
-Por ahora es una vista previa: ingreso de muestra `admin` / `admin` y datos de ejemplo guardados en el navegador ("Volver a los datos de ejemplo" los reinicia). Con la base de datos va el ingreso real y los pedidos de la tienda en vivo.
-Prueba: `node admin/test.js`.
+Con `apiUrl` en `config.js` usa el servidor de `api/` (Cloudflare Worker + D1, ver `api/README.md`): ingreso con usuario y contraseña del servidor, datos compartidos entre dispositivos y pedidos de la tienda en vivo.
+Sin `apiUrl` es una demo: ingreso `admin` / `admin` y datos de ejemplo guardados en el navegador ("Volver a los datos de ejemplo" los reinicia); los pedidos hechos en la tienda desde el mismo navegador aparecen en el panel.
+Prueba: `node admin/test.js`; servidor: `cd api && npm run dev` y `node test.mjs`.

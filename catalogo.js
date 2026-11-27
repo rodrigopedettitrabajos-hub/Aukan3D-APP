@@ -70,6 +70,7 @@ const normalizar = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toL
 // Cuenta de vista previa (localStorage). shortcut: la contraseña NO se guarda ni se verifica;
 // reemplazar por cuentas reales cuando haya base de datos.
 const CLAVE_PERFIL = "aukan_perfil";
+const CLAVE_DEMO_PANEL = "aukan_pedidos_panel"; // pedidos de este navegador que lee admin/
 const clavePedidos = (email) => "aukan_pedidos:" + email; // cada cuenta ve solo sus pedidos
 function leerJson(k, vacio) { try { return JSON.parse(localStorage.getItem(k)) ?? vacio; } catch { return vacio; } }
 function escribir(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch { /* modo privado */ } }
@@ -82,6 +83,8 @@ const guardarPedidos = (lista, email = sesion()?.email) => email && escribir(cla
 function guardarPedido(pedido) {
   const p = { fecha: new Date().toISOString(), estado: 0, ...pedido, numero: pedido.numero || `W${Date.now().toString(36).toUpperCase().slice(-6)}` };
   if (sesion()) { guardarPedidos([p, ...leerPedidos()]); p.guardado = true; }
+  // shortcut: copia para el panel de gestión de la demo (mismo navegador); se va cuando haya base de datos.
+  escribir(CLAVE_DEMO_PANEL, [p, ...leerJson(CLAVE_DEMO_PANEL, [])].slice(0, 50));
   return p;
 }
 // "Cerrar sesión" con "olvidar mis datos": borra el perfil y sus pedidos de este dispositivo.

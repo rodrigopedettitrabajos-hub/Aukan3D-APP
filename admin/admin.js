@@ -1,4 +1,4 @@
-// Panel de gestión Aukan3D (vista previa con datos de ejemplo). Datos y cálculos: datos.js.
+// Panel de gestión Aukan3D. Datos y cálculos: datos.js.
 const $ = (s) => document.querySelector(s);
 function el(tag, { dataset, ...props } = {}, ...hijos) {
   const e = Object.assign(document.createElement(tag), props);
@@ -20,20 +20,53 @@ function foto(f) {
   return !ok || ok.startsWith("https:") ? ok : "../" + ok;
 }
 
-// --- Ingreso (muestra) ---
-// shortcut: usuario y clave fijos (admin / admin) y comparados en el navegador, solo para mostrar;
-// con la base de datos va un ingreso real en el servidor (Cloudflare Access o usuarios con contraseña cifrada).
-const SESION = "aukan_admin_ok";
-const conSesion = () => { try { return sessionStorage.getItem(SESION) === "1"; } catch { return false; } };
+// --- Ingreso ---
+// Con apiUrl (config.js) el usuario y la contraseña se validan en el servidor, que da un token de 12 h.
+// Sin apiUrl es la demo: admin / admin comparado en el navegador, con datos de ejemplo.
+const API = String(window.AUKAN_CONFIG?.apiUrl || "").replace(/\/+$/, "");
+const SESION = API ? "aukan_admin_token" : "aukan_admin_ok";
+const leerSesion = () => { try { return sessionStorage.getItem(SESION) || ""; } catch { return ""; } };
+const conSesion = () => (API ? !!leerSesion() : leerSesion() === "1");
+function cerrarSesion(motivo = "") {
+  try { sessionStorage.removeItem(SESION); } catch { /* sin almacenamiento */ }
+  if (API) { db = dbVacia(); enviado.clear(); hasta = 0; }
+  for (const d of document.querySelectorAll("dialog[open]")) d.close();
+  $("#login-error").textContent = motivo;
+  mostrarApp();
+}
 function mostrarApp() {
   const ok = conSesion();
   $("#login").hidden = ok;
   $(".app").hidden = !ok;
   if (ok) mostrarVista(); else $("#f-login").usuario.focus();
 }
-$("#f-login").addEventListener("submit", (e) => {
+$("#f-login").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = e.target;
+  if (API) {
+    const boton = f.querySelector("button");
+    boton.disabled = true;
+    $("#login-error").textContent = "";
+    try {
+      const res = await fetch(API + "/api/login", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuario: f.usuario.value.trim(), clave: f.clave.value }) });
+      const r = await res.json();
+      if (!r.ok) {
+        $("#login-error").textContent = r.error === "limite" ? "Demasiados intentos. Probá de nuevo en 15 minutos." : "Usuario o contraseña incorrectos.";
+        f.clave.select();
+        return;
+      }
+      try { sessionStorage.setItem(SESION, r.token); } catch { /* sin almacenamiento */ }
+      f.reset();
+      await traerServidor();
+      mostrarApp();
+    } catch (err) {
+      console.error(err);
+      if (conSesion()) cerrarSesion("No pudimos traer los datos. Revisá la conexión y probá de nuevo.");
+      else $("#login-error").textContent = "No pudimos conectar con el servidor. Revisá la conexión.";
+    } finally { boton.disabled = false; }
+    return;
+  }
   if (f.usuario.value.trim().toLowerCase() === "admin" && f.clave.value === "admin") {
     try { sessionStorage.setItem(SESION, "1"); } catch { /* sin almacenamiento */ }
     f.reset();
@@ -43,16 +76,74 @@ $("#f-login").addEventListener("submit", (e) => {
   $("#login-error").textContent = "Usuario o contraseña incorrectos.";
   f.clave.select();
 });
-$("#salir").addEventListener("click", () => { try { sessionStorage.removeItem(SESION); } catch { /* idem */ } mostrarApp(); });
+for (const b of document.querySelectorAll("[data-salir]")) b.addEventListener("click", () => cerrarSesion());
 
 // --- Datos ---
-let db = leerJson(CLAVE_DB, null);
+let db = API ? dbVacia() : leerJson(CLAVE_DB, null);
 if (!db?.version) db = datosEjemplo(catalogoDesdeCsv(window.PRODUCTOS_CSV));
+db.cajas ||= []; // datos guardados antes del modo feria
+const avisoPedidos = (n) => n && avisar(n === 1 ? "Llegó 1 pedido nuevo de la tienda." : `Llegaron ${n} pedidos nuevos de la tienda.`);
+
+// Servidor: cada guardar() manda solo lo cambiado; cada 20 s se trae lo nuevo (pedidos web, otros dispositivos).
+// shortcut: si dos dispositivos editan lo mismo a la vez, queda el último que guardó.
+const enviado = new Map();
+let hasta = 0, enviando = null, otraVez = false;
+async function llamar(ruta, body) {
+  const res = await fetch(API + ruta, { method: body ? "POST" : "GET", body: body && JSON.stringify(body),
+    headers: { Authorization: "Bearer " + leerSesion(), ...(body ? { "Content-Type": "application/json" } : {}) } });
+  if (res.status === 401) { cerrarSesion("La sesión venció. Volvé a ingresar."); throw new Error("sesion"); }
+  const r = await res.json();
+  if (!r.ok) throw new Error(r.error);
+  return r;
+}
+async function traerServidor() {
+  const r = await llamar("/api/admin/datos?desde=" + hasta);
+  const primera = !hasta;
+  const n = aplicarServidor(db, r, enviado);
+  hasta = r.hasta;
+  return primera ? 0 : n;
+}
+function sincronizar() {
+  if (enviando) { otraVez = true; return enviando; }
+  const cam = cambiosDb(db, enviado);
+  if (!cam.set.length && !cam.del.length) return Promise.resolve();
+  enviando = llamar("/api/admin/lote", { set: cam.set.map(({ col, id, data }) => ({ col, id, data })), del: cam.del })
+    .then(() => marcarEnviado(enviado, cam))
+    .catch((e) => { if (e.message !== "sesion") avisar("No se pudo guardar en el servidor. Reintentamos en unos segundos."); })
+    .finally(() => { enviando = null; if (otraVez) { otraVez = false; sincronizar(); } });
+  return enviando;
+}
+setInterval(async () => {
+  if (!API || !conSesion() || document.hidden) return;
+  await sincronizar();
+  if (document.querySelector("dialog[open]")) return; // no cambiar datos debajo de un formulario abierto
+  try { const n = await traerServidor(); avisoPedidos(n); repintar(); } catch { /* reintenta en la próxima vuelta */ }
+}, 20000);
+
 function guardar() {
+  if (API) return void sincronizar();
   try { localStorage.setItem(CLAVE_DB, JSON.stringify(db)); }
   catch { avisar("No se pudo guardar: el navegador no tiene más lugar. Probá con fotos más livianas."); }
 }
-guardar();
+// Demo: pedidos hechos en la tienda desde este navegador (ver importarPedidosWeb). Con servidor llegan solos.
+function traerPedidosWeb() {
+  if (API) return 0;
+  const n = importarPedidosWeb(db, leerJson("aukan_pedidos_panel", []));
+  avisoPedidos(n);
+  return n;
+}
+if (!API) guardar();
+addEventListener("storage", (e) => { if (e.key === "aukan_pedidos_panel" && conSesion() && traerPedidosWeb()) { guardar(); repintar(); } });
+// Número de venta: con servidor se reserva al abrir el formulario (la serie es la misma que la de la tienda).
+let reservado = null;
+const reservarNumero = () => { if (API && reservado == null) llamar("/api/admin/numero", {}).then((r) => { reservado = String(r.numero); }).catch(() => {}); };
+function numeroVenta() {
+  if (!API) return nuevoNumero(db);
+  const n = reservado;
+  reservado = null;
+  reservarNumero();
+  return n;
+}
 const cliente = (id) => db.clientes.find((c) => c.id === id) || { nombre: "Sin cliente", whatsapp: "" };
 const usuario = (id) => db.usuarios.find((u) => u.id === id);
 const medio = (id) => db.medios.find((m) => m.id === id)?.nombre || "—";
@@ -60,10 +151,22 @@ const venta = (n) => db.ventas.find((v) => v.numero === n);
 const waDe = (tel) => "598" + String(tel).replace(/\D/g, "").replace(/^0/, "");
 
 let avisoT;
-function avisar(t) { const a = $("#aviso"); a.textContent = t; a.hidden = false; clearTimeout(avisoT); avisoT = setTimeout(() => (a.hidden = true), 3500); }
+// Con una ventana abierta, el resto de la página no se puede tocar: el aviso se mete en esa ventana
+// para que su "Deshacer" funcione.
+function mostrarAviso(si) {
+  const a = $("#aviso");
+  if (si) ([...document.querySelectorAll("dialog[open]")].pop() || document.body).append(a);
+  a.hidden = !si;
+}
+function avisar(t, deshacer) {
+  $("#aviso").replaceChildren(t, deshacer ? el("button", { type: "button", className: "link", textContent: "Deshacer", onclick: () => { deshacer(); guardar(); repintar(); mostrarAviso(false); } }) : "");
+  mostrarAviso(true);
+  clearTimeout(avisoT);
+  avisoT = setTimeout(() => mostrarAviso(false), deshacer ? 6000 : 3500);
+}
 
 // --- Navegación ---
-const VISTAS = { panel: "Panel principal", ventas: "Ventas y pedidos", pendientes: "Cuentas pendientes", clientes: "Clientes",
+const VISTAS = { panel: "Panel principal", ventas: "Ventas y pedidos", feria: "Modo feria", pendientes: "Cuentas pendientes", clientes: "Clientes",
   productos: "Productos y stock", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Reportes y gastos" };
 const PINTAR = {};
 function mostrarVista() {
@@ -84,20 +187,21 @@ const kpi = (titulo, valor, pista, tono = "") => el("div", { className: "kpi" },
 function barras(filas) { // filas: [[etiqueta, valor, texto]]
   const max = Math.max(1, ...filas.map((f) => f[1]));
   return filas.length ? el("div", { className: "barras" }, ...filas.map(([t, n, txt]) => el("div", { className: "barra" },
-    el("span", { textContent: t }), el("i", { ariaHidden: "true" }, n ? el("b", { style: `width:${(n / max) * 100}%` }) : ""), el("span", { className: "num", textContent: txt }))))
+    el("span", { textContent: t, title: t }), el("i", { ariaHidden: "true" }, n ? el("b", { style: `width:${(n / max) * 100}%` }) : ""), el("span", { className: "num", textContent: txt }))))
     : el("p", { className: "vacio", textContent: "Sin datos este mes." });
 }
-function tabla(cabeza, filas, vacio) {
+function tabla(cabeza, filas, vacio, clase = "") {
   if (!filas.length) return el("p", { className: "vacio caja", textContent: vacio });
-  return el("div", { className: "tabla-caja" }, el("table", { className: "tabla" },
+  return el("div", { className: "tabla-caja" }, el("table", { className: "tabla " + clase },
     el("thead", {}, el("tr", {}, ...cabeza.map((c) => el("th", { textContent: c.replace(/^#/, ""), className: c.startsWith("#") ? "num" : "" })))),
     el("tbody", {}, ...filas)));
 }
 const td = (t, cls = "") => el("td", { className: cls }, t);
 function filaVenta(v, extra = []) {
   const tr = el("tr", { className: "clic", tabIndex: 0, ariaLabel: `Abrir pedido ${v.numero}` },
-    td(el("span", {}, el("b", { textContent: `N° ${v.numero}` }), el("small", { textContent: v.origen === "web" ? "Tienda web" : "En persona" }))),
-    td(fecha(v.fecha)), td(cliente(v.cliente).nombre), td(plata(totalVenta(v), v.moneda), "num"),
+    td(el("span", {}, el("b", { textContent: `N° ${v.numero}` }), el("small", { textContent: ORIGEN[v.origen] || "En persona" }))),
+    td(fecha(v.fecha)), td(cliente(v.cliente).nombre),
+    td(el("span", {}, plata(totalVenta(v), v.moneda), saldo(v) ? el("small", { className: "saldo-mini ambar", textContent: `Saldo ${plata(saldo(v), v.moneda)}` }) : ""), "num"),
     td(saldo(v) ? plata(saldo(v), v.moneda) : "—", "num" + (saldo(v) ? " ambar" : "")), td(pastilla(v)), ...extra);
   tr.addEventListener("click", (e) => { if (!e.target.closest("button, a")) abrirDetalle(v.numero); });
   tr.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target === tr) abrirDetalle(v.numero); });
@@ -120,7 +224,7 @@ PINTAR.panel = () => {
   const unidades = {};
   for (const v of r.ventas) for (const i of v.items) unidades[i.nombre] = (unidades[i.nombre] || 0) + i.cant;
   $("#top").replaceChildren(barras(Object.entries(unidades).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n, c]) => [n, c, String(c)])));
-  $("#ultimas").replaceChildren(tabla(CAB_VENTAS, db.ventas.slice(0, 6).map((v) => filaVenta(v)), "Todavía no hay ventas."));
+  $("#ultimas").replaceChildren(tabla(CAB_VENTAS, db.ventas.slice(0, 6).map((v) => filaVenta(v)), "Todavía no hay ventas.", "t-ventas"));
 };
 
 // --- Ventas ---
@@ -131,7 +235,7 @@ PINTAR.ventas = () => {
   const lista = db.ventas.filter((v) => (!org || v.origen === org)
     && (est === "" || (est === "saldo" ? saldo(v) > 0 : v.estado === +est))
     && (!q || normalizar([v.numero, cliente(v.cliente).nombre, ...v.items.map((i) => i.nombre)].join(" ")).includes(q)));
-  $("#ventas-lista").replaceChildren(tabla(CAB_VENTAS, lista.map((v) => filaVenta(v)), "No hay ventas con esos filtros."));
+  $("#ventas-lista").replaceChildren(tabla(CAB_VENTAS, lista.map((v) => filaVenta(v)), "No hay ventas con esos filtros.", "t-ventas"));
 };
 
 // Detalle de una venta: estado, pagos, WhatsApp.
@@ -140,11 +244,11 @@ function abrirDetalle(numero) {
   $("#d-detalle-t").textContent = `Pedido N° ${v.numero}`;
   const pasos = el("ol", { className: "pasos" }, ...ESTADOS.map((e, i) => el("li", {},
     el("button", { type: "button", className: i < v.estado ? "hecho" : i === v.estado ? "actual" : "", ariaCurrent: i === v.estado ? "step" : null,
-      textContent: i === 1 && !v.sena ? "Pagado" : e, onclick: () => { v.estado = i; guardar(); abrirDetalle(numero); repintar(); } }))));
+      textContent: i === 1 && !v.sena ? "Pagado" : e, onclick: () => cambiarEstado(v, i) }))));
   const msg = `Hola ${c.nombre.split(" ")[0]}! Te escribimos de Aukan3D por tu pedido N° ${v.numero}: ${ESTADOS[v.estado].toLowerCase()}.`
     + (saldo(v) ? ` Saldo a pagar: ${plata(saldo(v), v.moneda)}.` : "");
   $("#detalle-cuerpo").replaceChildren(
-    el("p", { className: "sub", textContent: `${fecha(v.fecha)} · ${v.origen === "web" ? "Tienda web" : "En persona"}${usuario(v.vendedor) ? ` · Vendió ${usuario(v.vendedor).nombre}` : ""} · ${v.entrega}` }),
+    el("p", { className: "sub", textContent: `${fecha(v.fecha)} · ${ORIGEN[v.origen] || "En persona"}${usuario(v.vendedor) ? ` · Vendió ${usuario(v.vendedor).nombre}` : ""} · ${v.entrega}` }),
     el("h3", { textContent: "Estado" }), el("p", { className: "sub chico", textContent: "Tocá un paso para cambiarlo." }), pasos,
     el("div", { className: "detalle-grid" },
       el("div", {}, el("h3", { textContent: "Cliente" }), el("p", { textContent: c.nombre }),
@@ -160,6 +264,13 @@ function abrirDetalle(numero) {
       el("tfoot", {}, el("tr", {}, td("Total"), td(plata(totalVenta(v), v.moneda), "num")))),
     v.nota ? el("p", { className: "nota", textContent: `Nota: ${v.nota}` }) : "");
   if (!d.open) d.showModal();
+}
+
+function cambiarEstado(v, i) {
+  const antes = v.estado;
+  if (i === antes) return;
+  v.estado = i; guardar(); repintar(); abrirDetalle(v.numero);
+  avisar(`Pedido N° ${v.numero}: pasó a ${ESTADOS[i]}.`, () => { v.estado = antes; if ($("#d-detalle").open) abrirDetalle(v.numero); });
 }
 
 // Registrar un pago sobre el saldo.
@@ -187,13 +298,21 @@ $("#f-pago").addEventListener("submit", (e) => {
 
 // Nueva venta (en persona o en una feria).
 const fv = $("#f-venta");
-let itemsVenta = [];
-const productoPorNombre = (t) => db.productos.find((p) => `${p.nombre} · ${p.categoria}` === t || p.nombre.toLowerCase() === t.trim().toLowerCase());
+let itemsVenta = null; // null = no hay venta a medio cargar; queda como borrador si se cierra sin guardar
+// Cada opción lleva el N° del producto: hay nombres repetidos (dos "ANGEL" de crochet a distinto precio).
+const opcionProducto = (p) => `${p.nombre} · ${p.categoria} · N° ${p.id}`;
+function productoPorNombre(t) {
+  const id = t.match(/· N° (\S+)$/)?.[1];
+  if (id) return db.productos.find((p) => p.id === id);
+  const iguales = db.productos.filter((p) => p.nombre.toLowerCase() === t.trim().toLowerCase());
+  return iguales.length === 1 ? iguales[0] : null; // nombre escrito a mano: solo si no hay dudas
+}
 function pintarItemsVenta() {
   const usd = fv.moneda.value === "USD";
   $("#venta-items").replaceChildren(...itemsVenta.map((it, n) => el("tr", {}, td(it.nombre),
     td(el("input", { type: "number", min: 1, max: 99, value: it.cant, className: "mini", ariaLabel: `Cantidad de ${it.nombre}`, oninput: (e) => { it.cant = Math.min(Math.max(+e.target.value || 1, 1), 99); total(); } }), "num"),
-    td(el("input", { type: "number", min: 0, value: it.precio, className: "mini", ariaLabel: `Precio de ${it.nombre}`, oninput: (e) => { it.precio = Math.max(+e.target.value || 0, 0); total(); } }), "num"),
+    td(el("input", { type: "number", min: 0, value: it.precio, className: "mini", ariaLabel: `Precio de ${it.nombre}`, step: 1, oninput: (e) => { it.precio = Math.max(Math.round(+e.target.value || 0), 0); total(); },
+      onchange: (e) => (e.target.value = it.precio) }), "num"),
     td("", "num sub-item"),
     td(el("button", { type: "button", className: "x", ariaLabel: `Quitar ${it.nombre}`, textContent: "×", onclick: () => { itemsVenta.splice(n, 1); pintarItemsVenta(); } })))));
   function total() {
@@ -203,21 +322,23 @@ function pintarItemsVenta() {
   total();
 }
 function abrirVenta() {
-  fv.reset();
-  itemsVenta = [];
+  const borrador = itemsVenta ? { cliente: fv.cliente.value, vendedor: fv.vendedor.value, medio: fv.medio.value } : null;
+  if (!borrador) { fv.reset(); itemsVenta = []; }
   fv.cliente.replaceChildren(el("option", { value: "", textContent: "Elegí un cliente" }), el("option", { value: "nuevo", textContent: "+ Cliente nuevo…" }),
     ...[...db.clientes].sort((a, b) => a.nombre.localeCompare(b.nombre)).map((c) => el("option", { value: c.id, textContent: c.nombre })));
   fv.vendedor.replaceChildren(...db.usuarios.map((u) => el("option", { value: u.id, textContent: u.nombre })));
   opcionesMedios(fv.medio);
-  $("#lista-productos").replaceChildren(...db.productos.map((p) => el("option", { value: `${p.nombre} · ${p.categoria}` })));
+  if (borrador) for (const k in borrador) if ([...fv[k].options].some((o) => o.value === borrador[k])) fv[k].value = borrador[k];
+  $("#lista-productos").replaceChildren(...db.productos.map((p) => el("option", { value: opcionProducto(p) })));
   $("#venta-error").textContent = $("#venta-item-error").textContent = "";
   pintarItemsVenta();
+  reservarNumero();
   $("#d-venta").showModal();
 }
 for (const b of document.querySelectorAll("[data-nueva-venta]")) b.addEventListener("click", abrirVenta);
 function agregarItem() {
   const p = productoPorNombre(fv.buscar.value);
-  if (!p) { $("#venta-item-error").textContent = "Elegí un producto de la lista."; return; }
+  if (!p) { $("#venta-item-error").textContent = fv.buscar.value.trim() ? "Elegí el producto de la lista (hay nombres repetidos, como ANGEL o PIKACHU)." : ""; return; }
   const ya = itemsVenta.find((i) => i.id === p.id);
   if (ya) ya.cant = Math.min(ya.cant + 1, 99);
   else itemsVenta.push({ id: p.id, nombre: p.nombre, cant: 1, precio: fv.moneda.value === "USD" ? 0 : p.precio });
@@ -228,8 +349,13 @@ function agregarItem() {
 }
 $("#agregar-item").addEventListener("click", agregarItem);
 fv.buscar.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); agregarItem(); } });
-fv.buscar.addEventListener("change", () => productoPorNombre(fv.buscar.value) && agregarItem());
-fv.moneda.addEventListener("change", pintarItemsVenta);
+// Los precios del catálogo son en pesos: en dólares se ponen a mano.
+fv.moneda.addEventListener("change", () => {
+  const usd = fv.moneda.value === "USD";
+  for (const it of itemsVenta) it.precio = usd ? 0 : db.productos.find((p) => p.id === it.id)?.precio || 0;
+  $("#venta-item-error").textContent = usd && itemsVenta.length ? "Poné los precios en dólares." : "";
+  pintarItemsVenta();
+});
 fv.cliente.addEventListener("change", () => { if (fv.cliente.value === "nuevo") { fv.cliente.value = ""; abrirCliente(null, (c) => { abrirVentaCliente(c); }); } });
 function abrirVentaCliente(c) { fv.cliente.append(el("option", { value: c.id, textContent: c.nombre })); fv.cliente.value = c.id; }
 for (const b of document.querySelectorAll("[data-pago]")) b.addEventListener("click", () => {
@@ -242,17 +368,203 @@ fv.addEventListener("submit", (e) => {
   if (!fv.cliente.value) return error("Elegí el cliente.");
   if (!itemsVenta.length) return error("Agregá al menos un producto.");
   if (itemsVenta.some((i) => !(i.precio > 0))) return error("Hay productos sin precio.");
-  const v = { numero: nuevoNumero(db), fecha: new Date().toISOString(), origen: "local", cliente: fv.cliente.value, vendedor: fv.vendedor.value,
-    moneda: fv.moneda.value, items: itemsVenta.map((i) => ({ ...i })), pagos: [], estado: 0, sena: true, entrega: fv.entrega.value, nota: fv.nota.value.trim() };
+  if (API && reservado == null) { reservarNumero(); return error("Esperá un segundo: estamos pidiendo el número de venta."); }
+  const v = { numero: numeroVenta(), fecha: new Date().toISOString(), origen: "local", cliente: fv.cliente.value, vendedor: fv.vendedor.value,
+    moneda: fv.moneda.value, items: itemsVenta.map((i) => ({ ...i })), pagos: [], estado: 0, sena: true, entrega: fv.entrega.value, nota: fv.nota.value.trim(),
+    comision: usuario(fv.vendedor.value)?.comision ?? 0 };
   const pago = Math.round(+fv.pago.value || 0);
-  if (pago < 0 || pago > totalVenta(v)) { db.ultimo--; return error(`El pago tiene que ser entre 0 y ${plata(totalVenta(v), v.moneda)}.`); }
+  if (pago < 0 || pago > totalVenta(v)) { if (API) reservado = v.numero; else db.ultimo--; return error(`El pago tiene que ser entre 0 y ${plata(totalVenta(v), v.moneda)}.`); }
   if (pago) { registrarPago(v, pago, fv.medio.value); v.sena = pago < totalVenta(v); }
   // Lo que había listo en stock se descuenta; lo demás se imprime a pedido.
   for (const i of v.items) { const p = db.productos.find((x) => x.id === i.id); if (p) p.stock = Math.max((p.stock || 0) - i.cant, 0); }
   db.ventas.unshift(v);
+  itemsVenta = null;
   guardar(); repintar();
   avisar(`Venta N° ${v.numero} guardada.`);
 });
+
+// --- Modo feria: punto de venta simple con control de caja ---
+// Cada cobro es una venta pagada y entregada (origen "feria"), a "Consumidor final", ligada a la caja abierta.
+const ticket = new Map(); // id de producto -> cantidad
+let feriaCat = "", feriaMedio = "";
+const productoDe = (id) => db.productos.find((p) => p.id === id);
+const totalTicket = () => [...ticket].reduce((s, [id, n]) => s + (productoDe(id)?.precio || 0) * n, 0);
+const ORIGEN = { web: "Tienda web", local: "En persona", feria: "Feria" };
+
+$("#f-abrir").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const f = e.target, fondo = Math.round(+f.fondo.value || 0);
+  if (fondo < 0) { $("#abrir-error").textContent = "El efectivo inicial no puede ser negativo."; return; }
+  db.cajas.push({ id: "k" + Date.now().toString(36), abierta: new Date().toISOString(), cerrada: null, fondo, vendedor: f.vendedor.value, movimientos: [], contado: null });
+  guardar(); PINTAR.feria();
+  avisar("Caja abierta. ¡Buena feria!");
+});
+
+function sumarAlTicket(id, n) {
+  const p = productoDe(id), cant = Math.min(Math.max((ticket.get(id) || 0) + n, 0), 99);
+  if (!p) return;
+  if (cant) ticket.set(id, cant); else ticket.delete(id);
+  pintarTicket(); marcarGrilla();
+}
+// Solo cambia el numerito de cada tarjeta (sin volver a dibujar la grilla ni mover el scroll).
+function marcarGrilla() {
+  for (const b of document.querySelectorAll("#pos-grilla .prod")) {
+    const n = ticket.get(b.dataset.id) || 0, i = b.querySelector(".cant-en");
+    i.hidden = !n; i.textContent = String(n);
+  }
+}
+function pintarGrilla() {
+  const q = normalizar($("#pos-q").value.trim());
+  const lista = db.productos.filter((p) => p.precio > 0 && (!feriaCat || (feriaCat === "stock" ? p.stock > 0 : p.categoria === feriaCat))
+    && (!q || normalizar(`${p.nombre} ${p.subcategoria} ${p.id}`).includes(q)));
+  $("#pos-grilla").replaceChildren(...lista.slice(0, 120).map((p) => {
+    const src = foto(p.foto), n = ticket.get(p.id);
+    return el("button", { type: "button", className: "prod", dataset: { id: p.id }, ariaLabel: `Agregar ${p.nombre}, ${plata(p.precio)}`, onclick: () => sumarAlTicket(p.id, 1) },
+      src ? el("img", { src, alt: "", loading: "lazy", width: 150, height: 150 }) : el("i", { className: "sin-foto", textContent: "Sin foto" }),
+      el("span", {}, p.nombre, el("b", { textContent: plata(p.precio) }), p.stock ? el("small", { className: "stock-en", textContent: `${p.stock} en stock` }) : ""),
+      el("i", { className: "cant-en", ariaHidden: "true", textContent: String(n || 0), hidden: !n }));
+  }), lista.length ? "" : el("p", { className: "vacio caja", textContent: "No hay productos con precio que coincidan." }));
+}
+function pintarTicket() {
+  const total = totalTicket(), cant = [...ticket.values()].reduce((s, n) => s + n, 0);
+  $("#pos-items").replaceChildren(...[...ticket].map(([id, n]) => {
+    const p = productoDe(id);
+    return el("div", { className: "pos-linea" }, el("span", { textContent: p.nombre, title: p.nombre }),
+      el("span", { className: "stock" },
+        el("button", { type: "button", className: "paso", textContent: "−", ariaLabel: `Quitar uno de ${p.nombre}`, onclick: () => sumarAlTicket(id, -1) }),
+        el("b", { textContent: String(n) }),
+        el("button", { type: "button", className: "paso", textContent: "+", ariaLabel: `Sumar uno de ${p.nombre}`, onclick: () => sumarAlTicket(id, 1) })),
+      el("small", { textContent: `${n} × ${plata(p.precio)} = ${plata(p.precio * n)}` }));
+  }), ticket.size ? "" : el("p", { className: "vacio", textContent: "Tocá un producto para agregarlo." }));
+  $("#pos-total").textContent = plata(total);
+  $("#pos-cobrar").textContent = total ? `Cobrar ${plata(total)}` : "Cobrar";
+  $("#pos-cobrar").disabled = !total;
+  $("#pos-barra").textContent = cant ? `Ticket · ${cant} ${cant === 1 ? "artículo" : "artículos"} · ${plata(total)}` : "Ver ticket";
+  $("#pos-vaciar").hidden = !ticket.size;
+  // Medios de pago y vuelto.
+  if (!db.medios.some((m) => m.id === feriaMedio)) feriaMedio = db.medios.find((m) => esEfectivo(db, m.id))?.id || db.medios[0]?.id || "";
+  $("#pos-medios").replaceChildren(...db.medios.map((m) => el("button", { type: "button", className: "chip", textContent: m.nombre,
+    ariaPressed: String(m.id === feriaMedio), onclick: () => { feriaMedio = m.id; pintarTicket(); } })));
+  const efectivo = esEfectivo(db, feriaMedio);
+  $("#pos-efectivo").hidden = !efectivo;
+  const billetes = [...new Set([100, 200, 500, 1000, 2000].map((b) => Math.ceil(total / b) * b))].filter((b) => b > total).slice(0, 3);
+  $("#pos-atajos").replaceChildren(...billetes.map((b) => el("button", { type: "button", className: "chip", textContent: plata(b),
+    onclick: () => { $("#pos-recibido").value = b; pintarVuelto(); } })));
+  pintarVuelto();
+  $("#pos-error").textContent = "";
+  pintarResumenCaja();
+}
+function pintarVuelto() {
+  const total = totalTicket(), recibido = Math.round(+$("#pos-recibido").value || 0);
+  $("#pos-vuelto").className = "pos-vuelto" + (recibido && recibido < total ? " rojo" : " verde");
+  $("#pos-vuelto").textContent = !recibido || !total ? "" : recibido < total ? `Faltan ${plata(total - recibido)}` : `Vuelto: ${plata(recibido - total)}`;
+}
+$("#pos-recibido").addEventListener("input", pintarVuelto);
+$("#pos-q").addEventListener("input", pintarGrilla);
+$("#pos-vaciar").addEventListener("click", () => { ticket.clear(); $("#pos-recibido").value = ""; pintarTicket(); marcarGrilla(); });
+$("#pos-barra").addEventListener("click", () => $("#pos-ticket").scrollIntoView({ behavior: "smooth" }));
+
+function consumidorFinal() {
+  let c = db.clientes.find((x) => x.id === "cf");
+  if (!c) { c = { id: "cf", nombre: "Consumidor final", whatsapp: "", email: "", zona: "" }; db.clientes.push(c); }
+  return c;
+}
+$("#pos-cobrar").addEventListener("click", () => {
+  const caja = cajaAbierta(db), total = totalTicket();
+  if (!caja || !total) return;
+  const recibido = Math.round(+$("#pos-recibido").value || 0);
+  if (esEfectivo(db, feriaMedio) && recibido && recibido < total) { $("#pos-error").textContent = `Faltan ${plata(total - recibido)} para cubrir el total.`; return; }
+  // Sin conexión no hay número del servidor: la venta sale con uno propio (F + hora) y se sube cuando vuelve la señal.
+  const numero = !API ? nuevoNumero(db) : reservado != null ? numeroVenta() : "F" + Date.now().toString(36).toUpperCase();
+  const ahora = new Date().toISOString();
+  const v = { numero, fecha: ahora, origen: "feria", cliente: consumidorFinal().id, vendedor: caja.vendedor, moneda: "UYU",
+    items: [...ticket].map(([id, cant]) => { const p = productoDe(id); return { id, nombre: p.nombre, precio: p.precio, cant }; }),
+    pagos: [{ fecha: ahora, medio: feriaMedio, monto: total }], estado: 4, sena: false, entrega: "En la feria", nota: "",
+    comision: usuario(caja.vendedor)?.comision ?? 0, caja: caja.id };
+  for (const i of v.items) { const p = productoDe(i.id); if (p) p.stock = Math.max((p.stock || 0) - i.cant, 0); }
+  db.ventas.unshift(v);
+  const vuelto = recibido > total ? recibido - total : 0;
+  ticket.clear(); $("#pos-recibido").value = "";
+  guardar(); reservarNumero(); pintarTicket(); pintarGrilla();
+  avisar(`Venta N° ${v.numero}: ${plata(total)} con ${medio(feriaMedio)}${vuelto ? ` · vuelto ${plata(vuelto)}` : ""}.`, () => {
+    db.ventas.splice(db.ventas.indexOf(v), 1);
+    for (const i of v.items) { const p = productoDe(i.id); if (p) p.stock = (p.stock || 0) + i.cant; }
+  });
+  scrollTo({ top: 0, behavior: "smooth" });
+});
+
+function lineasCaja(caja) {
+  const r = resumenCaja(db, caja), fila = (t, v, cls = "") => el("p", { className: cls }, el("span", { textContent: t }), el("b", { textContent: v }));
+  return [fila("Ventas", `${r.ventas.length} · ${plata(r.total)}`),
+    ...Object.entries(r.porMedio).map(([m, n]) => fila(`  ${medio(m)}`, plata(n))),
+    fila("Efectivo inicial", plata(caja.fondo)),
+    r.ingresos ? fila("Ingresos de efectivo", plata(r.ingresos)) : "", r.retiros ? fila("Retiros de efectivo", "− " + plata(r.retiros)) : "",
+    fila("Efectivo que tendría que haber", plata(r.esperado), "total-linea")];
+}
+function pintarResumenCaja() {
+  const caja = cajaAbierta(db);
+  if (caja) $("#pos-resumen").replaceChildren(el("p", {}, el("span", { textContent: `Caja abierta ${new Date(caja.abierta).toLocaleTimeString("es-UY", { hour: "2-digit", minute: "2-digit" })} · ${usuario(caja.vendedor)?.nombre || ""}` })), ...lineasCaja(caja));
+}
+
+$("#caja-mov").addEventListener("click", () => { const f = $("#f-mov"); f.reset(); $("#mov-error").textContent = ""; $("#d-mov").showModal(); });
+$("#f-mov").addEventListener("submit", (e) => {
+  if (e.submitter?.value !== "ok") return;
+  const f = e.target, monto = Math.round(+f.monto.value), caja = cajaAbierta(db);
+  if (!(monto > 0)) { e.preventDefault(); $("#mov-error").textContent = "Poné un monto mayor a 0."; return; }
+  if (!caja) return;
+  caja.movimientos.push({ fecha: new Date().toISOString(), tipo: f.tipo.value, monto, nota: f.nota.value.trim() });
+  guardar(); PINTAR.feria();
+  avisar(f.tipo.value === "retiro" ? `Retiro de ${plata(monto)} anotado.` : `Ingreso de ${plata(monto)} anotado.`);
+});
+
+$("#caja-cerrar").addEventListener("click", () => {
+  const caja = cajaAbierta(db), f = $("#f-cerrar");
+  if (!caja) return;
+  f.reset();
+  $("#cerrar-resumen").replaceChildren(el("div", { className: "pos-resumen" }, ...lineasCaja(caja)));
+  $("#cerrar-dif").textContent = $("#cerrar-error").textContent = "";
+  $("#d-cerrar").showModal();
+});
+$("#f-cerrar").contado.addEventListener("input", (e) => {
+  const caja = cajaAbierta(db), dif = Math.round(+e.target.value || 0) - resumenCaja(db, caja).esperado;
+  $("#cerrar-dif").className = "pos-vuelto " + (dif === 0 ? "verde" : dif < 0 ? "rojo" : "ambar");
+  $("#cerrar-dif").textContent = e.target.value === "" ? "" : dif === 0 ? "La caja cierra justa." : dif < 0 ? `Faltan ${plata(-dif)}.` : `Sobran ${plata(dif)}.`;
+});
+$("#f-cerrar").addEventListener("submit", (e) => {
+  if (e.submitter?.value !== "ok") return;
+  const f = e.target, caja = cajaAbierta(db);
+  if (f.contado.value === "" || +f.contado.value < 0) { e.preventDefault(); $("#cerrar-error").textContent = "Contá el efectivo y poné cuánto hay."; return; }
+  caja.contado = Math.round(+f.contado.value);
+  caja.cerrada = new Date().toISOString();
+  ticket.clear();
+  guardar(); PINTAR.feria();
+  const r = resumenCaja(db, caja);
+  avisar(`Caja cerrada: ${r.ventas.length} ventas por ${plata(r.total)}.${r.diferencia ? (r.diferencia < 0 ? ` Faltaron ${plata(-r.diferencia)}.` : ` Sobraron ${plata(r.diferencia)}.`) : " Cerró justa."}`);
+});
+
+PINTAR.feria = () => {
+  const caja = cajaAbierta(db);
+  $("#f-abrir").hidden = !!caja;
+  $("#pos").hidden = $("#feria-botones").hidden = !caja;
+  if (!caja) {
+    const f = $("#f-abrir");
+    f.vendedor.replaceChildren(...db.usuarios.map((u) => el("option", { value: u.id, textContent: u.nombre })));
+    $("#abrir-error").textContent = "";
+  } else {
+    const cats = [...new Set(db.productos.filter((p) => p.precio > 0).map((p) => p.categoria))].sort();
+    $("#pos-cats").replaceChildren(...[["", "Todo"], ["stock", "Con stock"], ...cats.map((c) => [c, c])].map(([v, t]) =>
+      el("button", { type: "button", className: "chip", textContent: t, ariaPressed: String(v === feriaCat), onclick: () => { feriaCat = v; PINTAR.feria(); } })));
+    for (const id of [...ticket.keys()]) if (!productoDe(id)) ticket.delete(id);
+    pintarGrilla(); pintarTicket(); reservarNumero();
+  }
+  const viejas = db.cajas.filter((c) => c.cerrada).sort((a, b) => b.abierta.localeCompare(a.abierta)).slice(0, 10);
+  $("#cajas-viejas").replaceChildren(viejas.length ? el("div", { className: "cajas-viejas" }, el("h2", { textContent: "Cajas anteriores" }),
+    tabla(["Fecha", "Vendió", "#Ventas", "#Total", "#Contado", "#Diferencia"], viejas.map((c) => {
+      const r = resumenCaja(db, c);
+      return el("tr", {}, td(fecha(c.abierta)), td(usuario(c.vendedor)?.nombre || "—"), td(String(r.ventas.length), "num"), td(plata(r.total), "num"),
+        td(plata(c.contado), "num"), td(r.diferencia ? (r.diferencia > 0 ? "+ " : "− ") + plata(Math.abs(r.diferencia)) : "Justa", "num " + (r.diferencia < 0 ? "rojo" : r.diferencia > 0 ? "ambar" : "verde")));
+    }), "")) : "");
+};
 
 // --- Cuentas pendientes ---
 PINTAR.pendientes = () => {
@@ -268,7 +580,7 @@ PINTAR.pendientes = () => {
     return filaVenta(v, [td(`${diasDesde(v.fecha)} días`, diasDesde(v.fecha) > 15 ? "ambar" : ""), td(el("span", { className: "acciones" },
       el("button", { type: "button", className: "btn chico", textContent: "Cobrar", onclick: () => abrirPago(v.numero) }),
       c.whatsapp ? el("a", { className: "btn sec chico", href: `https://wa.me/${waDe(c.whatsapp)}?text=${encodeURIComponent(msg)}`, target: "_blank", rel: "noopener", textContent: "Recordar", ariaLabel: `Recordarle a ${c.nombre} por WhatsApp` }) : ""))]);
-  }), "No hay nada pendiente de cobro."));
+  }), "No hay nada pendiente de cobro.", "t-ventas"));
 };
 
 // --- Clientes ---
@@ -388,15 +700,16 @@ fp.addEventListener("submit", (e) => {
   const p = productoEdit || { id: String(Math.max(0, ...db.productos.map((x) => +x.id || 0)) + 1), foto: "" };
   Object.assign(p, { nombre: d.nombre.trim(), categoria: d.categoria.trim(), subcategoria: d.subcategoria.trim(), tamano: d.tamano.trim(), material: d.material.trim(),
     precio: Math.max(Math.round(+d.precio || 0), 0), stock: Math.max(Math.round(+d.stock || 0), 0), activo: fp.activo.checked });
-  if (fotoNueva) {
-    // La foto nueva se baja con el nombre que usa el CSV: subirla a fotos/ del sitio.
+  if (fotoNueva && API) { p.foto = fotoNueva; p.fotoV = (p.fotoV || 0) + 1; } // el servidor la publica para la tienda
+  else if (fotoNueva) {
+    // Demo: la foto nueva se baja con el nombre que usa el CSV, para subirla a fotos/ del sitio.
     const nombre = `${p.id}-${slug(p.nombre)}.webp`;
     el("a", { href: fotoNueva, download: nombre }).click();
     p.foto = fotoNueva; p.fotoArchivo = "fotos/" + nombre;
   }
   if (!productoEdit) db.productos.push(p);
   guardar(); repintar();
-  avisar(fotoNueva ? "Producto guardado. La foto se descargó para subirla a la carpeta fotos." : "Producto guardado.");
+  avisar(fotoNueva && !API ? "Producto guardado. La foto se descargó para subirla a la carpeta fotos." : "Producto guardado.");
 });
 $("#bajar-csv").addEventListener("click", () => {
   const csv = catalogoACsv(db.productos.map((p) => ({ ...p, foto: p.fotoArchivo || p.foto })));
@@ -508,9 +821,7 @@ PINTAR.reportes = () => {
 function borrarGasto(g) {
   const i = db.gastos.indexOf(g);
   db.gastos.splice(i, 1); guardar(); PINTAR.reportes();
-  const a = $("#aviso");
-  avisar(`Borramos "${g.concepto}". `);
-  a.append(el("button", { type: "button", className: "link", textContent: "Deshacer", onclick: () => { db.gastos.splice(i, 0, g); guardar(); PINTAR.reportes(); a.hidden = true; } }));
+  avisar(`Borramos "${g.concepto}".`, () => db.gastos.splice(i, 0, g));
 }
 $("#nuevo-gasto").addEventListener("click", () => { const f = $("#f-gasto"); f.reset(); f.fecha.value = hoy(); $("#gasto-error").textContent = ""; $("#d-gasto").showModal(); });
 $("#f-gasto").addEventListener("submit", (e) => {
@@ -528,4 +839,14 @@ $("#reiniciar").addEventListener("click", () => {
   avisar("Volvimos a los datos de ejemplo.");
 });
 
-mostrarApp();
+// Misma versión que la tienda (config.js), para saber qué está publicado.
+for (const e of document.querySelectorAll("[data-version]")) e.textContent = window.AUKAN_CONFIG?.version || "";
+if (API) {
+  for (const e of document.querySelectorAll("[data-demo]")) e.hidden = true;
+  $("#user-sub").textContent = "Conectado a la base de datos";
+  if (conSesion()) traerServidor().then(mostrarApp, (e) => { if (e.message !== "sesion") cerrarSesion("No pudimos traer los datos. Revisá la conexión y probá de nuevo."); });
+  else mostrarApp();
+} else {
+  if (traerPedidosWeb()) guardar();
+  mostrarApp();
+}

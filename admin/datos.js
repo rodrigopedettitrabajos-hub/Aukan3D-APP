@@ -1,10 +1,12 @@
 // Datos del panel de gestión y cálculos (sin DOM), compartidos por admin.js y admin/test.js.
-// shortcut: todo vive en localStorage de este navegador; pasar a la base de datos (Cloudflare D1) cuando se conecte.
+// Sin apiUrl en config.js, todo vive en localStorage de este navegador (demo). Con apiUrl, en el servidor (api/).
 
 const ESTADOS = ["Recibido", "Seña pagada", "En impresión", "Listo para entregar", "Entregado"];
 const CLAVE_DB = "aukan_admin_db";
-const hoy = () => new Date().toISOString().slice(0, 10);
-const mesDe = (fecha) => fecha.slice(0, 7); // "2026-11-27..." -> "2026-11"
+// Día y mes con la hora de este equipo (Uruguay), no en UTC: una venta del 30 a las 22:00 es del 30.
+const diaLocal = (d = new Date()) => d.toLocaleDateString("sv"); // "2026-11-27"
+const hoy = () => diaLocal();
+const mesDe = (fecha) => (fecha.length > 10 ? diaLocal(new Date(fecha)) : fecha).slice(0, 7); // fecha y hora ISO o "AAAA-MM-DD"
 
 const totalVenta = (v) => v.items.reduce((s, i) => s + i.precio * i.cant, 0);
 const cobrado = (v) => v.pagos.reduce((s, p) => s + p.monto, 0);
@@ -46,14 +48,34 @@ function resumenMes(db, mes) {
     resultado: { UYU: cobrados.UYU - gastado.UYU, USD: cobrados.USD - gastado.USD } };
 }
 
-// Comisión: % sobre lo vendido en el mes por cada vendedor (los pedidos de la tienda no tienen vendedor).
+// Comisión: % sobre lo vendido en el mes por cada vendedor, con el % guardado en cada venta (los pedidos de la tienda no tienen vendedor).
 function comisiones(db, mes) {
   return db.usuarios.map((u) => {
     const ventas = db.ventas.filter((v) => v.vendedor === u.id && mesDe(v.fecha) === mes);
-    const vendido = porMoneda(ventas, totalVenta);
-    return { ...u, cantidad: ventas.length, vendido,
-      comision: { UYU: Math.round(vendido.UYU * u.comision / 100), USD: Math.round(vendido.USD * u.comision / 100) } };
+    const comision = porMoneda(ventas, (v) => totalVenta(v) * (v.comision ?? u.comision) / 100); // el % que regía al vender
+    return { ...u, cantidad: ventas.length, vendido: porMoneda(ventas, totalVenta),
+      comision: { UYU: Math.round(comision.UYU), USD: Math.round(comision.USD) } };
   });
+}
+
+// Puente de la demo: los pedidos que la tienda guardó en este navegador entran como ventas web.
+// shortcut: solo ve pedidos de este navegador; con la base de datos llegan todos desde el servidor.
+function importarPedidosWeb(db, pedidos) {
+  const ya = new Set(db.ventas.map((v) => String(v.numero)));
+  const nuevos = pedidos.filter((p) => p?.numero && Array.isArray(p.items) && p.items.length && !ya.has(String(p.numero)));
+  for (const p of nuevos.reverse()) { // del más viejo al más nuevo, para que el más nuevo quede primero
+    const c = p.cliente || {}, tel = String(c.whatsapp || "").replace(/\D/g, "");
+    let cli = tel && db.clientes.find((x) => String(x.whatsapp).replace(/\D/g, "") === tel);
+    if (!cli) {
+      cli = { id: "c" + String(p.numero).toLowerCase(), nombre: String(c.nombre || "Cliente de la tienda").slice(0, 80),
+        whatsapp: String(c.whatsapp || "").slice(0, 20), email: String(c.email || "").slice(0, 120), zona: String(p.direccion || "").slice(0, 80) };
+      db.clientes.push(cli);
+    }
+    db.ventas.unshift({ numero: String(p.numero), fecha: p.fecha || new Date().toISOString(), origen: "web", cliente: cli.id, vendedor: "",
+      moneda: "UYU", pagos: [], estado: 0, sena: p.sena !== false, entrega: String(p.entrega || "Retiro coordinado"), nota: "",
+      items: p.items.map((i) => ({ id: String(i.id), nombre: String(i.nombre).slice(0, 120), precio: Math.max(Math.round(+i.precio || 0), 0), cant: Math.min(Math.max(Math.round(+i.cant || 1), 1), 99) })) });
+  }
+  return nuevos.length;
 }
 
 function nuevoNumero(db) { db.ultimo = (db.ultimo || 0) + 1; return db.ultimo; }
@@ -89,7 +111,7 @@ function datosEjemplo(catalogo, ahora = Date.now()) {
     { id: "m1", nombre: "Efectivo", detalle: "" }, { id: "m2", nombre: "Transferencia BROU", detalle: "Caja de ahorro en pesos" },
     { id: "m3", nombre: "Mercado Pago", detalle: "Link o QR de la tienda" }, { id: "m4", nombre: "Tarjeta (POS)", detalle: "" },
   ];
-  const db = { version: 1, ultimo: 1040, productos, clientes, usuarios, medios, ventas: [], gastos: [] };
+  const db = { version: 1, ultimo: 1040, productos, clientes, usuarios, medios, ventas: [], gastos: [], cajas: [] };
   for (let i = 0; i < 34; i++) {
     const d = Math.floor(i * 1.9 + azar() * 2), web = azar() < 0.55, fecha = dias(d);
     const items = Array.from({ length: 1 + Math.floor(azar() * 3) }, () => { const p = elegir(conPrecio); return { id: p.id, nombre: p.nombre, precio: p.precio, cant: 1 + Math.floor(azar() * 2) }; });
@@ -104,16 +126,72 @@ function datosEjemplo(catalogo, ahora = Date.now()) {
     if (estado >= 1) registrarPago(v, web ? Math.ceil(total / 2) : total, web ? "m3" : elegir(["m1", "m2", "m4"]), fecha);
     if (estado === 4 && saldo(v) && azar() < 0.8) registrarPago(v, saldo(v), elegir(["m1", "m2"]), dias(Math.max(d - 3, 0)));
     v.estado = estado;
+    v.comision = usuarios.find((u) => u.id === v.vendedor)?.comision ?? 0;
     db.ventas.push(v);
   }
   const gastos = [["Filamento PLA", 2400], ["Hilo para crochet", 1350], ["Luz", 1900], ["Envíos", 620], ["Stand en feria", 1500], ["Filamento PETG", 1800]];
-  for (const back of [0, 30]) gastos.forEach(([concepto, monto], i) => db.gastos.push({ id: "g" + back + i, concepto, monto, moneda: "UYU", fecha: dias(back + i * 4).slice(0, 10) }));
-  db.gastos.push({ id: "gusd", concepto: "Repuestos impresora", monto: 38, moneda: "USD", fecha: dias(9).slice(0, 10) });
+  for (const back of [0, 30]) gastos.forEach(([concepto, monto], i) => db.gastos.push({ id: "g" + back + i, concepto, monto, moneda: "UYU", fecha: diaLocal(new Date(dias(back + i * 4))) }));
+  db.gastos.push({ id: "gusd", concepto: "Repuestos impresora", monto: 38, moneda: "USD", fecha: diaLocal(new Date(dias(9))) });
   db.ventas.sort((a, b) => a.fecha.localeCompare(b.fecha));
   for (const v of db.ventas) v.numero = nuevoNumero(db); // números en orden de fecha
   db.ventas.reverse(); // la más nueva primero
   return db;
 }
 
+// --- Modo feria: caja ---
+// Caja: { id, abierta, cerrada, fondo, vendedor, movimientos: [{ fecha, tipo: "retiro" | "ingreso", monto, nota }], contado }.
+// Las ventas de la feria guardan caja: <id>. En pesos; el efectivo es el medio que se llama "Efectivo".
+const esEfectivo = (db, medioId) => /efectivo/i.test(db.medios.find((m) => m.id === medioId)?.nombre || "");
+function resumenCaja(db, caja) {
+  const ventas = db.ventas.filter((v) => v.caja === caja.id);
+  const porMedio = {};
+  let efectivo = 0;
+  for (const v of ventas) for (const p of v.pagos) {
+    porMedio[p.medio] = (porMedio[p.medio] || 0) + p.monto;
+    if (esEfectivo(db, p.medio)) efectivo += p.monto;
+  }
+  const mov = (t) => suma(caja.movimientos.filter((m) => m.tipo === t), (m) => m.monto);
+  const esperado = caja.fondo + efectivo + mov("ingreso") - mov("retiro");
+  return { ventas, total: suma(ventas, totalVenta), porMedio, efectivo, retiros: mov("retiro"), ingresos: mov("ingreso"), esperado,
+    diferencia: caja.contado == null ? null : caja.contado - esperado };
+}
+const cajaAbierta = (db) => db.cajas.find((c) => !c.cerrada) || null;
+
+// --- Sincronización con el servidor (api/) ---
+const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas"];
+const idDoc = (col, d) => String(col === "ventas" ? d.numero : d.id);
+const dbVacia = () => ({ version: 1, ultimo: 0, ...Object.fromEntries(COLECCIONES.map((c) => [c, []])) });
+// Lo cambiado desde el último envío. enviado: Map "col id" -> JSON tal como lo tiene el servidor.
+function cambiosDb(db, enviado) {
+  const set = [], del = [], vistos = new Set();
+  for (const col of COLECCIONES) for (const d of db[col]) {
+    const id = idDoc(col, d), k = col + " " + id, t = JSON.stringify(d);
+    vistos.add(k);
+    if (enviado.get(k) !== t) set.push({ col, id, data: d, t });
+  }
+  for (const k of enviado.keys()) if (!vistos.has(k)) { const [col, id] = k.split(" "); del.push({ col, id }); }
+  return { set, del };
+}
+function marcarEnviado(enviado, { set, del }) {
+  for (const x of set) enviado.set(x.col + " " + x.id, x.t);
+  for (const x of del) enviado.delete(x.col + " " + x.id);
+}
+// Lo que llega del servidor (otro dispositivo o la tienda) reemplaza por id; lo borrado se quita.
+// Lo que este navegador cambió y todavía no mandó se respeta. Devuelve cuántos pedidos web nuevos llegaron.
+function aplicarServidor(db, r, enviado) {
+  let web = 0;
+  for (const col of COLECCIONES) for (const d of r[col] || []) {
+    const id = idDoc(col, d), k = col + " " + id, lista = db[col];
+    const i = lista.findIndex((x) => idDoc(col, x) === id);
+    if (i >= 0 && JSON.stringify(lista[i]) !== enviado.get(k)) continue; // cambio local sin mandar
+    if (d._borrado) { if (i >= 0) lista.splice(i, 1); enviado.delete(k); continue; }
+    if (i >= 0) lista[i] = d; else { lista.push(d); if (col === "ventas" && d.origen === "web") web++; }
+    enviado.set(k, JSON.stringify(d));
+  }
+  db.ventas.sort((a, b) => b.fecha.localeCompare(a.fecha));
+  return web;
+}
+
 if (typeof module !== "undefined") module.exports = { ESTADOS, totalVenta, cobrado, saldo, porMoneda, catalogoDesdeCsv, catalogoACsv,
-  resumenMes, comisiones, registrarPago, datosEjemplo, nuevoNumero, mesDe, suma };
+  resumenMes, comisiones, registrarPago, datosEjemplo, nuevoNumero, mesDe, suma, hoy, importarPedidosWeb,
+  dbVacia, cambiosDb, marcarEnviado, aplicarServidor, resumenCaja, cajaAbierta, esEfectivo };

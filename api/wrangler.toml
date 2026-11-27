@@ -1,0 +1,15 @@
+# Servidor de Aukan3D. Ver api/README.md para publicarlo.
+name = "aukan3d-api"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "aukan3d"
+database_id = "d1577ca7-6179-4adc-ab09-0f126d9f6292"
+
+[vars]
+# Páginas que pueden usar el servidor (la tienda y el panel). Separadas por coma.
+ORIGENES = "https://aukan3d.pages.dev,https://*.aukan3d.pages.dev,https://rodrigopedettitrabajos-hub.github.io,http://localhost:8090"
+
+# Secretos (no van acá): npx wrangler secret put ADMIN_USUARIO / ADMIN_CLAVE_HASH / FIRMA / MP_ACCESS_TOKEN
