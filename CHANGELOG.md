@@ -2,6 +2,10 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.38 · 2026-11-27
+- Reportes, "Por tipo": un tipo con ventas solo en dólares (por ejemplo una venta en persona en USD) ahora aparece con su monto en USD; antes no se mostraba.
+- Prueba de punta a punta contra la tienda publicada y la base de pruebas real (`probar-compras.bat`, fuera del repo), con un seguro que corta cualquier escritura a la base real.
+
 ## V0.37 · 2026-11-27
 - Imprimir en A4 o en ticket de 80 mm (impresora térmica): botones en el detalle del pedido y en la última venta de Modo feria. El ticket ajusta su largo al contenido y muestra recibido y vuelto. El botón "Imprimir" de la lista usa el último formato elegido.
 - Base de datos (solo usuario dev, en Administración): tamaño de la base real y la de pruebas contra los 500 MB del plan gratis y registros por tipo. Servidor: `GET /api/admin/estado`.
