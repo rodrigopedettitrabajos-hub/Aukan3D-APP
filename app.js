@@ -30,11 +30,12 @@ async function cargar() {
     return;
   }
   pintar();
+  if (location.hash) mostrarVista();
 }
 
 function opcion(texto, activo, elegir) {
   return el("button", { className: "menu-item", type: "button", textContent: texto, ariaPressed: String(activo),
-    onclick: () => { elegir(); cerrarMenu(); irA(1); } });
+    onclick: () => { elegir(); cerrarMenu(); verCatalogo(); irA(1); } });
 }
 
 function cerrarMenu() {
@@ -57,10 +58,27 @@ function pintarFiltros() {
     el("summary", { className: "menu-item" }, "Más"), el("div", { className: "drop-panel" }, ...enlacesInfo(""))));
 }
 
-// Secciones fijas de la página. En pantallas chicas van dentro de "Más".
+// Galería, Nosotros y Preguntas son pantallas aparte (#galeria, etc.); sin # se ve el catálogo.
+// En pantallas chicas sus botones van dentro de "Más".
 const INFO = [["#galeria", "Galería"], ["#nosotros", "Nosotros"], ["#preguntas", "Preguntas frecuentes"]];
 const enlacesInfo = (clase) => INFO.map(([href, texto]) =>
-  el("a", { className: `menu-item ${clase}`, href, textContent: texto, onclick: cerrarMenu }));
+  el("a", { className: `menu-item ${clase}`, href, textContent: texto, ariaCurrent: location.hash === href ? "page" : null, onclick: cerrarMenu }));
+
+function mostrarVista() {
+  const vista = INFO.some(([h]) => h === location.hash) ? location.hash.slice(1) : "";
+  $("#hero").hidden = $("#catalogo").hidden = !!vista;
+  for (const [h] of INFO) $(h).hidden = h.slice(1) !== vista;
+  vista ? (document.body.dataset.vista = vista) : delete document.body.dataset.vista;
+  pintarFiltros();
+  scrollTo(0, 0);
+}
+
+function verCatalogo() {
+  if (location.hash) history.pushState(null, "", location.pathname + location.search);
+  mostrarVista();
+}
+addEventListener("hashchange", mostrarVista);
+addEventListener("popstate", mostrarVista);
 
 document.addEventListener("click", (e) => { if (!e.target.closest("#menu details")) cerrarMenu(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarMenu(); });
@@ -145,7 +163,6 @@ function pintarPaginas(total) {
 
 function pintar() {
   pintarFiltros();
-  altoTop();
   const lista = visibles();
   const paginas = Math.max(1, Math.ceil(lista.length / porPagina));
   pagina = Math.min(pagina, paginas);
@@ -266,9 +283,6 @@ $("#crear-cuenta").addEventListener("click", () => {
   f.clave.focus();
 });
 $("#wa-flotante").href = $("#nosotros-wa").href = waLink("Hola Aukan3D! Quería hacer una consulta.");
-// Alto real del encabezado fijo, para que los saltos a secciones no queden tapados.
-const altoTop = () => document.documentElement.style.setProperty("--alto-top", $(".top").offsetHeight + "px");
-addEventListener("resize", altoTop);
 
 const verCarrito = () => $("#carrito").showModal();
 $("#buscar").addEventListener("input", (e) => { filtro.q = e.target.value; pagina = 1; pintar(); });

@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número y actualiza `version` en `config.js`.
 
+## V0.11 · 2026-11-27
+- Galería, Nosotros y Preguntas frecuentes se abren como pantallas aparte (con su propio link y botón Atrás). Elegir una categoría vuelve al catálogo.
+
 ## V0.10 · 2026-11-27
 - Secciones Galería (fotos de eventos), Nosotros (con redes sociales) y Preguntas frecuentes, copiadas del Google Site.
 - En el menú: a la derecha en PC y dentro de "Más" en el celular.
