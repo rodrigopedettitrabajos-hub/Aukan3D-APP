@@ -49,7 +49,7 @@ function mostrarApp() {
   const ok = conSesion();
   let dev = false;
   try { dev = API && sessionStorage.getItem(USUARIO) === "dev"; } catch { /* sin almacenamiento */ }
-  for (const b of document.querySelectorAll("[data-entorno]")) b.hidden = !dev;
+  for (const b of document.querySelectorAll("[data-entorno], [data-solo-dev]")) b.hidden = !dev;
   $(".user-nombre b").textContent = dev ? "Dev" : "Administrador";
   $(".user .avatar").textContent = dev ? "D" : "A";
   $("#login").hidden = ok;
@@ -193,10 +193,12 @@ function avisar(t, deshacer) {
 
 // --- Navegación ---
 const VISTAS = { panel: "Panel principal", ventas: "Ventas y pedidos", feria: "Modo feria", pendientes: "Cuentas pendientes", clientes: "Clientes",
-  productos: "Productos y stock", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Reportes y gastos" };
+  productos: "Productos y stock", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Reportes y gastos", base: "Base de datos" };
 const PINTAR = {};
+function esDev() { try { return !!API && sessionStorage.getItem(USUARIO) === "dev"; } catch { return false; } }
 function mostrarVista() {
-  const v = location.hash.slice(1) in VISTAS ? location.hash.slice(1) : "panel";
+  let v = location.hash.slice(1) in VISTAS ? location.hash.slice(1) : "panel";
+  if (v === "base" && !esDev()) v = "panel";
   for (const s of document.querySelectorAll(".vista")) s.hidden = s.id !== "v-" + v;
   for (const a of document.querySelectorAll(".nav a")) a.ariaCurrent = a.hash === "#" + v ? "page" : null;
   $("#crumb").textContent = VISTAS[v];
@@ -205,7 +207,7 @@ function mostrarVista() {
   pintarCampana();
 }
 addEventListener("hashchange", () => { mostrarVista(); scrollTo(0, 0); });
-const repintar = () => { PINTAR[location.hash.slice(1) in VISTAS ? location.hash.slice(1) : "panel"](); pintarCampana(); };
+const repintar = () => { const v = location.hash.slice(1); if (v !== "base") PINTAR[v in VISTAS ? v : "panel"](); pintarCampana(); };
 
 // --- Campana: pedidos de la tienda en "Recibido" que todavía no se abrieron en este navegador ---
 const VISTOS = PRUEBAS ? "aukan_vistos_pruebas" : "aukan_vistos"; // los números se repiten entre la base real y la de pruebas
@@ -305,29 +307,54 @@ PINTAR.ventas = () => {
   $("#ventas-lista").replaceChildren(tabla([...CAB_VENTAS, ""], lista.map((v) => filaVenta(v, [imp(v)])), "No hay ventas con esos filtros.", "t-ventas"));
 };
 
-// Hoja del pedido para imprimir (o guardar como PDF): se arma en #imprimir y el CSS de impresión oculta todo lo demás.
-function imprimirPedido(numero) {
-  const v = venta(numero), c = cliente(v.cliente);
+// Hoja del pedido para imprimir (o guardar como PDF), en A4 o en ticket de 80 mm. Se arma en #imprimir y el CSS de
+// impresión oculta todo lo demás; el tamaño de hoja sale de la clase (página con nombre en admin.css).
+const FORMATO = "aukan_formato_imp";
+function imprimirPedido(numero, formato = leerLocal(FORMATO) || "a4", extra = {}) {
+  try { localStorage.setItem(FORMATO, formato); } catch { /* sin almacenamiento */ }
+  const v = venta(numero), c = cliente(v.cliente), ticket = formato === "80";
   const linea = (t, b) => el("p", { className: "linea", textContent: t }, el("b", { textContent: b }));
+  const hora = new Date(v.fecha).toLocaleString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  $("#imprimir").className = ticket ? "ticket80" : "";
   $("#imprimir").replaceChildren(
-    el("header", {}, el("img", { src: "../logo.webp", alt: "" }), el("div", {}, el("h1", { textContent: `Pedido N° ${v.numero}` }),
-      el("p", { textContent: `${fecha(v.fecha)} · ${ORIGEN[v.origen] || "En persona"} · ${ESTADOS[v.estado]}` }))),
-    el("h2", { textContent: "Cliente" }), el("p", { textContent: c.nombre || "—" }),
-    c.whatsapp ? el("p", { textContent: `WhatsApp ${c.whatsapp}` }) : "", v.entrega ? el("p", { textContent: `Entrega: ${v.entrega}` }) : "",
+    el("header", {}, el("img", { src: "../logo.webp", alt: "" }), el("div", {}, el("h1", { textContent: ticket ? "AUKAN3D" : `Pedido N° ${v.numero}` }),
+      el("p", { textContent: ticket ? `Venta N° ${v.numero} · ${hora}` : `${fecha(v.fecha)} · ${ORIGEN[v.origen] || "En persona"} · ${ESTADOS[v.estado]}` }))),
+    v.origen === "feria" && ticket ? "" : el("div", { className: "bloque" }, el("h2", { textContent: "Cliente" }), el("p", { textContent: c.nombre || "—" }),
+      c.whatsapp ? el("p", { textContent: `WhatsApp ${c.whatsapp}` }) : "", v.entrega ? el("p", { textContent: `Entrega: ${v.entrega}` }) : ""),
     el("h2", { textContent: "Productos" }),
-    el("table", {}, el("tbody", {}, ...v.items.map((i) => el("tr", {}, td(`${i.cant} x ${i.nombre}`), td(plata(i.precio * i.cant, v.moneda), "num"))))),
-    linea("Total", plata(totalVenta(v), v.moneda)), linea("Pagado", plata(cobrado(v), v.moneda)),
+    el("table", {}, el("tbody", {}, ...v.items.map((i) => el("tr", {},
+      td(`${i.cant} x ${i.nombre}`), td(plata(i.precio * i.cant, v.moneda), "num"))))),
+    linea("Total", plata(totalVenta(v), v.moneda)),
+    ...v.pagos.map((p) => linea(`Pago ${medio(p.medio)}`, plata(p.monto, v.moneda))),
+    extra.recibido ? linea("Recibido", plata(extra.recibido, v.moneda)) : "", extra.recibido > totalVenta(v) ? linea("Vuelto", plata(extra.recibido - totalVenta(v), v.moneda)) : "",
     linea("Saldo", saldo(v) ? plata(saldo(v), v.moneda) : "Pagado"),
-    v.nota ? el("p", { className: "nota", textContent: `Nota: ${v.nota}` }) : "");
+    v.nota ? el("p", { className: "nota", textContent: `Nota: ${v.nota}` }) : "",
+    el("p", { className: "pie-imp", textContent: ticket ? "¡Gracias por tu compra! · Instagram @aukan3d" : "Aukan3D · Montevideo, Uruguay · Este comprobante no es una factura." }));
+  if (ticket) altoTicket();
   print();
 }
+// El rollo de 80 mm no tiene alto fijo: medimos el ticket y ajustamos la hoja para que no salga papel en blanco.
+// Hoja de estilos construida por JS (no es un <style> en línea, así que la CSP lo permite).
+const hojaTicket = typeof CSSStyleSheet === "function" && document.adoptedStyleSheets ? new CSSStyleSheet() : null;
+if (hojaTicket) document.adoptedStyleSheets = [...document.adoptedStyleSheets, hojaTicket];
+function altoTicket() {
+  if (!hojaTicket) return;
+  const caja = $("#imprimir"); caja.classList.add("midiendo", "ticket80");
+  const mm = Math.ceil(caja.getBoundingClientRect().height * 25.4 / 96) + 10;
+  caja.classList.remove("midiendo");
+  hojaTicket.replaceSync(`@page ticket { size: 80mm ${Math.max(mm, 60)}mm; margin: 3mm; }`);
+}
+// Botones "A4" y "80 mm" (detalle del pedido y última venta de feria).
+const botonesImp = (numero, extra) => el("span", { className: "imp-formatos" },
+  el("button", { type: "button", className: "btn sec chico", textContent: "Imprimir A4", onclick: () => imprimirPedido(numero, "a4", extra) }),
+  el("button", { type: "button", className: "btn sec chico", textContent: "Ticket 80 mm", onclick: () => imprimirPedido(numero, "80", extra) }));
 
 // Detalle de una venta: estado, pagos, WhatsApp.
 function abrirDetalle(numero) {
   const v = venta(numero), c = cliente(v.cliente), d = $("#d-detalle");
   if (!vistos.has(String(v.numero))) marcarVistos([v.numero]);
   $("#d-detalle-t").textContent = `Pedido N° ${v.numero}`;
-  $("#detalle-imp").onclick = () => imprimirPedido(v.numero);
+  $("#detalle-imp").replaceChildren(botonesImp(v.numero));
   const pasos = el("ol", { className: "pasos" }, ...ESTADOS.map((e, i) => el("li", {},
     el("button", { type: "button", className: i < v.estado ? "hecho" : i === v.estado ? "actual" : "", ariaCurrent: i === v.estado ? "step" : null,
       textContent: i === 1 && !v.sena ? "Pagado" : e, onclick: () => cambiarEstado(v, i) }))));
@@ -368,8 +395,10 @@ function abrirPago(numero) {
   f.reset();
   opcionesMedios(f.medio);
   f.monto.max = saldo(pagoDe);
-  f.monto.value = saldo(pagoDe);
-  $("#pago-saldo").textContent = `Pedido N° ${numero} · saldo ${plata(saldo(pagoDe), pagoDe.moneda)}`;
+  // Pedido con seña y sin pagos todavía: propone la seña (50 %, igual que la tienda); si no, el saldo.
+  const sena = pagoDe.sena && !pagoDe.pagos.length ? Math.ceil(totalVenta(pagoDe) / 2) : 0;
+  f.monto.value = sena || saldo(pagoDe);
+  $("#pago-saldo").textContent = `Pedido N° ${numero} · saldo ${plata(saldo(pagoDe), pagoDe.moneda)}${sena ? ` · seña ${plata(sena, pagoDe.moneda)}` : ""}`;
   $("#pago-error").textContent = "";
   $("#d-pago").showModal();
 }
@@ -572,6 +601,7 @@ $("#pos-cobrar").addEventListener("click", () => {
   const vuelto = recibido > total ? recibido - total : 0;
   ticket.clear(); $("#pos-recibido").value = "";
   guardar(); reservarNumero(); pintarTicket(); pintarGrilla();
+  $("#pos-ultima").replaceChildren(el("span", { textContent: `Última venta N° ${v.numero}` }), botonesImp(v.numero, { recibido }));
   avisar(`Venta N° ${v.numero}: ${plata(total)} con ${medio(feriaMedio)}${vuelto ? ` · vuelto ${plata(vuelto)}` : ""}.`, () => {
     db.ventas.splice(db.ventas.indexOf(v), 1);
     for (const i of v.items) { const p = productoDe(i.id); if (p) p.stock = (p.stock || 0) + i.cant; }
@@ -879,6 +909,29 @@ $("#f-usuario").addEventListener("submit", (e) => {
   guardar(); PINTAR.usuarios();
   avisar("Usuario guardado.");
 });
+
+// --- Base de datos (solo dev) ---
+const MB = (b) => (b < 1048576 ? Math.max(1, Math.round(b / 1024)).toLocaleString("es-UY") + " KB" : (b / 1048576).toLocaleString("es-UY", { maximumFractionDigits: 1 }) + " MB");
+const NOMBRE_COL = { productos: "Productos", clientes: "Clientes", ventas: "Ventas", gastos: "Gastos", medios: "Medios de pago", usuarios: "Usuarios", cajas: "Cajas de feria" };
+PINTAR.base = async () => {
+  const caja = $("#base-estado");
+  try {
+    const r = await llamar("/api/admin/estado");
+    const bloque = (titulo, b) => {
+      if (!b) return el("div", { className: "caja" }, el("h2", { textContent: titulo }), el("p", { className: "sub", textContent: "No está conectada." }));
+      const regs = suma(b.colecciones, (c) => c.n), pct = b.tamano != null ? (b.tamano / r.limite) * 100 : null;
+      return el("div", { className: "caja" }, el("h2", { textContent: titulo }),
+        el("div", { className: "kpis" },
+          kpi("Tamaño", b.tamano != null ? MB(b.tamano) : "—", pct != null ? `${pct.toLocaleString("es-UY", { maximumFractionDigits: 2 })} % de 500 MB` : "", pct > 80 ? "rojo" : pct > 50 ? "ambar" : "verde"),
+          kpi("Registros", regs.toLocaleString("es-UY"), `${suma(b.colecciones, (c) => c.borrados)} borrados guardados`),
+          kpi("Fotos subidas", String(suma(b.colecciones, (c) => c.fotos)), "Desde el panel")),
+        barras([...b.colecciones].sort((a, c) => c.bytes - a.bytes).map((c) => [`${NOMBRE_COL[c.col] || c.col} (${c.n})`, c.bytes, MB(c.bytes)])));
+    };
+    caja.replaceChildren(el("div", { className: "grilla" }, bloque("Base real", r.real), bloque("Base de pruebas", r.pruebas)),
+      el("p", { className: "sub chico", textContent: `Actualizado a las ${new Date().toLocaleTimeString("es-UY", { hour: "2-digit", minute: "2-digit" })}` }));
+  } catch (e) { caja.replaceChildren(el("p", { className: "error", textContent: "No pudimos traer el uso de la base. Revisá la conexión." })); }
+};
+$("#base-actualizar").addEventListener("click", () => PINTAR.base());
 
 // --- Reportes y gastos ---
 // Período del reporte: día, mes, trimestre, semestre, año o entre fechas; las flechas viajan de a un período.

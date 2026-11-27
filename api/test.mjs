@@ -99,4 +99,10 @@ assert.ok(enPruebas.productos.length >= 170);
 const enReal = (await pedir("/api/admin/datos", { token: dev.token })).j; // dev también ve producción
 assert.ok(!enReal.clientes.some((c) => c.whatsapp === "+598 98" + unico.slice(-6)));
 
+// Uso de las bases: solo dev.
+assert.strictEqual((await pedir("/api/admin/estado", { token })).r.status, 403);
+const uso = (await pedir("/api/admin/estado", { token: dev.token })).j;
+assert.ok(uso.ok && uso.limite > 0 && uso.real.colecciones.some((c) => c.col === "productos" && c.n >= 170) && uso.pruebas);
+assert.ok(uso.real.tamano === null || uso.real.tamano > 0);
+
 console.log("api ok");
