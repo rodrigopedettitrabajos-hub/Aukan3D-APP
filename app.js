@@ -121,7 +121,7 @@ function tarjeta(p) {
         el("strong", { className: "precio", textContent: precioTexto(p) }),
         p.precio
           ? el("button", { className: carrito.has(p.id) ? "add on" : "add", type: "button",
-              textContent: textoBoton(p.id), ariaLabel: `Agregar ${p.nombre}`, onclick: () => cambiar(p.id, 1) })
+              textContent: textoBoton(p.id), ariaLabel: `Agregar ${p.nombre}`, onclick: (e) => { volar(e.currentTarget.closest(".card").querySelector(".foto img")); cambiar(p.id, 1); } })
           : el("a", { className: "add", href: waConsulta(p), target: "_blank", rel: "noopener", textContent: "Consultar" }))));
 }
 
@@ -136,6 +136,30 @@ function abrirDetalle(p) {
 }
 
 // Carrusel con scroll-snap: se desliza con el dedo; flechas y puntos para PC.
+// Animación de "enviar al carrito": la foto vuela hasta el botón del carrito y los perros
+// del inicio levantan la cabeza mientras viaja. Sin movimiento si el sistema lo pide.
+function volar(img) {
+  const destino = $("#ver-carrito"), perros = $(".mascotas");
+  const quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const latido = () => destino.animate([{ transform: "scale(1)" }, { transform: "scale(1.15)" }, { transform: "scale(1)" }], { duration: 350 });
+  if (quieto || !img?.complete || !img.naturalWidth) return latido();
+  const a = img.getBoundingClientRect(), b = destino.getBoundingClientRect();
+  const clon = el("img", { src: img.src, alt: "", className: "volando" });
+  Object.assign(clon.style, { left: a.left + "px", top: a.top + "px", width: a.width + "px", height: a.height + "px" });
+  document.body.append(clon);
+  perros.classList.add("miran");
+  const dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height / 2 - (a.top + a.height / 2);
+  clon.animate([
+    { transform: "translate(0, 0) scale(1)", opacity: 1, borderRadius: "16px" },
+    { transform: `translate(${dx * 0.45}px, ${dy * 0.45 - 80}px) scale(.5)`, opacity: 1, borderRadius: "50%", offset: 0.5 },
+    { transform: `translate(${dx}px, ${dy}px) scale(.08)`, opacity: .6, borderRadius: "50%" },
+  ], { duration: 750, easing: "cubic-bezier(.5,0,.6,1)" }).finished.then(() => {
+    clon.remove();
+    latido();
+    setTimeout(() => perros.classList.remove("miran"), 250);
+  });
+}
+
 function carrusel(p) {
   const fotos = p.fotos.length ? p.fotos : [""];
   const pista = el("div", { className: "carrusel" }, ...fotos.map((f) => foto({ ...p, foto: f })));
@@ -351,7 +375,8 @@ $("#eventos-lista").replaceChildren(...(eventos.length ? eventos.map((ev) =>
       ev.mapa ? el("a", { className: "secundario", href: lugarUrl(ev), target: "_blank", rel: "noopener", textContent: "Cómo llegar" }) : "")))
   : [el("p", { textContent: "Por ahora no hay eventos agendados. Seguinos en Instagram para enterarte." })]));
 
-$("#wa-flotante").href = $("#nosotros-wa").href = waLink("Hola Aukan3D! Quería hacer una consulta.");
+const waHola = waLink("Hola Aukan3D! Quería hacer una consulta.");
+document.querySelectorAll("#wa-flotante, #nosotros-wa, .wa-link").forEach((a) => (a.href = waHola));
 
 const verCarrito = () => $("#carrito").showModal();
 $("#buscar").addEventListener("input", (e) => { filtro.q = e.target.value; pagina = 1; pintar(); });
@@ -363,7 +388,7 @@ $("#por-pagina").addEventListener("change", (e) => {
 $("#ver-carrito").addEventListener("click", verCarrito);
 $("#barra-ver").addEventListener("click", verCarrito);
 $("#detalle-add").addEventListener("click", () =>
-  enDetalle.precio ? cambiar(enDetalle.id, 1) : window.open(waConsulta(enDetalle), "_blank"));
+  enDetalle.precio ? (volar(null), cambiar(enDetalle.id, 1)) : window.open(waConsulta(enDetalle), "_blank"));
 $("#detalle").addEventListener("close", () => { enDetalle = null; });
 // Tocar fuera del contenido cierra el modal.
 for (const d of document.querySelectorAll("dialog")) d.addEventListener("click", (e) => { if (e.target === d) d.close(); });

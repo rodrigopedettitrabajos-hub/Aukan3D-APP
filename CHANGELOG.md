@@ -2,6 +2,11 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.15 · 2026-11-27
+- Al agregar un producto, la foto vuela hasta el carrito y el contador late. Mientras vuela, las mascotas miran hacia arriba y vuelven al frente cuando llega.
+- Mascotas una arriba de la otra (también en celulares chicos).
+- Redes (Instagram, TikTok, Facebook, WhatsApp) en el pie de página, con sus íconos. También en Nosotros.
+
 ## V0.14 · 2026-11-27
 - Carrusel de fotos en la ficha del producto (se desliza con el dedo, con flechas y puntos). En la columna foto del catálogo se separan varias fotos con |.
 - Fotos para Rumi/Zoey/Mira, Mazinger Z y San Expedito (venían en carrusel en el sitio).

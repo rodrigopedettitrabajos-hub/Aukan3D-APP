@@ -42,10 +42,13 @@ button { font: inherit; cursor: pointer; }
 .hero-row > div:first-child { flex: 1; }
 .hero .hero-sub { color: #fff; font-size: 17px; margin-bottom: 6px; }
 .hero .hero-tags { font: 500 13px/1.6 Oswald, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--brand); margin-bottom: 8px; }
-.mascotas { display: flex; gap: 6px; flex: none; }
-.mascotas img { width: 64px; height: auto; }
+.mascotas { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: none; }
+.mascotas img { width: 76px; height: auto; transition: transform .35s cubic-bezier(.3,1.4,.6,1); transform-origin: 50% 85%; }
+.mascotas.miran img { transform: translateY(-6px) perspective(300px) rotateX(18deg) rotate(6deg); }
+.mascotas.miran img + img { transform: translateY(-6px) perspective(300px) rotateX(18deg) rotate(10deg); transition-delay: .06s; }
+.volando { position: fixed; z-index: 50; object-fit: cover; pointer-events: none; box-shadow: 0 10px 30px rgb(0 0 0 / .35); }
 @media (min-width: 720px) { .mascotas img { width: 120px; } .hero .hero-sub { font-size: 19px; } }
-@media (max-width: 380px) { .mascotas { display: none; } }
+@media (max-width: 380px) { .mascotas img { width: 60px; } }
 
 
 /* Menú de categorías */
@@ -239,6 +242,9 @@ legend { font-size: 14px; color: var(--muted); padding: 0 4px; }
 .redes { list-style: none; padding: 0; margin: 16px 0 0; display: flex; gap: 8px; flex-wrap: wrap; }
 .redes a { display: inline-block; padding: 8px 16px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); text-decoration: none; font: 500 15px Oswald, sans-serif; letter-spacing: .03em; }
 .redes a:hover { border-color: var(--brand); color: var(--brand-ink); }
+.redes a { display: inline-flex; align-items: center; gap: 8px; }
+.redes svg { width: 18px; height: 18px; flex: none; }
+.pie-redes { flex-basis: 100%; margin: 0 0 12px; }
 .faq { margin-top: 14px; display: grid; gap: 8px; max-width: 760px; }
 .faq details { border: 1px solid var(--line); border-radius: 14px; background: var(--bg); }
 .faq details[open] { border-color: var(--brand); }
