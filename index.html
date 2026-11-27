@@ -157,9 +157,14 @@
         <label class="radio"><input type="radio" name="entrega" value="Retiro coordinado" required checked> Retiro coordinado</label>
         <label class="radio"><input type="radio" name="entrega" value="Envío por agencia"> Envío por agencia</label>
       </fieldset>
+      <fieldset class="modo-pago">
+        <legend>Pago *</legend>
+        <label class="radio"><input type="radio" name="modo" value="sena" required checked> Quiero dar una seña del 50% <strong id="monto-sena"></strong></label>
+        <label class="radio"><input type="radio" name="modo" value="total"> Lo pago todo <strong id="monto-todo"></strong></label>
+      </fieldset>
       <label>Comentario<textarea name="comentario" rows="2" maxlength="500" placeholder="Colores, tamaño, fecha..."></textarea></label>
       <button id="enviar" class="primary" type="submit">Enviar pedido por WhatsApp</button>
-      <p class="fine">El pago se coordina por WhatsApp (Mercado Pago o transferencia).</p>
+      <p class="fine">El pedido se confirma con la seña. Pagás con Mercado Pago o lo coordinamos por WhatsApp (transferencia o efectivo).</p>
     </form>
 
     <div id="pago" class="pago" hidden>
@@ -168,7 +173,7 @@
       <img id="pago-qr" alt="Código QR para pagar con Mercado Pago" width="232" height="232">
       <a id="pago-link" class="primary azul" target="_blank" rel="noopener">Pagar con Mercado Pago</a>
       <a id="pago-wa" class="primary" target="_blank" rel="noopener">Avisar por WhatsApp</a>
-      <p class="fine">Total <strong id="pago-total"></strong></p>
+      <p class="fine"><strong id="pago-total"></strong></p>
       <div id="ofrecer-cuenta" class="ofrecer">
         <p>¿Guardamos tus datos para la próxima?</p>
         <button id="crear-cuenta" class="secundario" type="button">Crear mi cuenta</button>

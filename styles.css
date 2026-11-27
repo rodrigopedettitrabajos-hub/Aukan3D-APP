@@ -212,3 +212,4 @@ legend { font-size: 14px; color: var(--muted); padding: 0 4px; }
 .pie-row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .version { font-family: ui-monospace, monospace; }
 @media (max-width: 480px) { .brand h1 { display: none; } .acciones { gap: 6px; } .cart-btn { padding: 8px 12px; } .user-btn { max-width: 110px; padding: 7px 12px; } }
+.modo-pago { flex-direction: column; gap: 6px; }

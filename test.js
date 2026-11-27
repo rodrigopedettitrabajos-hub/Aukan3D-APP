@@ -1,7 +1,7 @@
 // node test.js
 const assert = require("assert");
 const fs = require("fs");
-const { parseCsv, productosDesdeCsv, resumenPedido } = require("./catalogo.js");
+const { parseCsv, productosDesdeCsv, resumenPedido, montoSena } = require("./catalogo.js");
 
 assert.deepStrictEqual(parseCsv('a,b\r\n"x, ""y""",2\n'), [["a", "b"], ['x, "y"', "2"]]);
 
@@ -16,7 +16,9 @@ const real = productosDesdeCsv(fs.readFileSync(__dirname + "/productos.csv", "ut
 assert.ok(real.length > 150 && real.every((p) => p.precio > 0));
 
 const r = resumenPedido([{ nombre: "Kirby", precio: 400, cant: 2 }], { nombre: "Ana", entrega: "Retiro coordinado" });
-assert.ok(r.includes("2 x Kirby") && r.includes("Total: $800"));
+assert.ok(r.includes("2 x Kirby") && r.includes("Total: $800") && r.includes("seña del 50% ($400)"));
+assert.strictEqual(montoSena(1250), 625); assert.strictEqual(montoSena(1251), 626);
+assert.ok(resumenPedido([{ nombre: "Kirby", precio: 400, cant: 1 }], { nombre: "Ana", entrega: "x", modo: "total" }).includes("Pago: todo ($400)"));
 // productos.js tiene que ser copia exacta de productos.csv
 const ctx = { window: {} };
 require("vm").runInNewContext(fs.readFileSync(__dirname + "/productos.js", "utf8"), ctx);

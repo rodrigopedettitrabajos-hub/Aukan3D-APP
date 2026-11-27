@@ -6,5 +6,5 @@ window.AUKAN_CONFIG = {
   // URL de la app web de Apps Script (ver apps-script/Code.gs). Vacío: solo WhatsApp.
   pedidosUrl: "",
   whatsapp: "59896849148",
-  version: "V0.11", // subir en cada entrega (ver CHANGELOG.md)
+  version: "V0.12", // subir en cada entrega (ver CHANGELOG.md)
 };

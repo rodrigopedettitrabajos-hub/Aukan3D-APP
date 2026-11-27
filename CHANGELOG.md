@@ -2,6 +2,10 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número y actualiza `version` en `config.js`.
 
+## V0.12 · 2026-11-27
+- Al pedir se elige "Quiero dar una seña del 50%" o "Lo pago todo", con el monto de cada opción.
+- El link y QR de Mercado Pago cobran la seña o el total según lo elegido (el servidor calcula el monto). La planilla guarda el modo y el monto a pagar.
+
 ## V0.11 · 2026-11-27
 - Galería, Nosotros y Preguntas frecuentes se abren como pantallas aparte (con su propio link y botón Atrás). Elegir una categoría vuelve al catálogo.
 

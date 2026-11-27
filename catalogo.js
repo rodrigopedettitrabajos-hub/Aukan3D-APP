@@ -43,6 +43,9 @@ function productosDesdeCsv(text) {
     .filter((p) => p.id && p.nombre && p.activo);
 }
 
+// Igual que en apps-script/Code.gs: la seña es el 50% redondeado hacia arriba.
+const montoSena = (total) => Math.ceil(total / 2);
+
 function resumenPedido(items, cliente) {
   const total = items.reduce((s, i) => s + i.precio * i.cant, 0);
   const lineas = items.map((i) => `• ${i.cant} x ${i.nombre} ($${i.precio})`);
@@ -52,8 +55,9 @@ function resumenPedido(items, cliente) {
     `Total: $${total}`,
     `Nombre: ${cliente.nombre}`,
     `Entrega: ${cliente.entrega}`,
+    cliente.modo === "total" ? `Pago: todo ($${total})` : `Pago: seña del 50% ($${montoSena(total)})`,
     cliente.comentario ? `Comentario: ${cliente.comentario}` : "",
   ].filter(Boolean).join("\n");
 }
 
-if (typeof module !== "undefined") module.exports = { parseCsv, productosDesdeCsv, resumenPedido };
+if (typeof module !== "undefined") module.exports = { parseCsv, productosDesdeCsv, resumenPedido, montoSena };

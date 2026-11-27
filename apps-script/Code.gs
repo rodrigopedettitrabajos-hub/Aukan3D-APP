@@ -30,13 +30,19 @@ function doPost(e) {
     });
     const detalle = lineas.map((l) => l.quantity + " x " + l.title + " ($" + l.unit_price + ")").join("\n");
 
+    // Seña del 50% (redondeada hacia arriba) o el total; el monto se calcula acá, nunca en el navegador.
+    const sena = c.modo !== "total";
+    const aPagar = sena ? Math.ceil(total / 2) : total;
+
     const pedidos = hoja("Pedidos");
-    if (pedidos.getLastRow() === 0) pedidos.appendRow(["fecha", "nombre", "whatsapp", "email", "entrega", "comentario", "detalle", "total", "estado", "pago"]);
+    if (pedidos.getLastRow() === 0) pedidos.appendRow(["fecha", "nombre", "whatsapp", "email", "entrega", "comentario", "detalle", "total", "estado", "pago", "modo", "a pagar"]);
     const numero = pedidos.getLastRow(); // número de pedido = fila de datos
-    const pago = linkPago(lineas, "AUKAN-" + numero, limpio(c.email, 120));
+    const referencia = "AUKAN-" + numero;
+    const cobro = sena ? [{ title: "Seña 50% pedido " + referencia, quantity: 1, unit_price: aPagar, currency_id: "UYU" }] : lineas;
+    const pago = linkPago(cobro, referencia, limpio(c.email, 120));
     pedidos.appendRow([new Date(), nombre, whatsapp, limpio(c.email, 120), limpio(c.entrega, 40),
-      limpio(c.comentario, 500), detalle, total, "NUEVO", pago].map(seguro));
-    return json({ ok: true, total: total, numero: numero, pago: pago });
+      limpio(c.comentario, 500), detalle, total, "NUEVO", pago, sena ? "Seña 50%" : "Total", aPagar].map(seguro));
+    return json({ ok: true, total: total, aPagar: aPagar, sena: sena, numero: numero, pago: pago });
   } catch (err) {
     return json({ ok: false, error: "invalido" });
   } finally {

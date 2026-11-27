@@ -197,6 +197,9 @@ function pintarCarrito() {
   $("#barra").hidden = !n;
   $("#barra-cant").textContent = n === 1 ? "1 producto" : `${n} productos`;
   $("#barra-total").textContent = total;
+  const suma = items.reduce((s, i) => s + i.precio * i.cant, 0);
+  $("#monto-sena").textContent = suma ? `(${pesos(montoSena(suma))})` : "";
+  $("#monto-todo").textContent = suma ? `(${total})` : "";
   $("#enviar").disabled = !n;
   $("#items").replaceChildren(...(items.length ? items.map((i) =>
     el("li", {},
@@ -214,10 +217,13 @@ async function enviar(ev) {
   const cliente = Object.fromEntries(new FormData(ev.target));
   const items = itemsCarrito();
   const texto = resumenPedido(items, cliente);
+  const suma = items.reduce((s, i) => s + i.precio * i.cant, 0);
+  const sena = cliente.modo !== "total";
+  const montos = (total, aPagar) => sena ? `Seña ${pesos(aPagar)} · total ${pesos(total)}` : `Total ${pesos(total)}`;
   ultimoCliente = cliente;
   if (!cfg.pedidosUrl) { // sin servidor: directo a WhatsApp
     window.open(waLink(texto), "_blank");
-    mostrarPago("", $("#total").textContent, texto);
+    mostrarPago("", montos(suma, montoSena(suma)), texto, sena);
     $("#pago-titulo").textContent = "¡Pedido listo!";
     return terminar(ev.target);
   }
@@ -232,8 +238,9 @@ async function enviar(ev) {
   } catch { /* el pedido igual sale por WhatsApp */ }
   $("#enviar").textContent = "Enviar pedido por WhatsApp";
   const pago = /^https:\/\/([\w-]+\.)*mercadopago\.com(\.[a-z]{2})?\//.test(r.pago || "") ? r.pago : "";
-  mostrarPago(pago, r.ok ? pesos(r.total) : $("#total").textContent,
-    texto + (r.numero ? `\nPedido N° ${r.numero}` : "") + (pago ? `\nLink de pago: ${pago}` : ""));
+  // Los montos del servidor mandan; sin respuesta, los calculamos acá.
+  mostrarPago(pago, r.ok ? montos(r.total, r.aPagar) : montos(suma, montoSena(suma)),
+    texto + (r.numero ? `\nPedido N° ${r.numero}` : "") + (pago ? `\nLink de pago: ${pago}` : ""), sena);
   terminar(ev.target);
 }
 
@@ -248,7 +255,8 @@ function terminar(form) {
 }
 
 // Pantalla final del carrito: QR y botón de Mercado Pago, más el aviso por WhatsApp.
-function mostrarPago(pago, total, texto) {
+function mostrarPago(pago, total, texto, sena) {
+  $("#pago-link").textContent = sena ? "Pagar la seña con Mercado Pago" : "Pagar con Mercado Pago";
   for (const e of [$("#items"), $(".total"), $("#checkout")]) e.hidden = true;
   $("#pago").hidden = false;
   $("#pago-titulo").textContent = "¡Pedido recibido!";
@@ -256,7 +264,7 @@ function mostrarPago(pago, total, texto) {
   $("#pago-wa").href = waLink(texto);
   $("#pago-link").hidden = $("#pago-qr").hidden = !pago;
   $("#pago-texto").textContent = pago
-    ? "Pagalo con Mercado Pago: escaneá el QR con el celular o tocá el botón."
+    ? `${sena ? "Pagá la seña" : "Pagalo"} con Mercado Pago: escaneá el QR con el celular o tocá el botón.`
     : "Te abrimos WhatsApp con tu pedido. Si no se abrió, tocá el botón y te pasamos cómo pagarlo.";
   $("#ofrecer-cuenta").hidden = !!leerPerfil()?.activo; // a los invitados les ofrecemos crear cuenta
   if (!pago) return;
