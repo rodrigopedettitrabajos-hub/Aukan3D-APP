@@ -342,3 +342,16 @@ legend { padding: 0 6px; font-weight: 600; }
   #imprimir .num { text-align: right; }
   #imprimir .linea { display: flex; justify-content: space-between; }
 }
+
+/* Reportes: período con flechas */
+.periodo { align-items: center; }
+.periodo-nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.periodo-nav strong { min-width: 190px; text-align: center; }
+.periodo-nav.solo-etiqueta button { display: none; }
+.periodo-nav .btn { min-width: 44px; min-height: 44px; font-size: 20px; padding: 0; }
+.periodo-rango { display: flex; gap: 10px; flex-wrap: wrap; }
+.periodo-rango label { display: flex; align-items: center; gap: 6px; }
+@media (max-width: 700px) {
+  .periodo-nav { flex: 1 1 100%; justify-content: space-between; }
+  .periodo-nav strong { min-width: 0; flex: 1; }
+}
