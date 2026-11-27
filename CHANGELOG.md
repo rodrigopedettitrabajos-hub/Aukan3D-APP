@@ -2,6 +2,19 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.24 · 2026-11-27
+Cambios aprobados de las auditorías (Ponytail, seguridad de Cloudflare e impeccable).
+- Pantalla final honesta: "Falta un paso: mandanos el mensaje" con número de pedido, resumen, los 3 pasos que siguen y "Ya lo mandé". El carrito queda guardado (también al recargar) hasta confirmar. Avisa si el navegador bloqueó WhatsApp o si falló el servidor.
+- Cada cuenta ve solo sus pedidos; el comprobante usa solo los datos del pedido. "Cerrar sesión" pregunta si borrar los datos del dispositivo y el ingreso avisa que es una vista previa. El pedido hecho como invitado pasa a la cuenta si la crea después.
+- Apps Script: número de pedido propio que no se repite, clave única para Mercado Pago, límite de 5 pedidos cada 10 minutos por WhatsApp y campo trampa para robots.
+- Tope de 99 unidades por producto, como en el servidor. La librería del QR se baja solo cuando hay link de pago.
+- Celular: menú en una sola fila deslizable y portada más compacta; los productos se ven en la primera pantalla.
+- Un solo color principal (azul de la marca) con mejor contraste; botones − / + de 44 px; puntos del carrusel más fáciles de tocar; colores de error legibles en modo oscuro.
+- Selector − n + en tarjetas, ficha y carrito; "Deshacer" al quitar un producto; favoritos; ordenar por precio; búsqueda sin acentos, con × y atajo "/"; etiquetas para quitar filtros.
+- Carrito: plazo y seña a la vista, ayudas (seña, plazos, entrega), dirección cuando es envío por agencia y mensajes de error propios en los campos.
+- Ficha: "Se imprime a pedido · listo en 3 o más días hábiles" y tamaño o material si la planilla los tiene (columnas opcionales `tamano` y `material`).
+- Contenido: los eventos pasados se ocultan solos (campo `hasta`), la cantidad de modelos se cuenta sola y se unieron dos preguntas repetidas.
+
 ## V0.23 · 2026-11-27
 - Comprobante de pedido: botón "Descargar comprobante (PDF)" al terminar el pedido y "Comprobante" en cada pedido de Mis pedidos e Historial. Abre la impresión del navegador con la opción Guardar como PDF. Incluye cliente, dirección, productos, total, seña y saldo (no es una factura).
 

@@ -13,10 +13,11 @@ window.AUKAN_CONFIG = {
       lugar: "Espacio Modelo",
       fecha: "14 y 15 de noviembre",
       horario: "de 14 a 20 h",
+      hasta: "2026-11-15", // último día (AAAA-MM-DD): después deja de mostrarse
       detalle: "Entrada gratuita",
       foto: "fotos/galeria/evento-frikifest.webp",
       mapa: "-34.872695,-56.153531", // latitud,longitud del lugar
     },
   ],
-  version: "V0.23", // subir en cada entrega (ver CHANGELOG.md)
+  version: "V0.24", // subir en cada entrega (ver CHANGELOG.md)
 };

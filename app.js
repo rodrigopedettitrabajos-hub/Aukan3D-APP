@@ -3,15 +3,19 @@ const $ = (s) => document.querySelector(s);
 const pesos = (n) => "$" + n.toLocaleString("es-UY");
 
 let productos = [];
-const filtro = { cat: "Todo", sub: "", q: "" };
-const carrito = new Map(); // id -> cantidad
+const filtro = { cat: "Todo", sub: "", q: "", orden: "", fav: false };
+const carrito = new Map(); // id -> cantidad (se guarda en el dispositivo: no se pierde al recargar)
+const MAX = 99; // mismo tope por producto que apps-script/Code.gs
+const guardarCarrito = () => escribir("aukan_carrito", carrito.size ? [...carrito] : null);
+const favs = new Set(leerJson("aukan_favoritos", []));
 let enDetalle = null;
 let pagina = 1;
 let porPagina = 20;
 try { porPagina = [10, 20, 50].includes(+localStorage.aukan_por_pagina) ? +localStorage.aukan_por_pagina : 20; } catch { /* sin storage */ }
 
-function el(tag, props = {}, ...hijos) {
+function el(tag, { dataset, ...props } = {}, ...hijos) {
   const e = Object.assign(document.createElement(tag), props);
+  if (dataset) Object.assign(e.dataset, dataset);
   e.append(...hijos);
   return e;
 }
@@ -26,9 +30,13 @@ async function cargar() {
     }
     productos = productosDesdeCsv(csv);
   } catch (e) {
-    $("#estado").textContent = "No pudimos cargar el catálogo. Probá recargar la página.";
+    $("#estado").replaceChildren("No pudimos cargar el catálogo. ",
+      el("button", { className: "link-btn", type: "button", textContent: "Reintentar", onclick: () => { $("#estado").textContent = "Cargando catálogo…"; cargar(); } }),
+      " o ", el("a", { href: waHola, target: "_blank", rel: "noopener", textContent: "pedinos por WhatsApp" }), ".");
     return;
   }
+  for (const [id, cant] of leerJson("aukan_carrito", [])) if (productos.some((p) => p.id === id && p.precio)) carrito.set(id, Math.min(cant, MAX));
+  $("#n-modelos").textContent = productos.length;
   pintar();
   if (location.hash) mostrarVista();
 }
@@ -101,11 +109,31 @@ $("#menu").addEventListener("toggle", (e) => { // una sola abierta a la vez
 }, true);
 
 function visibles() {
-  const q = filtro.q.toLowerCase();
-  return productos.filter((p) =>
+  const q = normalizar(filtro.q.trim());
+  const lista = productos.filter((p) =>
     (filtro.cat === "Todo" || p.categoria === filtro.cat) &&
     (!filtro.sub || p.subcategoria === filtro.sub) &&
-    (!q || `${p.nombre} ${p.categoria} ${p.subcategoria}`.toLowerCase().includes(q)));
+    (!filtro.fav || favs.has(p.id)) &&
+    (!q || normalizar(`${p.nombre} ${p.categoria} ${p.subcategoria}`).includes(q)));
+  const precio = (p) => p.precio || Infinity; // "Consultar" va al final
+  if (filtro.orden === "menor") lista.sort((a, b) => precio(a) - precio(b));
+  if (filtro.orden === "mayor") lista.sort((a, b) => (b.precio || -1) - (a.precio || -1));
+  return lista;
+}
+
+// Filtros activos como etiquetas con ×, arriba de la grilla (se ven aunque no haya resultados).
+function pintarActivos() {
+  const chip = (texto, quitar) => el("button", { className: "chip", type: "button", ariaLabel: `Quitar filtro ${texto}`, onclick: () => { quitar(); irA(1); } }, texto, el("span", { ariaHidden: "true", textContent: " ×" }));
+  const chips = [
+    filtro.cat !== "Todo" && chip([filtro.cat, filtro.sub].filter(Boolean).join(" · "), () => { filtro.cat = "Todo"; filtro.sub = ""; }),
+    filtro.q.trim() && chip(`"${filtro.q.trim()}"`, () => { filtro.q = $("#buscar").value = ""; }),
+    filtro.fav && chip("Favoritos", () => { filtro.fav = false; }),
+  ].filter(Boolean);
+  $("#activos").replaceChildren(...chips);
+  $("#activos").hidden = !chips.length;
+  $("#buscar-borrar").hidden = !filtro.q;
+  $("#solo-fav").ariaPressed = String(filtro.fav);
+  $("#solo-fav").textContent = `♥ Favoritos${favs.size ? ` (${favs.size})` : ""}`;
 }
 
 function foto(p) {
@@ -115,26 +143,34 @@ function foto(p) {
     : el("div", { className: "nofoto", textContent: "3D" });
 }
 
-function textoBoton(id) {
-  const cant = carrito.get(id) || 0;
-  return cant ? `En pedido (${cant})` : "Agregar";
+// "Agregar" y, una vez en el pedido, el selector − n +. Igual en la tarjeta, la ficha y el carrito.
+// data-foco permite devolver el foco al mismo botón después de repintar.
+function control(p, pre = "") {
+  const cant = carrito.get(p.id) || 0;
+  const mas = (e) => { volar(e.currentTarget.closest(".card")?.querySelector(".foto img")); cambiar(p.id, 1); };
+  if (!cant) return el("button", { className: "add", type: "button", textContent: "Agregar", ariaLabel: `Agregar ${p.nombre} al pedido`, onclick: mas, dataset: { foco: `${pre}${p.id}:add` } });
+  return el("span", { className: "qty" },
+    el("button", { type: "button", textContent: "−", ariaLabel: `Quitar uno de ${p.nombre}`, onclick: () => cambiar(p.id, -1), dataset: { foco: `${pre}${p.id}:-` } }),
+    el("output", { textContent: cant, ariaLabel: `${cant} en el pedido` }),
+    el("button", { type: "button", textContent: "+", ariaLabel: `Sumar uno de ${p.nombre}`, disabled: cant >= MAX, onclick: mas, dataset: { foco: `${pre}${p.id}:+` } }));
 }
 
 const precioTexto = (p) => (p.precio ? pesos(p.precio) : "Consultar");
 const waConsulta = (p) => waLink(`Hola Aukan3D! Quiero consultar por: ${p.nombre}`);
 
 function tarjeta(p) {
+  const fav = favs.has(p.id);
   return el("article", { className: "card" },
     el("button", { className: "foto", type: "button", ariaLabel: `Ver ${p.nombre}`, onclick: () => abrirDetalle(p) }, foto(p),
       p.fotos.length > 1 ? el("span", { className: "n-fotos", textContent: `${p.fotos.length} fotos` }) : ""),
+    el("button", { className: "fav", type: "button", textContent: fav ? "♥" : "♡", ariaPressed: String(fav), ariaLabel: `Guardar ${p.nombre} en favoritos`,
+      dataset: { foco: `f${p.id}:fav` }, onclick: () => { fav ? favs.delete(p.id) : favs.add(p.id); escribir("aukan_favoritos", [...favs]); conFoco(pintar); } }),
     el("div", { className: "info" },
       el("span", { className: "sub", textContent: p.subcategoria || p.categoria }),
       el("h3", { textContent: p.nombre }),
       el("div", { className: "row" },
         el("strong", { className: "precio", textContent: precioTexto(p) }),
-        p.precio
-          ? el("button", { className: carrito.has(p.id) ? "add on" : "add", type: "button",
-              textContent: textoBoton(p.id), ariaLabel: `Agregar ${p.nombre}`, onclick: (e) => { volar(e.currentTarget.closest(".card").querySelector(".foto img")); cambiar(p.id, 1); } })
+        p.precio ? control(p)
           : el("a", { className: "add", href: waConsulta(p), target: "_blank", rel: "noopener", textContent: "Consultar" }))));
 }
 
@@ -144,6 +180,8 @@ function abrirDetalle(p) {
   $("#detalle-sub").textContent = [p.categoria, p.subcategoria].filter(Boolean).join(" · ");
   $("#detalle-nombre").textContent = p.nombre;
   $("#detalle-precio").textContent = precioTexto(p);
+  $("#detalle-datos").textContent = [p.tamano, p.material].filter(Boolean).join(" · ");
+  $("#detalle-plazo").hidden = !p.precio;
   pintarDetalle();
   $("#detalle").showModal();
 }
@@ -194,10 +232,8 @@ function carrusel(p) {
 
 function pintarDetalle() {
   if (!enDetalle) return;
-  const b = $("#detalle-add");
-  if (!enDetalle.precio) { b.textContent = "Consultar por WhatsApp"; b.className = "add"; return; }
-  b.textContent = carrito.has(enDetalle.id) ? `En pedido (${carrito.get(enDetalle.id)}) · sumar otro` : "Agregar al pedido";
-  b.className = carrito.has(enDetalle.id) ? "add on" : "add";
+  $("#detalle-control").replaceChildren(enDetalle.precio ? control(enDetalle, "d")
+    : el("a", { className: "add", href: waConsulta(enDetalle), target: "_blank", rel: "noopener", textContent: "Consultar por WhatsApp" }));
 }
 
 // 1 … 4 5 6 … 17: primera, última y las vecinas de la actual.
@@ -228,6 +264,7 @@ function pintarPaginas(total) {
 
 function pintar() {
   pintarFiltros();
+  pintarActivos();
   const lista = visibles();
   const paginas = Math.max(1, Math.ceil(lista.length / porPagina));
   pagina = Math.min(pagina, paginas);
@@ -238,6 +275,7 @@ function pintar() {
   $("#conteo").textContent = `${desde + 1}${hasta > desde + 1 ? "–" + hasta : ""} de ${lista.length} productos`;
   $("#por-pagina").value = String(porPagina);
   $("#grilla").replaceChildren(...lista.slice(desde, desde + porPagina).map(tarjeta));
+  if (!lista.length && $("#activos").hidden === false) $("#estado").append(" ", el("button", { className: "link-btn", type: "button", textContent: "Quitar filtros", onclick: () => { Object.assign(filtro, { cat: "Todo", sub: "", q: "", fav: false }); $("#buscar").value = ""; irA(1); } }));
   pintarPaginas(paginas);
   pintarCarrito();
 }
@@ -246,81 +284,103 @@ function itemsCarrito() {
   return [...carrito].map(([id, cant]) => ({ ...productos.find((p) => p.id === id), cant }));
 }
 
+const sumar = (items) => items.reduce((s, i) => s + i.precio * i.cant, 0);
+
 function cambiar(id, d) {
-  const n = (carrito.get(id) || 0) + d;
+  const antes = carrito.get(id) || 0, n = Math.min(MAX, antes + d);
   n > 0 ? carrito.set(id, n) : carrito.delete(id);
-  pintar();
-  pintarDetalle();
+  guardarCarrito();
+  conFoco(() => { pintar(); pintarDetalle(); });
+  const p = productos.find((x) => x.id === id);
+  if (!n && antes) avisar(`Quitaste ${p.nombre}`, () => cambiar(id, antes));
+  else if (n > antes) $("#anuncio").textContent = `Agregado: ${p.nombre} (${n})`;
+}
+
+// Repinta y devuelve el foco al mismo botón (o a otro del mismo producto) para no perderlo con el teclado.
+function conFoco(repintar) {
+  const k = document.activeElement?.dataset?.foco;
+  repintar();
+  if (!k) return;
+  const [pre] = k.split(":"), q = (sel) => document.querySelector(`[data-foco${sel}]`);
+  (q(`="${CSS.escape(k.replace(":add", ":+"))}"`) || q(`="${CSS.escape(k)}"`) || q(`^="${CSS.escape(pre)}:"`))?.focus();
+}
+
+// Aviso abajo con "Deshacer" (5 s).
+let avisoT;
+function avisar(texto, deshacer) {
+  clearTimeout(avisoT);
+  $("#aviso-txt").textContent = texto;
+  $("#aviso-btn").hidden = !deshacer;
+  $("#aviso-btn").onclick = () => { $("#aviso").hidden = true; deshacer(); };
+  $("#aviso").hidden = false;
+  avisoT = setTimeout(() => { $("#aviso").hidden = true; }, 5000);
 }
 
 function pintarCarrito() {
   const items = itemsCarrito();
   const n = items.reduce((s, i) => s + i.cant, 0);
-  const total = pesos(items.reduce((s, i) => s + i.precio * i.cant, 0));
+  const suma = sumar(items), total = pesos(suma);
   $("#cart-count").textContent = n;
   $("#total").textContent = total;
   $("#barra").hidden = !n;
   $("#barra-cant").textContent = n === 1 ? "1 producto" : `${n} productos`;
   $("#barra-total").textContent = total;
-  const suma = items.reduce((s, i) => s + i.precio * i.cant, 0);
+  $("#plazo").textContent = suma ? `Se imprime a pedido: listo en 3 o más días hábiles · Seña 50 %: ${pesos(montoSena(suma))}` : "";
   $("#monto-sena").textContent = suma ? `(${pesos(montoSena(suma))})` : "";
   $("#monto-todo").textContent = suma ? `(${total})` : "";
   $("#enviar").disabled = !n;
   $("#items").replaceChildren(...(items.length ? items.map((i) =>
     el("li", {},
       el("span", { className: "nombre", textContent: i.nombre }),
-      el("span", { className: "qty" },
-        el("button", { type: "button", textContent: "−", ariaLabel: "Quitar uno", onclick: () => cambiar(i.id, -1) }),
-        el("output", { textContent: i.cant }),
-        el("button", { type: "button", textContent: "+", ariaLabel: "Agregar uno", onclick: () => cambiar(i.id, 1) })),
+      control(i, "c"),
       el("strong", { textContent: pesos(i.precio * i.cant) })))
     : [el("li", { className: "vacio", textContent: "Todavía no agregaste productos." })]));
 }
 
 async function enviar(ev) {
   ev.preventDefault();
-  const cliente = Object.fromEntries(new FormData(ev.target));
-  const items = itemsCarrito();
-  const texto = resumenPedido(items, cliente);
-  const suma = items.reduce((s, i) => s + i.precio * i.cant, 0);
-  const sena = cliente.modo !== "total";
-  const montos = (total, aPagar) => sena ? `Seña ${pesos(aPagar)} · total ${pesos(total)}` : `Total ${pesos(total)}`;
-  ultimoCliente = cliente;
-  const registro = (numero, total = suma) => { ultimoPedido = guardarPedido({ numero, total, sena, entrega: cliente.entrega,
+  const form = ev.target;
+  const cliente = Object.fromEntries(new FormData(form));
+  cliente.envio = [cliente.envio_dir, cliente.envio_depto].filter(Boolean).join(", "); // solo con "Envío por agencia"
+  delete cliente.envio_dir; delete cliente.envio_depto;
+  const items = itemsCarrito(), suma = sumar(items), sena = cliente.modo !== "total";
+  const perfil = sesion();
+  const direccion = cliente.envio || [...new Set([perfil?.direccion, perfil?.barrio, perfil?.ciudad, perfil?.departamento].filter(Boolean))].join(", ");
+  // El pedido guarda sus propios datos (cliente y dirección): el comprobante no mezcla con otra cuenta.
+  const registro = (numero, total = suma) => { ultimoPedido = guardarPedido({ numero, total, sena, entrega: cliente.entrega, direccion,
     cliente: { nombre: cliente.nombre, whatsapp: cliente.whatsapp, email: cliente.email },
     items: items.map(({ id, nombre, precio, cant }) => ({ id, nombre, precio, cant })) }); };
-  if (!cfg.pedidosUrl) { // sin servidor: directo a WhatsApp
+  const texto = resumenPedido(items, cliente);
+  if (!cfg.pedidosUrl) { // sin servidor: el pedido llega solo si el cliente manda el WhatsApp
     registro();
-    window.open(waLink(texto), "_blank");
-    mostrarPago("", montos(suma, montoSena(suma)), texto, sena);
-    $("#pago-titulo").textContent = "¡Pedido listo!";
-    return terminar(ev.target);
+    const msj = `${texto}\nPedido N° ${ultimoPedido.numero}`;
+    const abierto = window.open(waLink(msj), "_blank");
+    return mostrarPago({ texto: msj, sena, recibido: false, bloqueado: !abierto, total: suma });
   }
   $("#enviar").disabled = true;
-  $("#enviar").textContent = "Enviando…";
+  $("#enviar-txt").textContent = "Enviando…";
   let r = {};
   try {
     // text/plain evita el preflight CORS que Apps Script no responde.
     const res = await fetch(cfg.pedidosUrl, { method: "POST", headers: { "Content-Type": "text/plain" },
       body: JSON.stringify({ cliente, items: items.map((i) => ({ id: i.id, cant: i.cant })) }) });
     r = await res.json();
-  } catch { /* el pedido igual sale por WhatsApp */ }
-  $("#enviar").textContent = "Enviar pedido por WhatsApp";
-  registro(r.numero, r.ok ? r.total : suma);
-  const pago = /^https:\/\/([\w-]+\.)*mercadopago\.com(\.[a-z]{2})?\//.test(r.pago || "") ? r.pago : "";
-  // Los montos del servidor mandan; sin respuesta, los calculamos acá.
-  mostrarPago(pago, r.ok ? montos(r.total, r.aPagar) : montos(suma, montoSena(suma)),
-    texto + (r.numero ? `\nPedido N° ${r.numero}` : "") + (pago ? `\nLink de pago: ${pago}` : ""), sena);
-  terminar(ev.target);
+  } catch { /* sin respuesta: queda el WhatsApp */ }
+  $("#enviar-txt").textContent = "Enviar pedido por WhatsApp";
+  $("#enviar").disabled = false;
+  // Los montos del servidor mandan; si falló, los calculamos acá y el pedido sale por WhatsApp.
+  registro(r.ok ? r.numero : undefined, r.ok ? r.total : suma);
+  const pago = r.ok && /^https:\/\/([\w-]+\.)*mercadopago\.com(\.[a-z]{2})?\//.test(r.pago || "") ? r.pago : "";
+  mostrarPago({ pago, sena, recibido: !!r.ok, total: r.ok ? r.total : suma, aPagar: r.ok ? r.aPagar : undefined,
+    texto: `${texto}\nPedido N° ${ultimoPedido.numero}` + (pago ? `\nLink de pago: ${pago}` : "") });
+  if (r.ok) terminar(form); // ya está en la planilla; si falló, el carrito queda hasta que lo manden
 }
 
-let ultimoCliente = null, ultimoPedido = null;
+let ultimoPedido = null;
 
 // Comprobante del pedido: se arma en #comprobante y se imprime (el navegador ofrece "Guardar como PDF").
 function comprobante(p) {
-  const perfil = leerPerfil()?.activo ? leerPerfil() : {}; // datos guardados solo si hay sesión
-  const c = { ...perfil, ...p.cliente };
-  const dir = [...new Set([perfil.direccion, perfil.barrio, perfil.ciudad, perfil.departamento].filter(Boolean))].join(", ");
+  const c = p.cliente || {}, dir = p.direccion; // solo los datos guardados en el pedido
   const fila = (...celdas) => el("tr", {}, ...celdas.map((t) => el("td", { textContent: t })));
   const aPagar = p.sena ? montoSena(p.total) : p.total;
   $("#comprobante").replaceChildren(
@@ -343,35 +403,52 @@ const waLink = (texto) => `https://wa.me/${cfg.whatsapp}?text=${encodeURICompone
 
 function terminar(form) {
   carrito.clear();
+  guardarCarrito();
   form.reset();
   pintar();
   pintarCuenta(); // vuelve a completar los datos si hay sesión
+  actualizarEnvio();
 }
 
-// Pantalla final del carrito: QR y botón de Mercado Pago, más el aviso por WhatsApp.
-function mostrarPago(pago, total, texto, sena) {
-  $("#pago-link").textContent = sena ? "Pagar la seña con Mercado Pago" : "Pagar con Mercado Pago";
-  for (const e of [$("#items"), $(".total"), $("#checkout")]) e.hidden = true;
+// Pantalla final del carrito. Sin servidor (o si falló) el pedido no llegó hasta que manden el WhatsApp:
+// lo decimos claro y el carrito queda guardado hasta "Ya lo mandé".
+function mostrarPago({ pago = "", texto, sena, recibido, bloqueado, total, aPagar = sena ? montoSena(total) : total }) {
+  for (const e of [$("#items"), $(".total"), $("#plazo"), $("#checkout")]) e.hidden = true;
   $("#pago").hidden = false;
-  $("#pago-titulo").textContent = "¡Pedido recibido!";
-  $("#pago-total").textContent = total;
+  const n = ultimoPedido.items.reduce((s, i) => s + i.cant, 0);
+  $("#pago-titulo").textContent = recibido ? "¡Pedido recibido!" : "Falta un paso: mandanos el mensaje";
+  $("#pago-numero").textContent = `Pedido N° ${ultimoPedido.numero} · ${n === 1 ? "1 producto" : `${n} productos`}`;
+  $("#pago-total").textContent = sena ? `Seña ${pesos(aPagar)} · total ${pesos(total)}` : `Total ${pesos(total)}`;
+  $("#pago-texto").textContent = pago ? `${sena ? "Pagá la seña" : "Pagalo"} con Mercado Pago: escaneá el QR con el celular o tocá el botón.`
+    : recibido ? "Ya lo tenemos. Avisanos por WhatsApp y coordinamos el pago."
+    : bloqueado ? "Tu navegador no abrió WhatsApp. Tocá el botón para mandarnos el pedido."
+    : "Te abrimos WhatsApp con el pedido escrito. Hasta que nos llegue ese mensaje no lo tenemos: si no lo mandaste, tocá el botón.";
   $("#pago-wa").href = waLink(texto);
+  $("#pago-wa-txt").textContent = recibido ? "Avisar por WhatsApp" : "Mandar el pedido por WhatsApp";
+  $("#pago-listo").hidden = recibido;
+  $("#pago-link").textContent = sena ? "Pagar la seña con Mercado Pago" : "Pagar con Mercado Pago";
   $("#pago-link").hidden = $("#pago-qr").hidden = !pago;
-  $("#pago-texto").textContent = pago
-    ? `${sena ? "Pagá la seña" : "Pagalo"} con Mercado Pago: escaneá el QR con el celular o tocá el botón.`
-    : "Te abrimos WhatsApp con tu pedido. Si no se abrió, tocá el botón y te pasamos cómo pagarlo.";
-  $("#pago-comprobante").hidden = !ultimoPedido;
-  $("#ofrecer-cuenta").hidden = !!leerPerfil()?.activo; // a los invitados les ofrecemos crear cuenta
+  $("#ofrecer-cuenta").hidden = !!sesion(); // a los invitados les ofrecemos guardar este pedido en una cuenta
   if (!pago) return;
   $("#pago-link").href = pago;
-  const qr = qrcode(0, "M");
-  qr.addData(pago);
-  qr.make();
-  $("#pago-qr").src = qr.createDataURL(6, 2);
+  cargarQr().then(() => {
+    const qr = qrcode(0, "M");
+    qr.addData(pago);
+    qr.make();
+    $("#pago-qr").src = qr.createDataURL(6, 2);
+  }, () => { $("#pago-qr").hidden = true; });
 }
+// La librería del QR (57 KB) se baja recién cuando hay un link de pago.
+const cargarQr = () => window.qrcode ? Promise.resolve()
+  : new Promise((ok, mal) => document.head.append(el("script", { src: "qrcode.js?v=" + cfg.version.slice(1), onload: ok, onerror: mal })));
+$("#pago-listo").addEventListener("click", () => {
+  terminar($("#checkout"));
+  $("#carrito").close();
+  avisar("¡Gracias! Te respondemos por WhatsApp.");
+});
 
 $("#carrito").addEventListener("close", () => {
-  for (const e of [$("#items"), $(".total"), $("#checkout")]) e.hidden = false;
+  for (const e of [$("#items"), $(".total"), $("#plazo"), $("#checkout")]) e.hidden = false;
   $("#pago").hidden = true;
 });
 // Registro opcional: desde el carrito o después de pedir como invitado.
@@ -379,7 +456,7 @@ $("#invitado-ingresar").addEventListener("click", () => { elegirTab(false); $("#
 $("#invitado-registro").addEventListener("click", () => { elegirTab(true); $("#cuenta").showModal(); });
 $("#crear-cuenta").addEventListener("click", () => {
   const f = $("#form-registro");
-  for (const k of ["nombre", "whatsapp", "email"]) f[k].value = ultimoCliente?.[k] || "";
+  for (const k of ["nombre", "whatsapp", "email"]) f[k].value = ultimoPedido?.cliente[k] || "";
   $("#carrito").close();
   elegirTab(true);
   $("#cuenta").showModal();
@@ -428,7 +505,8 @@ document.addEventListener("click", ampliar);
 document.addEventListener("keydown", ampliar);
 
 // Eventos (config.js): tarjeta en el inicio y pantalla "Eventos" con mapa.
-const eventos = cfg.eventos || [];
+const hoy = new Date().toLocaleDateString("sv"); // AAAA-MM-DD en la hora local
+const eventos = (cfg.eventos || []).filter((ev) => !ev.hasta || ev.hasta >= hoy); // los que ya pasaron no se muestran
 const mapaUrl = (ev) => `https://www.google.com/maps?hl=es&q=${encodeURIComponent(ev.mapa)}&z=16&output=embed`;
 const lugarUrl = (ev) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.mapa)}`;
 function datosEvento(ev) {
@@ -461,6 +539,16 @@ document.querySelectorAll("#wa-flotante, #nosotros-wa, .wa-link").forEach((a) =>
 
 const verCarrito = () => $("#carrito").showModal();
 $("#buscar").addEventListener("input", (e) => { filtro.q = e.target.value; pagina = 1; pintar(); });
+$("#buscar-borrar").addEventListener("click", () => { filtro.q = $("#buscar").value = ""; pagina = 1; pintar(); $("#buscar").focus(); });
+$("#orden").addEventListener("change", (e) => { filtro.orden = e.target.value; irA(1); });
+$("#solo-fav").addEventListener("click", () => { filtro.fav = !filtro.fav; irA(1); });
+// "/" lleva a la búsqueda (si no se está escribiendo en otro campo).
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "/" || e.target.closest("input, textarea, select, [contenteditable]") || document.querySelector("dialog[open]")) return;
+  e.preventDefault();
+  verCatalogo();
+  $("#buscar").focus();
+});
 $("#por-pagina").addEventListener("change", (e) => {
   porPagina = +e.target.value;
   try { localStorage.aukan_por_pagina = porPagina; } catch { /* sin storage */ }
@@ -469,10 +557,36 @@ $("#por-pagina").addEventListener("change", (e) => {
 $("#ver-carrito").addEventListener("click", verCarrito);
 $("#pago-comprobante").addEventListener("click", () => comprobante(ultimoPedido));
 $("#barra-ver").addEventListener("click", verCarrito);
-$("#detalle-add").addEventListener("click", () =>
-  enDetalle.precio ? (volar(null), cambiar(enDetalle.id, 1)) : window.open(waConsulta(enDetalle), "_blank"));
 $("#detalle").addEventListener("close", () => { enDetalle = null; });
 // Tocar fuera del contenido cierra el modal.
 for (const d of document.querySelectorAll("dialog")) d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
 $("#checkout").addEventListener("submit", enviar);
+
+// Envío por agencia: pide departamento y dirección (completados con la cuenta, si hay).
+const fc = $("#checkout");
+fc.envio_depto.append(...[...$("#form-datos").departamento.options].map((o) => o.cloneNode(true)));
+function actualizarEnvio() {
+  const si = fc.entrega.value === "Envío por agencia", p = sesion();
+  $("#envio").hidden = !si;
+  for (const c of [fc.envio_depto, fc.envio_dir]) { c.disabled = !si; c.required = si; }
+  if (si && p) {
+    if (!fc.envio_depto.value) fc.envio_depto.value = p.departamento || "";
+    if (!fc.envio_dir.value) fc.envio_dir.value = [p.direccion, p.barrio, p.ciudad].filter(Boolean).join(", ");
+  }
+}
+fc.addEventListener("change", (e) => { if (e.target.name === "entrega") actualizarEnvio(); });
+actualizarEnvio();
+// Desde el carrito, "Preguntas frecuentes" cierra el carrito.
+$("#carrito-faq").addEventListener("click", () => $("#carrito").close());
+
+// Mensajes propios en vez de los genéricos del navegador (data-falta / data-formato en cada campo).
+document.addEventListener("invalid", (e) => {
+  const i = e.target, d = i.dataset;
+  i.setCustomValidity(i.validity.valueMissing ? d.falta || "" : (i.validity.patternMismatch || i.validity.typeMismatch) ? d.formato || "" : "");
+}, true);
+document.addEventListener("input", (e) => e.target.setCustomValidity?.(""), true);
+// Antes de validar, se limpian los mensajes viejos (un campo pudo completarse solo, sin "input").
+document.addEventListener("click", (e) => {
+  e.target.closest?.("button[type=submit], form button:not([type])")?.form?.querySelectorAll("input, select, textarea").forEach((i) => i.setCustomValidity(""));
+}, true);
 cargar();

@@ -13,7 +13,7 @@ Google Sheet "Productos"  --CSV publicado-->  app  --pedido-->  Apps Script --> 
 
 ## Puesta en marcha
 
-1. **Planilla.** Crear una Google Sheet con una pestaña `Productos` e importar `productos.csv` (Archivo > Importar). Columnas: `id, categoria, subcategoria, nombre, precio, foto, activo`. Para ocultar un producto, poner `NO` en `activo`. No cambiar el `id` de un producto existente.
+1. **Planilla.** Crear una Google Sheet con una pestaña `Productos` e importar `productos.csv` (Archivo > Importar). Columnas: `id, categoria, subcategoria, nombre, precio, foto, activo`. Para ocultar un producto, poner `NO` en `activo`. Opcionales: `tamano` (ej. `12 cm de alto`) y `material` (ej. `PLA`), que se muestran en la ficha del producto. No cambiar el `id` de un producto existente.
 2. **Publicar el catálogo.** Archivo > Compartir > Publicar en la web > pestaña `Productos` > formato CSV. Pegar la URL en `config.js` > `catalogoCsvUrl`.
 3. **Guardar pedidos (opcional).** En la planilla: Extensiones > Apps Script, pegar `apps-script/Code.gs`, Implementar > Aplicación web (Ejecutar como: yo, Acceso: cualquier persona). Pegar la URL en `config.js` > `pedidosUrl`. Los pedidos llegan a la pestaña `Pedidos`, con precios recalculados desde la planilla.
 4. **Publicar la app.** GitHub > Settings > Pages > Deploy from branch > `main` / root. Después se puede insertar en el Google Site (Insertar > URL).

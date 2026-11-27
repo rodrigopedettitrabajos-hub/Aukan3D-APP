@@ -10,8 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
   <link rel="icon" href="favicon.png">
   <meta name="theme-color" content="#000000">
-  <link rel="stylesheet" href="styles.css?v=0.23">
-  <script src="tema.js?v=0.23"></script>
+  <link rel="stylesheet" href="styles.css?v=0.24">
+  <script src="tema.js?v=0.24"></script>
 </head>
 <body>
   <!-- Íconos: Simple Icons (CC0) -->
@@ -25,7 +25,7 @@
       <div class="acciones">
         <button id="tema" class="tema-btn" type="button"></button>
         <div class="user-menu">
-          <button id="ver-cuenta" class="user-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="menu-cuenta">Ingresar</button>
+          <button id="ver-cuenta" class="user-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="menu-cuenta">Mi cuenta</button>
           <div id="menu-cuenta" class="user-drop" role="menu" hidden>
             <a role="menuitem" href="#mis-pedidos">Mis pedidos</a>
             <a role="menuitem" href="#historial">Historial de compras</a>
@@ -60,11 +60,21 @@
 
   <main id="catalogo" class="wrap">
     <div class="tools">
-      <input id="buscar" type="search" placeholder="Buscar: Pikachu, llavero, Naruto..." aria-label="Buscar productos">
+      <input id="buscar" type="search" placeholder="Buscar: Pikachu, llavero, Naruto..." aria-label="Buscar productos" aria-keyshortcuts="/">
+      <button id="buscar-borrar" class="buscar-borrar" type="button" aria-label="Borrar búsqueda" hidden>×</button>
     </div>
+    <div id="activos" class="activos" aria-label="Filtros activos" hidden></div>
     <p id="estado" class="estado" role="status">Cargando catálogo…</p>
     <div id="lista-barra" class="lista-barra" hidden>
       <span id="conteo"></span>
+      <button id="solo-fav" class="chip" type="button" aria-pressed="false">♥ Favoritos</button>
+      <label>Ordenar
+        <select id="orden">
+          <option value="">Destacados</option>
+          <option value="menor">Menor precio</option>
+          <option value="mayor">Mayor precio</option>
+        </select>
+      </label>
       <label>Mostrar
         <select id="por-pagina">
           <option>10</option>
@@ -104,7 +114,7 @@
   <section id="nosotros" class="seccion wrap" hidden aria-labelledby="nosotros-titulo">
     <h2 id="nosotros-titulo">Nosotros</h2>
     <div class="nosotros">
-      <p>En Aukan3D somos un emprendimiento de impresión 3D especializado en diseños estilo amigurumi, que recrean la apariencia del tejido artesanal. Contamos con un catálogo de más de 60 modelos de distintos personajes.</p>
+      <p>En Aukan3D somos un emprendimiento de impresión 3D especializado en diseños estilo amigurumi, que recrean la apariencia del tejido artesanal. Contamos con un catálogo de <span id="n-modelos">más de 150</span> modelos de distintos personajes.</p>
       <p>Además, realizamos figuras a pedido, llaveros, litofanías y piezas personalizadas según la solicitud del cliente, adaptando cada trabajo a sus ideas y necesidades.</p>
       <ul class="redes">
         <li><a href="https://www.instagram.com/aukan3d/" target="_blank" rel="noopener"><svg aria-hidden="true"><use href="#ic-instagram"/></svg>Instagram</a></li>
@@ -122,9 +132,8 @@
       <details><summary>¿Cuánto demora la preparación?</summary><p>El tiempo mínimo es de 3 días hábiles. Los pedidos personalizados tienen tiempos distintos (a consultar).</p></details>
       <details><summary>¿Cómo se confirma un pedido?</summary><p>Con una seña del 50% del valor total.</p></details>
       <details><summary>¿Qué medios de pago aceptan?</summary><p>Transferencia bancaria, depósitos, efectivo y Mercado Pago.</p></details>
-      <details><summary>¿Hacen personalizados?</summary><p>Sí, realizamos piezas personalizadas según pedido del cliente.</p></details>
+      <details><summary>¿Hacen piezas personalizadas?</summary><p>Sí. Hacemos piezas a pedido según tu idea, y en los modelos del catálogo podés elegir colores y tamaños, según disponibilidad.</p></details>
       <details><summary>¿Realizan envíos?</summary><p>Sí, entregamos en puntos de encuentro en Montevideo y enviamos al interior del país.</p></details>
-      <details><summary>¿Se pueden personalizar los modelos?</summary><p>Sí. Ofrecemos opciones de personalización en colores y tamaños, según disponibilidad.</p></details>
     </div>
   </section>
 
@@ -146,9 +155,9 @@
     <h2 id="mis-datos-titulo">Mis datos</h2>
     <p class="seccion-intro">Se usan para completar tus pedidos.</p>
     <form id="form-datos" class="checkout">
-      <label>Nombre *<input name="nombre" required maxlength="80" autocomplete="name"></label>
-      <label>WhatsApp *<input name="whatsapp" required maxlength="20" inputmode="tel" pattern="\+?[0-9 ]{8,20}" autocomplete="tel"></label>
-      <label>Correo electrónico *<input name="email" type="email" required maxlength="120" autocomplete="email"></label>
+      <label>Nombre *<input name="nombre" required maxlength="80" autocomplete="name" data-falta="Escribí tu nombre."></label>
+      <label>WhatsApp *<input name="whatsapp" required maxlength="20" inputmode="tel" pattern="\+?[0-9 ]{8,20}" autocomplete="tel" data-falta="Escribí tu WhatsApp para coordinar el pedido." data-formato="Escribí tu WhatsApp con 8 o 9 números, por ejemplo 099 123 456."></label>
+      <label>Correo electrónico *<input name="email" type="email" required maxlength="120" autocomplete="email" data-falta="Escribí tu correo." data-formato="Revisá el correo: falta la @ o el dominio (ej. ana@gmail.com)."></label>
       <fieldset class="domicilio">
         <legend>Dirección de entrega <span>(opcional)</span></legend>
         <label>Departamento<select name="departamento"><option value="">Elegí…</option><option>Artigas</option><option>Canelones</option><option>Cerro Largo</option><option>Colonia</option><option>Durazno</option><option>Flores</option><option>Florida</option><option>Lavalleja</option><option>Maldonado</option><option>Montevideo</option><option>Paysandú</option><option>Río Negro</option><option>Rivera</option><option>Rocha</option><option>Salto</option><option>San José</option><option>Soriano</option><option>Tacuarembó</option><option>Treinta y Tres</option></select></label>
@@ -201,9 +210,11 @@
     <div class="detalle-info">
       <span id="detalle-sub" class="sub"></span>
       <h2 id="detalle-nombre"></h2>
+      <p id="detalle-datos" class="detalle-datos"></p>
+      <p id="detalle-plazo" class="plazo-chip">Se imprime a pedido · listo en 3 o más días hábiles</p>
       <div class="row">
         <strong id="detalle-precio" class="precio"></strong>
-        <button id="detalle-add" class="add" type="button">Agregar al pedido</button>
+        <span id="detalle-control"></span>
       </div>
     </div>
   </dialog>
@@ -215,45 +226,55 @@
     </form>
     <ul id="items" class="items"></ul>
     <p class="total">Total <strong id="total">$0</strong></p>
+    <p id="plazo" class="plazo"></p>
 
     <form id="checkout" class="checkout">
-      <div id="invitado" class="invitado">
-        <strong>Creá tu cuenta y pedí más rápido</strong>
-        <span>Tus datos se completan solos en cada pedido.</span>
-        <div class="invitado-acciones">
-          <button id="invitado-registro" class="primary-sm azul" type="button">Crear cuenta</button>
-          <button id="invitado-ingresar" class="enlace" type="button">Ya tengo cuenta</button>
-        </div>
-        <small>¿Apurado? Podés pedir como invitado completando abajo.</small>
-      </div>
-      <label>Nombre *<input name="nombre" required maxlength="80" autocomplete="name"></label>
-      <label>WhatsApp *<input name="whatsapp" required maxlength="20" inputmode="tel" pattern="\+?[0-9 ]{8,20}" autocomplete="tel" placeholder="09X XXX XXX"></label>
-      <label>Correo electrónico<input name="email" type="email" maxlength="120" autocomplete="email"></label>
+      <p id="invitado" class="invitado">¿Tenés cuenta? <button id="invitado-ingresar" class="enlace" type="button">Ingresá</button> y tus datos se completan solos, o <button id="invitado-registro" class="enlace" type="button">creá una</button>. También podés pedir sin cuenta.</p>
+      <label>Nombre *<input name="nombre" required maxlength="80" autocomplete="name" data-falta="Escribí tu nombre."></label>
+      <label>WhatsApp *<input name="whatsapp" required maxlength="20" inputmode="tel" pattern="\+?[0-9 ]{8,20}" autocomplete="tel" placeholder="099 123 456" data-falta="Escribí tu WhatsApp para coordinar el pedido." data-formato="Escribí tu WhatsApp con 8 o 9 números, por ejemplo 099 123 456."><small class="ayuda-campo">Con o sin +598, por ejemplo 099 123 456.</small></label>
+      <label>Correo electrónico<input name="email" type="email" maxlength="120" autocomplete="email" data-formato="Revisá el correo: falta la @ o el dominio (ej. ana@gmail.com)."></label>
       <fieldset>
         <legend>Entrega *</legend>
         <label class="radio"><input type="radio" name="entrega" value="Retiro coordinado" required checked> Retiro coordinado</label>
         <label class="radio"><input type="radio" name="entrega" value="Envío por agencia"> Envío por agencia</label>
       </fieldset>
+      <div id="envio" class="envio" hidden>
+        <label>Departamento *<select name="envio_depto" data-falta="Elegí el departamento."></select></label>
+        <label>Dirección o agencia *<input name="envio_dir" maxlength="140" autocomplete="street-address" placeholder="Calle, número, ciudad" data-falta="Escribí a dónde te lo mandamos."></label>
+      </div>
       <fieldset class="modo-pago">
         <legend>Pago *</legend>
         <label class="radio"><input type="radio" name="modo" value="sena" required checked> Quiero dar una seña del 50% <strong id="monto-sena"></strong></label>
         <label class="radio"><input type="radio" name="modo" value="total"> Lo pago todo <strong id="monto-todo"></strong></label>
       </fieldset>
+      <div class="ayudas">
+        <details><summary>¿Qué es la seña?</summary><p>Es el 50 % del total. Con la seña confirmamos el pedido y empezamos a imprimir; el resto se paga al entregar.</p></details>
+        <details><summary>¿Cuándo está listo?</summary><p>En 3 días hábiles o más, según la cantidad. Los personalizados se coordinan aparte.</p></details>
+        <details><summary>¿Cómo es la entrega?</summary><p>Retiro coordinado: nos encontramos en un punto de Montevideo. Envío por agencia: lo mandamos al interior y coordinamos el costo por WhatsApp.</p></details>
+      </div>
       <label>Comentario<textarea name="comentario" rows="2" maxlength="500" placeholder="Colores, tamaño, fecha..."></textarea></label>
-      <button id="enviar" class="primary" type="submit">Enviar pedido por WhatsApp</button>
-      <p class="fine">El pedido se confirma con la seña. Pagás con Mercado Pago o lo coordinamos por WhatsApp (transferencia o efectivo).</p>
+      <label class="trampa" aria-hidden="true">No completar<input name="web" tabindex="-1" autocomplete="off"></label>
+      <button id="enviar" class="primary" type="submit"><svg aria-hidden="true"><use href="#ic-whatsapp"/></svg><span id="enviar-txt">Enviar pedido por WhatsApp</span></button>
+      <p class="fine">El pedido se confirma con la seña. Pagás con Mercado Pago o lo coordinamos por WhatsApp (transferencia o efectivo).<br>¿Dudas? <a class="wa-link" target="_blank" rel="noopener">Escribinos</a> o mirá las <a id="carrito-faq" href="#preguntas">preguntas frecuentes</a>.</p>
     </form>
 
     <div id="pago" class="pago" hidden>
-      <h3 id="pago-titulo">¡Pedido recibido!</h3>
-      <p id="pago-texto">Pagalo con Mercado Pago: escaneá el QR con el celular o tocá el botón.</p>
+      <h3 id="pago-titulo">Falta un paso: mandanos el mensaje</h3>
+      <p id="pago-numero" class="pago-numero"></p>
+      <p><strong id="pago-total"></strong></p>
+      <p id="pago-texto"></p>
       <img id="pago-qr" alt="Código QR para pagar con Mercado Pago" width="232" height="232">
-      <a id="pago-link" class="primary azul" target="_blank" rel="noopener">Pagar con Mercado Pago</a>
-      <a id="pago-wa" class="primary" target="_blank" rel="noopener">Avisar por WhatsApp</a>
-      <p class="fine"><strong id="pago-total"></strong></p>
-      <button id="pago-comprobante" class="secundario" type="button">Descargar comprobante (PDF)</button>
+      <a id="pago-link" class="primary" target="_blank" rel="noopener">Pagar con Mercado Pago</a>
+      <a id="pago-wa" class="primary" target="_blank" rel="noopener"><svg aria-hidden="true"><use href="#ic-whatsapp"/></svg><span id="pago-wa-txt">Mandar el pedido por WhatsApp</span></a>
+      <button id="pago-listo" class="secundario" type="button">Ya lo mandé</button>
+      <ol class="siguientes" aria-label="Qué sigue">
+        <li><strong>Seña</strong> Te respondemos y pagás la seña (o el total).</li>
+        <li><strong>Impresión</strong> Lo imprimimos: 3 días hábiles o más.</li>
+        <li><strong>Entrega</strong> Lo retirás o te lo mandamos por agencia.</li>
+      </ol>
+      <button id="pago-comprobante" class="link-btn" type="button">Descargar comprobante (PDF)</button>
       <div id="ofrecer-cuenta" class="ofrecer">
-        <p>¿Guardamos tus datos para la próxima?</p>
+        <p>Pediste sin cuenta, así que este pedido no queda en "Mis pedidos". ¿Lo guardamos en una cuenta?</p>
         <button id="crear-cuenta" class="secundario" type="button">Crear mi cuenta</button>
       </div>
     </div>
@@ -272,9 +293,9 @@
         </div>
 
         <form id="form-registro" class="checkout" role="tabpanel" aria-labelledby="tab-registro">
-          <label>Nombre *<input name="nombre" required maxlength="80" autocomplete="name"></label>
-          <label>WhatsApp *<input name="whatsapp" required maxlength="20" inputmode="tel" pattern="\+?[0-9 ]{8,20}" autocomplete="tel" placeholder="09X XXX XXX"></label>
-          <label>Correo electrónico *<input name="email" type="email" required maxlength="120" autocomplete="email"></label>
+          <label>Nombre *<input name="nombre" required maxlength="80" autocomplete="name" data-falta="Escribí tu nombre."></label>
+          <label>WhatsApp *<input name="whatsapp" required maxlength="20" inputmode="tel" pattern="\+?[0-9 ]{8,20}" autocomplete="tel" placeholder="099 123 456" data-falta="Escribí tu WhatsApp para coordinar el pedido." data-formato="Escribí tu WhatsApp con 8 o 9 números, por ejemplo 099 123 456."><small class="ayuda-campo">Con o sin +598, por ejemplo 099 123 456.</small></label>
+          <label>Correo electrónico *<input name="email" type="email" required maxlength="120" autocomplete="email" data-falta="Escribí tu correo." data-formato="Revisá el correo: falta la @ o el dominio (ej. ana@gmail.com)."></label>
           <label>Contraseña *<input name="clave" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
           <label>Repetir contraseña *<input name="clave2" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
           <p id="registro-error" class="error" role="alert"></p>
@@ -282,23 +303,35 @@
         </form>
 
         <form id="form-ingreso" class="checkout" role="tabpanel" aria-labelledby="tab-ingreso" hidden>
-          <label>Correo electrónico<input name="email" type="email" required maxlength="120" autocomplete="email"></label>
+          <label>Correo electrónico<input name="email" type="email" required maxlength="120" autocomplete="email" data-falta="Escribí tu correo." data-formato="Revisá el correo: falta la @ o el dominio (ej. ana@gmail.com)."></label>
           <label>Contraseña<input name="clave" type="password" required maxlength="72" autocomplete="current-password"></label>
           <p id="ingreso-error" class="error" role="alert"></p>
           <button class="primary azul" type="submit">Ingresar</button>
         </form>
-        <p class="fine">Vista previa: por ahora la cuenta se guarda solo en este dispositivo y la contraseña no se guarda.</p>
+        <p class="fine aviso-previa">Vista previa: la cuenta se guarda solo en este dispositivo y la contraseña todavía no se verifica. No la uses en un dispositivo compartido.</p>
       </div>
     </div>
   </dialog>
 
+  <dialog id="salir" class="modal salir" aria-labelledby="salir-titulo">
+    <form method="dialog" class="salir-body">
+      <h2 id="salir-titulo">Cerrar sesión</h2>
+      <p>¿Otra persona usa este dispositivo? Podemos borrar de acá tus datos y tus pedidos.</p>
+      <button class="primary" value="olvidar">Salir y borrar mis datos de acá</button>
+      <button class="secundario" value="recordar">Salir y recordarme</button>
+      <button class="link-btn" value="">Cancelar</button>
+    </form>
+  </dialog>
+
+  <div id="aviso" class="aviso" role="status" hidden><span id="aviso-txt"></span><button id="aviso-btn" type="button">Deshacer</button></div>
+  <p id="anuncio" class="sr" aria-live="polite"></p>
+
   <div id="comprobante" class="comprobante" aria-hidden="true"></div>
 
-  <script src="config.js?v=0.23"></script>
-  <script src="catalogo.js?v=0.23"></script>
-  <script src="productos.js?v=0.23"></script>
-  <script src="qrcode.js?v=0.23"></script>
-  <script src="app.js?v=0.23"></script>
-  <script src="cuenta.js?v=0.23"></script>
+  <script src="config.js?v=0.24"></script>
+  <script src="catalogo.js?v=0.24"></script>
+  <script src="productos.js?v=0.24"></script>
+  <script src="app.js?v=0.24"></script>
+  <script src="cuenta.js?v=0.24"></script>
 </body>
 </html>

@@ -1,19 +1,10 @@
 // Panel de cuenta (vista previa sin servidor).
-// shortcut: la cuenta vive en localStorage de este dispositivo y la contraseña NO se guarda ni se verifica;
-// reemplazar por registro real cuando haya base de datos.
-const CLAVE_PERFIL = "aukan_perfil";
-
-function leerPerfil() {
-  try { return JSON.parse(localStorage.getItem(CLAVE_PERFIL)) || null; } catch { return null; }
-}
-function guardarPerfil(p) {
-  try { localStorage.setItem(CLAVE_PERFIL, JSON.stringify(p)); } catch { /* modo privado: la sesión dura lo que la pestaña */ }
-}
+// Datos y pedidos: ver leerPerfil/guardarPedido en catalogo.js.
 
 function pintarCuenta() {
   const p = leerPerfil();
   const activo = !!p?.activo;
-  $("#ver-cuenta").textContent = activo ? `Hola, ${p.nombre.split(" ")[0]}` : "Ingresar";
+  $("#ver-cuenta").textContent = activo ? `Hola, ${p.nombre.split(" ")[0]}` : "Mi cuenta";
   $("#cuenta-forms").hidden = activo;
   $("#invitado").hidden = activo;
   if (activo) {
@@ -34,22 +25,7 @@ function elegirTab(registro) {
   $("#form-ingreso").hidden = registro;
 }
 
-// Pedidos de la cuenta (vista previa: localStorage). Cuando haya base de datos, el estado viene del servidor.
-const CLAVE_PEDIDOS = "aukan_pedidos";
 const ESTADOS = ["Recibido", "Seña pagada", "En impresión", "Listo para entregar", "Entregado"];
-function leerPedidos() {
-  try { return JSON.parse(localStorage.getItem(CLAVE_PEDIDOS)) || []; } catch { return []; }
-}
-function guardarPedidos(lista) {
-  try { localStorage.setItem(CLAVE_PEDIDOS, JSON.stringify(lista.slice(0, 50))); } catch { /* sin almacenamiento */ }
-}
-// Lo llama app.js al enviar un pedido: lo devuelve completo (para el comprobante) y lo guarda solo si hay sesión.
-function guardarPedido(pedido) {
-  const p = { fecha: new Date().toISOString(), estado: 0, ...pedido, numero: pedido.numero || `W${Date.now().toString(36).toUpperCase().slice(-6)}` };
-  if (leerPerfil()?.activo) guardarPedidos([p, ...leerPedidos()]);
-  return p;
-}
-
 const fechaCorta = (iso) => new Date(iso).toLocaleDateString("es-UY", { day: "numeric", month: "short", year: "numeric" });
 function tarjetaPedido(p) {
   const pasos = ESTADOS.map((e, i) => (i === 1 && !p.sena ? "Pagado" : e));
@@ -78,9 +54,11 @@ function pintarPedidos() {
   const curso = lista.filter((p) => p.estado < fin), hist = lista.filter((p) => p.estado >= fin);
   $("#pedidos-curso").replaceChildren(...(curso.length ? curso.map(tarjetaPedido) : [el("p", { className: "vacio", textContent: "No tenés pedidos en curso." })]));
   $("#pedidos-historial").replaceChildren(...(hist.length ? hist.map(tarjetaPedido) : [el("p", { className: "vacio", textContent: "Todavía no hay pedidos entregados." })]));
-  $("#pedidos-ejemplo").hidden = lista.some((p) => p.ejemplo);
+  const hayEjemplos = lista.some((p) => p.ejemplo);
+  $("#pedidos-ejemplo").textContent = hayEjemplos ? "Quitar los pedidos de ejemplo" : "Ver con pedidos de ejemplo";
 }
 $("#pedidos-ejemplo").addEventListener("click", () => {
+  if (leerPedidos().some((p) => p.ejemplo)) { guardarPedidos(leerPedidos().filter((p) => !p.ejemplo)); return pintarPedidos(); }
   const item = (id, cant) => { const x = productos.find((p) => p.id === id) || {}; return { id, cant, nombre: x.nombre || "Figura", precio: x.precio || 0 }; };
   const pedido = (numero, dias, estado, sena, items) => ({ numero, fecha: new Date(Date.now() - dias * 864e5).toISOString(), estado, sena, ejemplo: true,
     items, total: items.reduce((s, i) => s + i.precio * i.cant, 0) });
@@ -157,6 +135,8 @@ $("#form-registro").addEventListener("submit", (e) => {
   if (d.clave !== d.clave2) { $("#registro-error").textContent = "Las contraseñas no coinciden."; return; }
   $("#registro-error").textContent = "";
   guardarPerfil({ nombre: d.nombre.trim(), whatsapp: d.whatsapp.trim(), email: d.email.trim().toLowerCase(), activo: true });
+  // Si recién pidió como invitado, ese pedido pasa a su cuenta.
+  if (ultimoPedido && !ultimoPedido.guardado) { guardarPedidos([ultimoPedido, ...leerPedidos()]); ultimoPedido.guardado = true; }
   e.target.reset();
   pintarCuenta();
   irACuenta();
@@ -174,10 +154,14 @@ $("#form-ingreso").addEventListener("submit", (e) => {
   irACuenta();
 });
 
-$("#cuenta-salir").addEventListener("click", () => {
-  abrirMenu(false);
-  const p = leerPerfil();
-  if (p) guardarPerfil({ ...p, activo: false });
+// Cerrar sesión pregunta si olvidar los datos (dispositivo compartido) o recordarlos para la próxima.
+$("#cuenta-salir").addEventListener("click", () => { abrirMenu(false); $("#salir").showModal(); });
+$("#salir").addEventListener("close", () => {
+  const v = $("#salir").returnValue;
+  $("#salir").returnValue = "";
+  if (v !== "olvidar" && v !== "recordar") return;
+  if (v === "olvidar") { olvidarCuenta(); $("#checkout").reset(); }
+  else guardarPerfil({ ...leerPerfil(), activo: false });
   pintarCuenta();
   elegirTab(false);
   verCatalogo();

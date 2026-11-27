@@ -40,6 +40,8 @@ function productosDesdeCsv(text) {
       // Varias fotos separadas por | (la primera es la de la tarjeta, el resto va al carrusel).
       fotos: col(r, "foto").split("|").map((f) => fotoSegura(f.trim())).filter(Boolean),
       activo: !/^(no|false|0)$/i.test(col(r, "activo")),
+      tamano: col(r, "tamano"), // opcional, ej. "12 cm de alto"
+      material: col(r, "material"), // opcional, ej. "PLA"
     }))
     .map((p) => ({ ...p, foto: p.fotos[0] || "" })) // sin precio = "Consultar"
     .filter((p) => p.id && p.nombre && p.activo);
@@ -56,10 +58,39 @@ function resumenPedido(items, cliente) {
     ...lineas,
     `Total: $${total}`,
     `Nombre: ${cliente.nombre}`,
-    `Entrega: ${cliente.entrega}`,
+    `Entrega: ${cliente.entrega}${cliente.envio ? ` (${cliente.envio})` : ""}`,
     cliente.modo === "total" ? `Pago: todo ($${total})` : `Pago: seña del 50% ($${montoSena(total)})`,
     cliente.comentario ? `Comentario: ${cliente.comentario}` : "",
   ].filter(Boolean).join("\n");
 }
 
-if (typeof module !== "undefined") module.exports = { parseCsv, productosDesdeCsv, resumenPedido, montoSena };
+// Búsqueda sin mayúsculas ni acentos: "pokemon" encuentra "Pokémon".
+const normalizar = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+// Cuenta de vista previa (localStorage). shortcut: la contraseña NO se guarda ni se verifica;
+// reemplazar por cuentas reales cuando haya base de datos.
+const CLAVE_PERFIL = "aukan_perfil";
+const clavePedidos = (email) => "aukan_pedidos:" + email; // cada cuenta ve solo sus pedidos
+function leerJson(k, vacio) { try { return JSON.parse(localStorage.getItem(k)) ?? vacio; } catch { return vacio; } }
+function escribir(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch { /* modo privado */ } }
+const leerPerfil = () => leerJson(CLAVE_PERFIL, null);
+const guardarPerfil = (p) => escribir(CLAVE_PERFIL, p);
+const sesion = () => { const p = leerPerfil(); return p?.activo ? p : null; };
+const leerPedidos = (email = sesion()?.email) => (email ? leerJson(clavePedidos(email), []) : []);
+const guardarPedidos = (lista, email = sesion()?.email) => email && escribir(clavePedidos(email), lista.slice(0, 50));
+// Devuelve el pedido completo (para el comprobante) y lo guarda solo si hay sesión.
+function guardarPedido(pedido) {
+  const p = { fecha: new Date().toISOString(), estado: 0, ...pedido, numero: pedido.numero || `W${Date.now().toString(36).toUpperCase().slice(-6)}` };
+  if (sesion()) { guardarPedidos([p, ...leerPedidos()]); p.guardado = true; }
+  return p;
+}
+// "Cerrar sesión" con "olvidar mis datos": borra el perfil y sus pedidos de este dispositivo.
+function olvidarCuenta() {
+  const p = leerPerfil();
+  if (p?.email) escribir(clavePedidos(p.email), null);
+  escribir(CLAVE_PERFIL, null);
+}
+try { localStorage.removeItem("aukan_pedidos"); } catch { /* clave vieja compartida (V0.20–V0.23) */ }
+
+if (typeof module !== "undefined") module.exports = { parseCsv, productosDesdeCsv, resumenPedido, montoSena, normalizar,
+  leerPerfil, guardarPerfil, leerPedidos, guardarPedidos, guardarPedido, olvidarCuenta };

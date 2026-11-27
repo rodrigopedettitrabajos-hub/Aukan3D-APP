@@ -11,7 +11,12 @@ function doPost(e) {
     const body = JSON.parse(e.postData.contents);
     const c = body.cliente || {};
     const nombre = limpio(c.nombre, 80), whatsapp = limpio(c.whatsapp, 20);
-    if (!nombre || !/^\+?[0-9 ]{8,20}$/.test(whatsapp)) return json({ ok: false, error: "datos" });
+    if (c.web || !nombre || !/^\+?[0-9 ]{8,20}$/.test(whatsapp)) return json({ ok: false, error: "datos" }); // web: campo trampa para robots
+    // Límite simple: 5 pedidos cada 10 minutos por WhatsApp, para frenar pedidos falsos en serie.
+    const cache = CacheService.getScriptCache(), clave = "wa:" + whatsapp.replace(/\D/g, "");
+    const enviados = Number(cache.get(clave) || 0);
+    if (enviados >= 5) return json({ ok: false, error: "limite" });
+    cache.put(clave, String(enviados + 1), 600);
     if (!Array.isArray(body.items) || !body.items.length || body.items.length > 50) return json({ ok: false, error: "items" });
 
     // Precios desde la planilla, nunca desde el navegador.
@@ -36,11 +41,15 @@ function doPost(e) {
 
     const pedidos = hoja("Pedidos");
     if (pedidos.getLastRow() === 0) pedidos.appendRow(["fecha", "nombre", "whatsapp", "email", "entrega", "comentario", "detalle", "total", "estado", "pago", "modo", "a pagar"]);
-    const numero = pedidos.getLastRow(); // número de pedido = fila de datos
+    // Contador propio (no la fila): si se borra una fila, el número no se repite.
+    const props = PropertiesService.getScriptProperties();
+    const numero = Number(props.getProperty("ULTIMO_PEDIDO") || pedidos.getLastRow() - 1) + 1;
     const referencia = "AUKAN-" + numero;
     const cobro = sena ? [{ title: "Seña 50% pedido " + referencia, quantity: 1, unit_price: aPagar, currency_id: "UYU" }] : lineas;
     const pago = linkPago(cobro, referencia, limpio(c.email, 120));
-    pedidos.appendRow([new Date(), nombre, whatsapp, limpio(c.email, 120), limpio(c.entrega, 40),
+    props.setProperty("ULTIMO_PEDIDO", String(numero));
+    const entrega = limpio(c.entrega, 40) + (c.envio ? " · " + limpio(c.envio, 160) : "");
+    pedidos.appendRow([new Date(), nombre, whatsapp, limpio(c.email, 120), entrega,
       limpio(c.comentario, 500), detalle, total, "NUEVO", pago, sena ? "Seña 50%" : "Total", aPagar].map(seguro));
     return json({ ok: true, total: total, aPagar: aPagar, sena: sena, numero: numero, pago: pago });
   } catch (err) {
@@ -58,7 +67,7 @@ function linkPago(items, referencia, email) {
   if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) pref.payer = { email: email };
   const res = UrlFetchApp.fetch("https://api.mercadopago.com/checkout/preferences", {
     method: "post", contentType: "application/json", muteHttpExceptions: true,
-    headers: { Authorization: "Bearer " + token, "X-Idempotency-Key": referencia },
+    headers: { Authorization: "Bearer " + token, "X-Idempotency-Key": Utilities.getUuid() },
     payload: JSON.stringify(pref),
   });
   if (res.getResponseCode() >= 300) { console.error("Mercado Pago", res.getResponseCode(), res.getContentText()); return ""; }

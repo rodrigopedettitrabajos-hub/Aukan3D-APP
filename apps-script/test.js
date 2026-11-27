@@ -1,12 +1,14 @@
 // Prueba Code.gs con stubs de Apps Script: node apps-script/test.js
 const fs = require("fs"), assert = require("assert");
 const rows = { Productos: [["id","categoria","subcategoria","nombre","precio","foto","activo"], ["1","Figuras","","Charizard",1600,"",""], ["2","Llaveros","","=HACK",200,"",""]], Pedidos: [] };
-let props = {}, fetched = [];
+let props = {}, fetched = [], cache = {};
 const sheet = (n) => ({ getDataRange: () => ({ getValues: () => rows[n].map((r) => r.slice()) }), getLastRow: () => rows[n].length, appendRow: (r) => rows[n].push(r) });
 const ctx = {
   LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
   SpreadsheetApp: { getActive: () => ({ getSheetByName: sheet, insertSheet: sheet }) },
-  PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => props[k] }) },
+  PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => props[k], setProperty: (k, v) => { props[k] = v; } }) },
+  CacheService: { getScriptCache: () => ({ get: (k) => cache[k], put: (k, v) => { cache[k] = v; } }) },
+  Utilities: { getUuid: () => "uuid-" + fetched.length },
   UrlFetchApp: { fetch: (url, o) => { fetched.push({ url, o }); return { getResponseCode: () => 201, getContentText: () => JSON.stringify({ init_point: "https://www.mercadopago.com.uy/checkout/v1/redirect?pref_id=X", sandbox_init_point: "https://sandbox.mercadopago.com.uy/checkout/v1/redirect?pref_id=X" }) }; } },
   ContentService: { MimeType: { JSON: 1 }, createTextOutput: (t) => ({ t, setMimeType() { return JSON.parse(t); } }) },
   console,
@@ -34,4 +36,12 @@ r = post({ cliente: cli, items: [{ id: "2", cant: 1 }, { id: "1", cant: 1 }, { i
 assert.strictEqual(r.aPagar, Math.ceil(r.total / 2));
 assert.ok(r.pago.startsWith("https://www.")); assert.strictEqual(rows.Pedidos.length, 6);
 assert.strictEqual(post({ cliente: cli, items: [{ id: "99", cant: 1 }] }).ok, false);
+// Número propio: borrar una fila no hace que se repita.
+rows.Pedidos.splice(2, 1); cache = {};
+r = post({ cliente: cli, items: [{ id: "1", cant: 1 }] });
+assert.strictEqual(r.numero, 6); // con la fila borrada, getLastRow() daría 5 (repetido) assert.notStrictEqual(fetched.at(-1).o.headers["X-Idempotency-Key"], fetched.at(-2).o.headers["X-Idempotency-Key"]);
+// Límite: el sexto pedido en 10 minutos del mismo WhatsApp se rechaza; el campo trampa también.
+for (let i = 0; i < 4; i++) assert.ok(post({ cliente: cli, items: [{ id: "1", cant: 1 }] }).ok);
+assert.strictEqual(post({ cliente: cli, items: [{ id: "1", cant: 1 }] }).error, "limite");
+assert.strictEqual(post({ cliente: { ...cli, whatsapp: "098000000", web: "x" }, items: [{ id: "1", cant: 1 }] }).ok, false);
 console.log("gs ok", rows.Pedidos[0].length, rows.Pedidos[2][6]);
