@@ -51,4 +51,24 @@ assert.strictEqual(d.totalVenta(db3.ventas[0]), 800);
 assert.strictEqual(db3.clientes[0].nombre, "Ana");
 assert.strictEqual(d.importarPedidosWeb(db3, [{ ...ped, numero: "W2" }]), 1);
 assert.strictEqual(db3.clientes.length, 1); // mismo WhatsApp, mismo cliente
+
+// Sincronización: solo se manda lo cambiado; lo del servidor no pisa cambios locales sin mandar.
+const enviado = new Map(), local = d.dbVacia();
+d.aplicarServidor(local, { ventas: [{ numero: "1001", fecha: "2026-11-01T10:00:00Z", origen: "web", items: [], pagos: [] }],
+  gastos: [{ id: "g1", concepto: "Luz", monto: 10 }] }, enviado);
+assert.deepStrictEqual(d.cambiosDb(local, enviado), { set: [], del: [] });
+local.gastos[0].monto = 20;
+local.clientes.push({ id: "c9", nombre: "Ana" });
+local.ventas.splice(0, 1);
+let cam = d.cambiosDb(local, enviado);
+assert.deepStrictEqual(cam.set.map((x) => x.col + x.id), ["clientesc9", "gastosg1"]);
+assert.deepStrictEqual(cam.del, [{ col: "ventas", id: "1001" }]);
+assert.strictEqual(d.aplicarServidor(local, { gastos: [{ id: "g1", concepto: "Luz", monto: 10 }] }, enviado), 0);
+assert.strictEqual(local.gastos[0].monto, 20); // el cambio local sin mandar se respeta
+d.marcarEnviado(enviado, cam);
+assert.deepStrictEqual(d.cambiosDb(local, enviado), { set: [], del: [] });
+assert.strictEqual(d.aplicarServidor(local, { ventas: [{ numero: "1002", fecha: "2026-11-02T10:00:00Z", origen: "web", items: [], pagos: [] }],
+  gastos: [{ _borrado: true, id: "g1" }] }, enviado), 1);
+assert.strictEqual(local.gastos.length, 0);
+assert.strictEqual(local.ventas[0].numero, "1002");
 console.log("admin: ok");

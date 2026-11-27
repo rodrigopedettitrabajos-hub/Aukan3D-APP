@@ -20,20 +20,53 @@ function foto(f) {
   return !ok || ok.startsWith("https:") ? ok : "../" + ok;
 }
 
-// --- Ingreso (muestra) ---
-// shortcut: usuario y clave fijos (admin / admin) y comparados en el navegador, solo para mostrar;
-// con la base de datos va un ingreso real en el servidor (Cloudflare Access o usuarios con contraseña cifrada).
-const SESION = "aukan_admin_ok";
-const conSesion = () => { try { return sessionStorage.getItem(SESION) === "1"; } catch { return false; } };
+// --- Ingreso ---
+// Con apiUrl (config.js) el usuario y la contraseña se validan en el servidor, que da un token de 12 h.
+// Sin apiUrl es la demo: admin / admin comparado en el navegador, con datos de ejemplo.
+const API = String(window.AUKAN_CONFIG?.apiUrl || "").replace(/\/+$/, "");
+const SESION = API ? "aukan_admin_token" : "aukan_admin_ok";
+const leerSesion = () => { try { return sessionStorage.getItem(SESION) || ""; } catch { return ""; } };
+const conSesion = () => (API ? !!leerSesion() : leerSesion() === "1");
+function cerrarSesion(motivo = "") {
+  try { sessionStorage.removeItem(SESION); } catch { /* sin almacenamiento */ }
+  if (API) { db = dbVacia(); enviado.clear(); hasta = 0; }
+  for (const d of document.querySelectorAll("dialog[open]")) d.close();
+  $("#login-error").textContent = motivo;
+  mostrarApp();
+}
 function mostrarApp() {
   const ok = conSesion();
   $("#login").hidden = ok;
   $(".app").hidden = !ok;
   if (ok) mostrarVista(); else $("#f-login").usuario.focus();
 }
-$("#f-login").addEventListener("submit", (e) => {
+$("#f-login").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = e.target;
+  if (API) {
+    const boton = f.querySelector("button");
+    boton.disabled = true;
+    $("#login-error").textContent = "";
+    try {
+      const res = await fetch(API + "/api/login", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuario: f.usuario.value.trim(), clave: f.clave.value }) });
+      const r = await res.json();
+      if (!r.ok) {
+        $("#login-error").textContent = r.error === "limite" ? "Demasiados intentos. Probá de nuevo en 15 minutos." : "Usuario o contraseña incorrectos.";
+        f.clave.select();
+        return;
+      }
+      try { sessionStorage.setItem(SESION, r.token); } catch { /* sin almacenamiento */ }
+      f.reset();
+      await traerServidor();
+      mostrarApp();
+    } catch (err) {
+      console.error(err);
+      if (conSesion()) cerrarSesion("No pudimos traer los datos. Revisá la conexión y probá de nuevo.");
+      else $("#login-error").textContent = "No pudimos conectar con el servidor. Revisá la conexión.";
+    } finally { boton.disabled = false; }
+    return;
+  }
   if (f.usuario.value.trim().toLowerCase() === "admin" && f.clave.value === "admin") {
     try { sessionStorage.setItem(SESION, "1"); } catch { /* sin almacenamiento */ }
     f.reset();
@@ -43,23 +76,73 @@ $("#f-login").addEventListener("submit", (e) => {
   $("#login-error").textContent = "Usuario o contraseña incorrectos.";
   f.clave.select();
 });
-for (const b of document.querySelectorAll("[data-salir]")) b.addEventListener("click", () => { try { sessionStorage.removeItem(SESION); } catch { /* idem */ } mostrarApp(); });
+for (const b of document.querySelectorAll("[data-salir]")) b.addEventListener("click", () => cerrarSesion());
 
 // --- Datos ---
-let db = leerJson(CLAVE_DB, null);
+let db = API ? dbVacia() : leerJson(CLAVE_DB, null);
 if (!db?.version) db = datosEjemplo(catalogoDesdeCsv(window.PRODUCTOS_CSV));
+const avisoPedidos = (n) => n && avisar(n === 1 ? "Llegó 1 pedido nuevo de la tienda." : `Llegaron ${n} pedidos nuevos de la tienda.`);
+
+// Servidor: cada guardar() manda solo lo cambiado; cada 20 s se trae lo nuevo (pedidos web, otros dispositivos).
+// shortcut: si dos dispositivos editan lo mismo a la vez, queda el último que guardó.
+const enviado = new Map();
+let hasta = 0, enviando = null, otraVez = false;
+async function llamar(ruta, body) {
+  const res = await fetch(API + ruta, { method: body ? "POST" : "GET", body: body && JSON.stringify(body),
+    headers: { Authorization: "Bearer " + leerSesion(), ...(body ? { "Content-Type": "application/json" } : {}) } });
+  if (res.status === 401) { cerrarSesion("La sesión venció. Volvé a ingresar."); throw new Error("sesion"); }
+  const r = await res.json();
+  if (!r.ok) throw new Error(r.error);
+  return r;
+}
+async function traerServidor() {
+  const r = await llamar("/api/admin/datos?desde=" + hasta);
+  const primera = !hasta;
+  const n = aplicarServidor(db, r, enviado);
+  hasta = r.hasta;
+  return primera ? 0 : n;
+}
+function sincronizar() {
+  if (enviando) { otraVez = true; return enviando; }
+  const cam = cambiosDb(db, enviado);
+  if (!cam.set.length && !cam.del.length) return Promise.resolve();
+  enviando = llamar("/api/admin/lote", { set: cam.set.map(({ col, id, data }) => ({ col, id, data })), del: cam.del })
+    .then(() => marcarEnviado(enviado, cam))
+    .catch((e) => { if (e.message !== "sesion") avisar("No se pudo guardar en el servidor. Reintentamos en unos segundos."); })
+    .finally(() => { enviando = null; if (otraVez) { otraVez = false; sincronizar(); } });
+  return enviando;
+}
+setInterval(async () => {
+  if (!API || !conSesion() || document.hidden) return;
+  await sincronizar();
+  if (document.querySelector("dialog[open]")) return; // no cambiar datos debajo de un formulario abierto
+  try { const n = await traerServidor(); avisoPedidos(n); repintar(); } catch { /* reintenta en la próxima vuelta */ }
+}, 20000);
+
 function guardar() {
+  if (API) return void sincronizar();
   try { localStorage.setItem(CLAVE_DB, JSON.stringify(db)); }
   catch { avisar("No se pudo guardar: el navegador no tiene más lugar. Probá con fotos más livianas."); }
 }
-// Pedidos hechos en la tienda desde este navegador (puente de la demo, ver importarPedidosWeb).
+// Demo: pedidos hechos en la tienda desde este navegador (ver importarPedidosWeb). Con servidor llegan solos.
 function traerPedidosWeb() {
+  if (API) return 0;
   const n = importarPedidosWeb(db, leerJson("aukan_pedidos_panel", []));
-  if (n) avisar(n === 1 ? "Llegó 1 pedido nuevo de la tienda." : `Llegaron ${n} pedidos nuevos de la tienda.`);
+  avisoPedidos(n);
   return n;
 }
-guardar();
+if (!API) guardar();
 addEventListener("storage", (e) => { if (e.key === "aukan_pedidos_panel" && conSesion() && traerPedidosWeb()) { guardar(); repintar(); } });
+// Número de venta: con servidor se reserva al abrir el formulario (la serie es la misma que la de la tienda).
+let reservado = null;
+const reservarNumero = () => { if (API && reservado == null) llamar("/api/admin/numero", {}).then((r) => { reservado = String(r.numero); }).catch(() => {}); };
+function numeroVenta() {
+  if (!API) return nuevoNumero(db);
+  const n = reservado;
+  reservado = null;
+  reservarNumero();
+  return n;
+}
 const cliente = (id) => db.clientes.find((c) => c.id === id) || { nombre: "Sin cliente", whatsapp: "" };
 const usuario = (id) => db.usuarios.find((u) => u.id === id);
 const medio = (id) => db.medios.find((m) => m.id === id)?.nombre || "—";
@@ -248,6 +331,7 @@ function abrirVenta() {
   $("#lista-productos").replaceChildren(...db.productos.map((p) => el("option", { value: opcionProducto(p) })));
   $("#venta-error").textContent = $("#venta-item-error").textContent = "";
   pintarItemsVenta();
+  reservarNumero();
   $("#d-venta").showModal();
 }
 for (const b of document.querySelectorAll("[data-nueva-venta]")) b.addEventListener("click", abrirVenta);
@@ -283,11 +367,12 @@ fv.addEventListener("submit", (e) => {
   if (!fv.cliente.value) return error("Elegí el cliente.");
   if (!itemsVenta.length) return error("Agregá al menos un producto.");
   if (itemsVenta.some((i) => !(i.precio > 0))) return error("Hay productos sin precio.");
-  const v = { numero: nuevoNumero(db), fecha: new Date().toISOString(), origen: "local", cliente: fv.cliente.value, vendedor: fv.vendedor.value,
+  if (API && reservado == null) { reservarNumero(); return error("Esperá un segundo: estamos pidiendo el número de venta."); }
+  const v = { numero: numeroVenta(), fecha: new Date().toISOString(), origen: "local", cliente: fv.cliente.value, vendedor: fv.vendedor.value,
     moneda: fv.moneda.value, items: itemsVenta.map((i) => ({ ...i })), pagos: [], estado: 0, sena: true, entrega: fv.entrega.value, nota: fv.nota.value.trim(),
     comision: usuario(fv.vendedor.value)?.comision ?? 0 };
   const pago = Math.round(+fv.pago.value || 0);
-  if (pago < 0 || pago > totalVenta(v)) { db.ultimo--; return error(`El pago tiene que ser entre 0 y ${plata(totalVenta(v), v.moneda)}.`); }
+  if (pago < 0 || pago > totalVenta(v)) { if (API) reservado = v.numero; else db.ultimo--; return error(`El pago tiene que ser entre 0 y ${plata(totalVenta(v), v.moneda)}.`); }
   if (pago) { registrarPago(v, pago, fv.medio.value); v.sena = pago < totalVenta(v); }
   // Lo que había listo en stock se descuenta; lo demás se imprime a pedido.
   for (const i of v.items) { const p = db.productos.find((x) => x.id === i.id); if (p) p.stock = Math.max((p.stock || 0) - i.cant, 0); }
@@ -431,15 +516,16 @@ fp.addEventListener("submit", (e) => {
   const p = productoEdit || { id: String(Math.max(0, ...db.productos.map((x) => +x.id || 0)) + 1), foto: "" };
   Object.assign(p, { nombre: d.nombre.trim(), categoria: d.categoria.trim(), subcategoria: d.subcategoria.trim(), tamano: d.tamano.trim(), material: d.material.trim(),
     precio: Math.max(Math.round(+d.precio || 0), 0), stock: Math.max(Math.round(+d.stock || 0), 0), activo: fp.activo.checked });
-  if (fotoNueva) {
-    // La foto nueva se baja con el nombre que usa el CSV: subirla a fotos/ del sitio.
+  if (fotoNueva && API) { p.foto = fotoNueva; p.fotoV = (p.fotoV || 0) + 1; } // el servidor la publica para la tienda
+  else if (fotoNueva) {
+    // Demo: la foto nueva se baja con el nombre que usa el CSV, para subirla a fotos/ del sitio.
     const nombre = `${p.id}-${slug(p.nombre)}.webp`;
     el("a", { href: fotoNueva, download: nombre }).click();
     p.foto = fotoNueva; p.fotoArchivo = "fotos/" + nombre;
   }
   if (!productoEdit) db.productos.push(p);
   guardar(); repintar();
-  avisar(fotoNueva ? "Producto guardado. La foto se descargó para subirla a la carpeta fotos." : "Producto guardado.");
+  avisar(fotoNueva && !API ? "Producto guardado. La foto se descargó para subirla a la carpeta fotos." : "Producto guardado.");
 });
 $("#bajar-csv").addEventListener("click", () => {
   const csv = catalogoACsv(db.productos.map((p) => ({ ...p, foto: p.fotoArchivo || p.foto })));
@@ -571,5 +657,11 @@ $("#reiniciar").addEventListener("click", () => {
 
 // Misma versión que la tienda (config.js), para saber qué está publicado.
 for (const e of document.querySelectorAll("[data-version]")) e.textContent = window.AUKAN_CONFIG?.version || "";
-if (traerPedidosWeb()) guardar();
-mostrarApp();
+if (API) {
+  for (const e of document.querySelectorAll("[data-demo]")) e.hidden = true;
+  if (conSesion()) traerServidor().then(mostrarApp, (e) => { if (e.message !== "sesion") cerrarSesion("No pudimos traer los datos. Revisá la conexión y probá de nuevo."); });
+  else mostrarApp();
+} else {
+  if (traerPedidosWeb()) guardar();
+  mostrarApp();
+}

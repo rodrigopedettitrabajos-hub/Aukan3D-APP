@@ -6,7 +6,7 @@ compatibility_date = "2026-11-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "aukan3d"
-database_id = "REEMPLAZAR_CON_EL_ID_DE_wrangler_d1_create"
+database_id = "d1577ca7-6179-4adc-ab09-0f126d9f6292"
 
 [vars]
 # Páginas que pueden usar el servidor (la tienda y el panel). Separadas por coma.

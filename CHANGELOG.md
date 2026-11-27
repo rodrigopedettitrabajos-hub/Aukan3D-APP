@@ -2,6 +2,13 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.29 · 2026-11-27
+- Base de datos real: servidor propio en Cloudflare (Worker + base D1, plan gratis) en `api/`, publicado en https://aukan3d-api.aukan3d.workers.dev.
+- La tienda toma el catálogo y manda los pedidos al servidor (los precios se recalculan allá). Cada pedido aparece en el panel de gestión desde cualquier dispositivo, en menos de 20 segundos.
+- El panel pide usuario y contraseña al servidor (contraseña cifrada, sesión de 12 horas, límite de intentos). Ventas, clientes, productos, stock, medios de pago, usuarios y gastos se guardan en la base y se ven igual en todas las computadoras y celulares.
+- Los números de venta del panel y de la tienda son una sola serie. Las fotos nuevas de productos se publican solas en la tienda.
+- Sin `apiUrl` en `config.js` todo sigue funcionando como demo (admin / admin y datos de ejemplo en el navegador).
+
 ## V0.28 · 2026-11-27
 - El panel de gestión muestra la versión (abajo en el menú y en la pantalla de ingreso), la misma que la tienda.
 

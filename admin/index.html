@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.28">
-  <script src="../tema.js?v=0.28"></script>
+  <link rel="stylesheet" href="admin.css?v=0.29">
+  <script src="../tema.js?v=0.29"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -22,7 +22,7 @@
     <label>Contraseña <input name="clave" type="password" autocomplete="current-password" required></label>
     <p class="error" id="login-error" aria-live="polite"></p>
     <button class="btn" type="submit">Ingresar</button>
-    <p class="sub chico">Versión de muestra: usuario <b>admin</b>, contraseña <b>admin</b>.</p>
+    <p class="sub chico" data-demo>Versión de muestra: usuario <b>admin</b>, contraseña <b>admin</b>.</p>
     <p class="version" data-version></p>
   </form>
 </div>
@@ -128,7 +128,7 @@
         <div class="caja"><h2>Gastos del mes</h2><div id="gastos-lista"></div></div>
       </section>
 
-      <p class="demo-pie">Vista previa: los datos son de ejemplo y se guardan solo en este navegador.
+      <p class="demo-pie" data-demo>Vista previa: los datos son de ejemplo y se guardan solo en este navegador.
         <button type="button" class="link" id="reiniciar">Volver a los datos de ejemplo</button></p>
     </div>
   </main>
@@ -269,10 +269,10 @@
 
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
-<script src="../config.js?v=0.28"></script>
-<script src="../productos.js?v=0.28"></script>
-<script src="../catalogo.js?v=0.28"></script>
-<script src="datos.js?v=0.28"></script>
-<script src="admin.js?v=0.28"></script>
+<script src="../config.js?v=0.29"></script>
+<script src="../productos.js?v=0.29"></script>
+<script src="../catalogo.js?v=0.29"></script>
+<script src="datos.js?v=0.29"></script>
+<script src="admin.js?v=0.29"></script>
 </body>
 </html>

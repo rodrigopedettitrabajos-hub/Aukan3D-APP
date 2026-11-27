@@ -62,7 +62,7 @@ assert.strictEqual(todo.ventas.filter((v) => v.cliente === venta.cliente).length
 
 // Lote: guardar y borrar; la otra pestaña ve solo lo nuevo.
 const desde = todo.hasta + 1;
-const lote = await pedir("/api/admin/lote", { token, body: { set: [{ col: "gastos", id: "gt" + unico, data: { id: "gt" + unico, concepto: "Filamento", monto: 900, moneda: "UYU" } }], del: [{ col: "gastos", id: "gviejo" }] } });
+const lote = await pedir("/api/admin/lote", { token, body: { set: [{ col: "gastos", id: "gt" + unico, data: { id: "gt" + unico, concepto: "Filamento", monto: 900, moneda: "UYU", fecha: "2026-11-27" } }], del: [{ col: "gastos", id: "gviejo" }] } });
 assert.strictEqual(lote.r.status, 200, lote.t);
 const cambios = (await pedir("/api/admin/datos?desde=" + desde, { token })).j;
 assert.deepStrictEqual(cambios.gastos.map((g) => g.id).sort(), ["gt" + unico, "gviejo"]);
