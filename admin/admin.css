@@ -159,7 +159,7 @@ tr.clic:focus-visible { outline-offset: -3px; }
 .ventana.ancha { width: min(760px, calc(100% - 24px)); }
 .ventana::backdrop { background: rgb(0 0 0 / .55); }
 .ventana form { padding: 20px 22px; display: grid; gap: 14px; }
-.ventana header { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.ventana header { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ventana header h2 { margin: 0; font-size: 22px; }
 .ventana footer { display: flex; justify-content: flex-end; gap: 10px; position: sticky; bottom: -20px; background: var(--card); padding: 12px 0 4px; }
 .campos { display: grid; gap: 12px; }
@@ -327,19 +327,11 @@ legend { padding: 0 6px; font-weight: 600; }
 /* Imprimir pedido: solo se ve la hoja #imprimir. */
 .ventana header h2 { margin-right: auto; }
 #imprimir { display: none; }
+#imprimir.midiendo { display: block; position: absolute; left: -9999px; top: 0; width: 72mm; font: 11px/1.35 system-ui, sans-serif; }
 @media print {
   body > :not(#imprimir) { display: none !important; }
   body { background: #fff !important; }
   #imprimir { display: block; color: #000; background: #fff; font: 13px/1.45 system-ui, sans-serif; max-width: 18cm; margin: 0 auto; }
-  #imprimir header { display: flex; gap: 14px; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 8px; }
-  #imprimir header img { width: 56px; height: 56px; }
-  #imprimir h1 { font-size: 22px; margin: 0; }
-  #imprimir h2 { font-size: 14px; margin: 14px 0 4px; text-transform: uppercase; }
-  #imprimir p { margin: 2px 0; }
-  #imprimir table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-  #imprimir td { border-bottom: 1px solid #ccc; padding: 5px 0; }
-  #imprimir .num { text-align: right; }
-  #imprimir .linea { display: flex; justify-content: space-between; }
 }
 
 /* Reportes: período con flechas */
@@ -381,3 +373,30 @@ legend { padding: 0 6px; font-weight: 600; }
   #pendientes-lista .acciones { flex-direction: column; align-items: stretch; }
 }
 @media (max-width: 700px) { #pendientes-lista th:nth-child(6), #pendientes-lista td:nth-child(6) { display: none; } }
+
+/* Impresión: A4 (por defecto) o ticket de 80 mm */
+.imp-formatos { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.pos-ultima { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--muted); }
+.pos-ultima:empty { display: none; }
+@page { size: A4; margin: 15mm; }
+@page ticket { size: 80mm 297mm; margin: 3mm; } /* el alto lo ajusta admin.js al contenido */
+/* hoja impresa (oculta en pantalla salvo al medir el ticket) */
+#imprimir header { display: flex; gap: 14px; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 8px; }
+#imprimir header img { width: 56px; height: 56px; }
+#imprimir h1 { font-size: 22px; margin: 0; }
+#imprimir h2 { font-size: 14px; margin: 14px 0 4px; text-transform: uppercase; }
+#imprimir p { margin: 2px 0; }
+#imprimir table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+#imprimir td { border-bottom: 1px solid #ccc; padding: 5px 0; }
+#imprimir .num { text-align: right; }
+#imprimir .linea { display: flex; justify-content: space-between; }
+  #imprimir .pie-imp { margin-top: 16px; color: #555; font-size: 11px; }
+  #imprimir.ticket80, #imprimir.midiendo { page: ticket; width: 72mm; max-width: none; font-size: 11px; line-height: 1.35; }
+  #imprimir.ticket80 header { flex-direction: column; text-align: center; gap: 4px; border-bottom: 1px dashed #000; }
+  #imprimir.ticket80 header img { width: 36px; height: 36px; }
+  #imprimir.ticket80 h1 { font-size: 16px; letter-spacing: .08em; }
+  #imprimir.ticket80 h2 { font-size: 11px; margin: 8px 0 2px; }
+  #imprimir.ticket80 td { padding: 2px 0; border-bottom: 0; vertical-align: top; }
+  #imprimir.ticket80 table { border-top: 1px dashed #000; border-bottom: 1px dashed #000; }
+  #imprimir.ticket80 .pie-imp { text-align: center; }
+

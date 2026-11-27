@@ -9,6 +9,7 @@ Plan gratis: alcanza de sobra para la tienda.
 - `POST /api/pedidos/estado`: estado de los pedidos para "Mis pedidos" (número + WhatsApp; 60 consultas por IP cada 10 min).
 - `POST /api/login`: ingreso al panel (10 intentos por IP cada 15 min). Devuelve un token de 12 h.
 - `GET /api/admin/datos?desde=`, `POST /api/admin/lote`, `POST /api/admin/numero`: datos del panel (con token).
+- `GET /api/admin/estado`: tamaño y registros de las bases (solo usuario dev).
 
 ## Probar en la computadora
 ```

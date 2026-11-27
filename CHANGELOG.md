@@ -2,6 +2,13 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.37 · 2026-11-27
+- Imprimir en A4 o en ticket de 80 mm (impresora térmica): botones en el detalle del pedido y en la última venta de Modo feria. El ticket ajusta su largo al contenido y muestra recibido y vuelto. El botón "Imprimir" de la lista usa el último formato elegido.
+- Base de datos (solo usuario dev, en Administración): tamaño de la base real y la de pruebas contra los 500 MB del plan gratis y registros por tipo. Servidor: `GET /api/admin/estado`.
+- Registrar pago en un pedido con seña propone el 50 % (antes proponía el total y lo dejaba pagado de una).
+- Tienda: "Mis pedidos" trae el estado también al entrar a la sección o volver a la pestaña, no solo al recargar.
+- Probado de punta a punta con 14 escenarios (compras con y sin cuenta, envío, seña y total, límite por WhatsApp, cobros en USD, feria con caja, reportes y dos pestañas del panel).
+
 ## V0.36 · 2026-11-27
 - Revisión de textos cortados y encimados en tienda y panel (PC, tablet y dos tamaños de celular):
   - Arriba en el panel, "Administrador" y "Vista previa…" salían pegados (desde la campana); ahora uno debajo del otro. En tablet se oculta el subtítulo para que no se parta.
