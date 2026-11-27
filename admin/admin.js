@@ -999,8 +999,11 @@ PINTAR.reportes = () => {
   const barrasDe = (o) => barras(Object.entries(o).sort((a, b) => b[1] - a[1]).map(([k, n]) => [k, n, plata(n)]));
   const pesos = r.ventas.filter((v) => v.moneda === "UYU");
   const cuantas = sumar(r.ventas, (v) => ORIGEN[v.origen] || "En persona", () => 1);
-  $("#por-origen").replaceChildren(barras(Object.entries(sumar(pesos, (v) => ORIGEN[v.origen] || "En persona", totalVenta)).sort((a, b) => b[1] - a[1])
-    .map(([k, n]) => [k, n, `${plata(n)} · ${plural(cuantas[k], "venta")}`])));
+  // Por tipo: la barra es en pesos, pero un tipo con solo ventas en dólares igual aparece.
+  const enPesos = sumar(pesos, (v) => ORIGEN[v.origen] || "En persona", totalVenta);
+  const enUsd = sumar(r.ventas.filter((v) => v.moneda === "USD"), (v) => ORIGEN[v.origen] || "En persona", totalVenta);
+  $("#por-origen").replaceChildren(barras(Object.keys(cuantas).map((k) => [k, enPesos[k] || 0]).sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => [k, n, [n || !enUsd[k] ? plata(n) : "", enUsd[k] ? plata(enUsd[k], "USD") : "", plural(cuantas[k], "venta")].filter(Boolean).join(" · ")])));
   $("#por-medio").replaceChildren(barrasDe(sumar(r.pagos.filter((p) => p.moneda === "UYU"), (p) => medio(p.medio), (p) => p.monto)));
   const porCat = {};
   for (const v of pesos) for (const i of v.items) { const c = db.productos.find((p) => p.id === i.id)?.categoria || "Otros"; porCat[c] = (porCat[c] || 0) + i.precio * i.cant; }
