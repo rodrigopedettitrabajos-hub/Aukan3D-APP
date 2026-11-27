@@ -8,27 +8,57 @@
   <title>Pedidos Aukan3D</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="icon" href="favicon.png">
+  <meta name="theme-color" content="#000000">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="top">
     <div class="wrap top-row">
-      <h1>AUKAN<span>3D</span></h1>
+      <a class="brand" href="./">
+        <img src="logo.webp" alt="" width="44" height="44">
+        <h1>AUKAN<span>3D</span></h1>
+      </a>
       <button id="ver-carrito" class="cart-btn" aria-label="Ver carrito">
         Carrito <span id="cart-count" class="badge">0</span>
       </button>
     </div>
-    <p class="wrap tagline">Tu idea, hecha realidad en 3D. Armá tu pedido y lo coordinamos por WhatsApp.</p>
   </header>
+
+  <section class="hero">
+    <div class="wrap">
+      <h2>Tu idea, hecha realidad en 3D</h2>
+      <p>Figuras estilo amigurumi, llaveros, soportes y piezas personalizadas. Elegí, armá tu pedido y lo coordinamos por WhatsApp.</p>
+    </div>
+  </section>
 
   <main class="wrap">
     <div class="tools">
       <input id="buscar" type="search" placeholder="Buscar: Pikachu, llavero, Naruto..." aria-label="Buscar productos">
       <nav id="categorias" class="chips" aria-label="Categorías"></nav>
+      <nav id="subcategorias" class="chips sub" aria-label="Personajes" hidden></nav>
     </div>
     <p id="estado" class="estado" role="status">Cargando catálogo…</p>
     <section id="grilla" class="grid"></section>
   </main>
+
+  <div id="barra" class="barra" hidden>
+    <span><strong id="barra-cant">0</strong> · <strong id="barra-total">$0</strong></span>
+    <button id="barra-ver" class="primary-sm" type="button">Ver pedido</button>
+  </div>
+
+  <dialog id="detalle" class="modal" aria-labelledby="detalle-nombre">
+    <form method="dialog"><button class="icon cerrar" aria-label="Cerrar">✕</button></form>
+    <div id="detalle-foto" class="detalle-foto"></div>
+    <div class="detalle-info">
+      <span id="detalle-sub" class="sub"></span>
+      <h2 id="detalle-nombre"></h2>
+      <div class="row">
+        <strong id="detalle-precio" class="precio"></strong>
+        <button id="detalle-add" class="add" type="button">Agregar al pedido</button>
+      </div>
+    </div>
+  </dialog>
 
   <dialog id="carrito" class="sheet" aria-labelledby="carrito-titulo">
     <form method="dialog" class="sheet-head">

@@ -3,8 +3,9 @@ const $ = (s) => document.querySelector(s);
 const pesos = (n) => "$" + n.toLocaleString("es-UY");
 
 let productos = [];
-let filtro = { cat: "Todo", q: "" };
+const filtro = { cat: "Todo", sub: "", q: "" };
 const carrito = new Map(); // id -> cantidad
+let enDetalle = null;
 
 function el(tag, props = {}, ...hijos) {
   const e = Object.assign(document.createElement(tag), props);
@@ -22,43 +23,75 @@ async function cargar() {
     $("#estado").textContent = "No pudimos cargar el catálogo. Probá recargar la página.";
     return;
   }
-  pintarCategorias();
   pintar();
 }
 
-function pintarCategorias() {
-  const cats = ["Todo", ...new Set(productos.map((p) => p.categoria))];
-  $("#categorias").replaceChildren(...cats.map((c) =>
-    el("button", { className: "chip", textContent: c, type: "button", ariaPressed: String(c === filtro.cat),
-      onclick: () => { filtro.cat = c; pintarCategorias(); pintar(); } })));
+function chips(nav, opciones, actual, elegir) {
+  nav.replaceChildren(...opciones.map(([valor, texto]) =>
+    el("button", { className: "chip", textContent: texto, type: "button", ariaPressed: String(valor === actual),
+      onclick: () => elegir(valor) })));
+}
+
+function pintarFiltros() {
+  chips($("#categorias"), ["Todo", ...new Set(productos.map((p) => p.categoria))].map((c) => [c, c]), filtro.cat,
+    (c) => { filtro.cat = c; filtro.sub = ""; pintar(); });
+  const subs = [...new Set(productos.filter((p) => p.categoria === filtro.cat && p.subcategoria).map((p) => p.subcategoria))];
+  $("#subcategorias").hidden = !subs.length;
+  chips($("#subcategorias"), [["", "Todos"], ...subs.map((s) => [s, s])], filtro.sub,
+    (s) => { filtro.sub = s; pintar(); });
 }
 
 function visibles() {
   const q = filtro.q.toLowerCase();
   return productos.filter((p) =>
     (filtro.cat === "Todo" || p.categoria === filtro.cat) &&
+    (!filtro.sub || p.subcategoria === filtro.sub) &&
     (!q || `${p.nombre} ${p.categoria} ${p.subcategoria}`.toLowerCase().includes(q)));
 }
 
-function tarjeta(p) {
-  const foto = p.foto
+function foto(p) {
+  return p.foto
     ? el("img", { src: p.foto, alt: p.nombre, loading: "lazy", referrerPolicy: "no-referrer",
         onerror() { this.replaceWith(el("div", { className: "nofoto", textContent: "3D" })); } })
     : el("div", { className: "nofoto", textContent: "3D" });
-  const cant = carrito.get(p.id) || 0;
+}
+
+function textoBoton(id) {
+  const cant = carrito.get(id) || 0;
+  return cant ? `En pedido (${cant})` : "Agregar";
+}
+
+function tarjeta(p) {
   return el("article", { className: "card" },
-    el("div", { className: "foto" }, foto),
+    el("button", { className: "foto", type: "button", ariaLabel: `Ver ${p.nombre}`, onclick: () => abrirDetalle(p) }, foto(p)),
     el("div", { className: "info" },
       el("span", { className: "sub", textContent: p.subcategoria || p.categoria }),
       el("h3", { textContent: p.nombre }),
       el("div", { className: "row" },
-        el("strong", { textContent: pesos(p.precio) }),
-        el("button", { className: cant ? "add on" : "add", type: "button",
-          textContent: cant ? `En carrito (${cant})` : "Agregar",
-          ariaLabel: `Agregar ${p.nombre}`, onclick: () => cambiar(p.id, 1) }))));
+        el("strong", { className: "precio", textContent: pesos(p.precio) }),
+        el("button", { className: carrito.has(p.id) ? "add on" : "add", type: "button",
+          textContent: textoBoton(p.id), ariaLabel: `Agregar ${p.nombre}`, onclick: () => cambiar(p.id, 1) }))));
+}
+
+function abrirDetalle(p) {
+  enDetalle = p;
+  $("#detalle-foto").replaceChildren(foto(p));
+  $("#detalle-sub").textContent = [p.categoria, p.subcategoria].filter(Boolean).join(" · ");
+  $("#detalle-nombre").textContent = p.nombre;
+  $("#detalle-precio").textContent = pesos(p.precio);
+  pintarDetalle();
+  $("#detalle").showModal();
+}
+
+function pintarDetalle() {
+  if (!enDetalle) return;
+  const b = $("#detalle-add");
+  b.textContent = carrito.has(enDetalle.id) ? `En pedido (${carrito.get(enDetalle.id)}) · sumar otro` : "Agregar al pedido";
+  b.className = carrito.has(enDetalle.id) ? "add on" : "add";
 }
 
 function pintar() {
+  pintarFiltros();
   const lista = visibles();
   $("#estado").textContent = lista.length ? "" : "No encontramos productos con esa búsqueda.";
   $("#grilla").replaceChildren(...lista.map(tarjeta));
@@ -73,13 +106,18 @@ function cambiar(id, d) {
   const n = (carrito.get(id) || 0) + d;
   n > 0 ? carrito.set(id, n) : carrito.delete(id);
   pintar();
+  pintarDetalle();
 }
 
 function pintarCarrito() {
   const items = itemsCarrito();
   const n = items.reduce((s, i) => s + i.cant, 0);
+  const total = pesos(items.reduce((s, i) => s + i.precio * i.cant, 0));
   $("#cart-count").textContent = n;
-  $("#total").textContent = pesos(items.reduce((s, i) => s + i.precio * i.cant, 0));
+  $("#total").textContent = total;
+  $("#barra").hidden = !n;
+  $("#barra-cant").textContent = n === 1 ? "1 producto" : `${n} productos`;
+  $("#barra-total").textContent = total;
   $("#enviar").disabled = !n;
   $("#items").replaceChildren(...(items.length ? items.map((i) =>
     el("li", {},
@@ -113,7 +151,13 @@ async function enviar(ev) {
   pintar();
 }
 
+const verCarrito = () => $("#carrito").showModal();
 $("#buscar").addEventListener("input", (e) => { filtro.q = e.target.value; pintar(); });
-$("#ver-carrito").addEventListener("click", () => $("#carrito").showModal());
+$("#ver-carrito").addEventListener("click", verCarrito);
+$("#barra-ver").addEventListener("click", verCarrito);
+$("#detalle-add").addEventListener("click", () => cambiar(enDetalle.id, 1));
+$("#detalle").addEventListener("close", () => { enDetalle = null; });
+// Tocar fuera del contenido cierra el modal.
+for (const d of document.querySelectorAll("dialog")) d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
 $("#checkout").addEventListener("submit", enviar);
 cargar();
