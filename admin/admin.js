@@ -569,5 +569,7 @@ $("#reiniciar").addEventListener("click", () => {
   avisar("Volvimos a los datos de ejemplo.");
 });
 
+// Misma versión que la tienda (config.js), para saber qué está publicado.
+for (const e of document.querySelectorAll("[data-version]")) e.textContent = window.AUKAN_CONFIG?.version || "";
 if (traerPedidosWeb()) guardar();
 mostrarApp();
