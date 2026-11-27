@@ -235,7 +235,10 @@ legend { font-size: 14px; color: var(--muted); padding: 0 4px; }
 @media (min-width: 720px) { .eventos { grid-template-columns: repeat(5, 1fr); gap: 16px; } }
 .evento { margin: 0; position: relative; border-radius: var(--radius); overflow: hidden; background: var(--soft); aspect-ratio: 3 / 4; }
 .evento img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .35s; }
-.evento:hover img { transform: scale(1.04); }
+.evento:hover > img { transform: scale(1.04); }
+.evento .carrusel img { object-fit: cover; }
+.evento .puntos { top: 10px; bottom: auto; }
+.evento figcaption { pointer-events: none; }
 .evento figcaption { position: absolute; inset: auto 0 0; padding: 28px 12px 10px; color: #fff; font: 500 15px/1.2 Oswald, sans-serif; letter-spacing: .02em; text-transform: uppercase; background: linear-gradient(transparent, rgb(0 0 0 / .8)); }
 .evento figcaption span { display: block; font: 400 12px "Open Sans", sans-serif; text-transform: none; color: #d6d8db; margin-top: 2px; }
 .nosotros { max-width: 70ch; margin-top: 14px; }

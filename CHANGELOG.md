@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.17 · 2026-11-27
+- Galería: Cosplay Anime Fest 2025 (3 fotos) y Friki Fest Solidaria 2026 (4 fotos) con carrusel, como en el sitio. Se agrandan al tocarlas.
+
 ## V0.16 · 2026-11-27
 - Todas las fotos de la ficha del producto (incluido el carrusel) y de la Galería se agrandan al tocarlas.
 

@@ -346,6 +346,11 @@ function verGrande(src, alt) {
   Object.assign($("#visor-img"), { src, alt });
   $("#visor").showModal();
 }
+// Galería: los eventos con data-fotos="a.webp|b.webp" pasan a carrusel (la foto del HTML va primera).
+document.querySelectorAll("#galeria [data-fotos]").forEach((fig) => {
+  const img = fig.querySelector("img");
+  img.replaceWith(...carrusel({ nombre: img.alt, fotos: [img.getAttribute("src"), ...fig.dataset.fotos.split("|")] }));
+});
 // Cualquier foto de la ficha o de la galería se agranda al tocarla (o con Enter).
 const AMPLIABLE = ".carrusel img, #galeria img";
 document.querySelectorAll("#galeria img").forEach((i) => Object.assign(i, { tabIndex: 0, role: "button" }));
