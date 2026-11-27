@@ -6,6 +6,9 @@ let productos = [];
 const filtro = { cat: "Todo", sub: "", q: "" };
 const carrito = new Map(); // id -> cantidad
 let enDetalle = null;
+let pagina = 1;
+let porPagina = 20;
+try { porPagina = [10, 20, 50].includes(+localStorage.aukan_por_pagina) ? +localStorage.aukan_por_pagina : 20; } catch { /* sin storage */ }
 
 function el(tag, props = {}, ...hijos) {
   const e = Object.assign(document.createElement(tag), props);
@@ -31,7 +34,7 @@ async function cargar() {
 
 function opcion(texto, activo, elegir) {
   return el("button", { className: "menu-item", type: "button", textContent: texto, ariaPressed: String(activo),
-    onclick: () => { elegir(); cerrarMenu(); pintar(); } });
+    onclick: () => { elegir(); pagina = 1; cerrarMenu(); pintar(); } });
 }
 
 function cerrarMenu() {
@@ -108,11 +111,45 @@ function pintarDetalle() {
   b.className = carrito.has(enDetalle.id) ? "add on" : "add";
 }
 
+// 1 … 4 5 6 … 17: primera, última y las vecinas de la actual.
+function numerosPagina(actual, total) {
+  const nums = [...new Set([1, actual - 1, actual, actual + 1, total])].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
+  return nums.flatMap((n, i) => (i && n - nums[i - 1] > 1 ? ["…", n] : [n]));
+}
+
+function irA(n) {
+  pagina = n;
+  pintar();
+  const y = $("main").getBoundingClientRect().top + scrollY - $(".top").offsetHeight;
+  scrollTo({ top: y, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+}
+
+function pintarPaginas(total) {
+  const nav = $("#paginas");
+  nav.hidden = total <= 1;
+  if (nav.hidden) return nav.replaceChildren();
+  const boton = (texto, n, extra = {}) => el("button", { type: "button", className: "pag", textContent: texto, onclick: () => irA(n), ...extra });
+  nav.replaceChildren(
+    boton("‹", pagina - 1, { disabled: pagina === 1, ariaLabel: "Página anterior" }),
+    ...numerosPagina(pagina, total).map((n) => n === "…"
+      ? el("span", { className: "pag-gap", textContent: "…" })
+      : boton(String(n), n, { ariaCurrent: n === pagina ? "page" : null, ariaLabel: `Página ${n}` })),
+    boton("›", pagina + 1, { disabled: pagina === total, ariaLabel: "Página siguiente" }));
+}
+
 function pintar() {
   pintarFiltros();
   const lista = visibles();
+  const paginas = Math.max(1, Math.ceil(lista.length / porPagina));
+  pagina = Math.min(pagina, paginas);
+  const desde = (pagina - 1) * porPagina;
   $("#estado").textContent = lista.length ? "" : "No encontramos productos con esa búsqueda.";
-  $("#grilla").replaceChildren(...lista.map(tarjeta));
+  $("#lista-barra").hidden = !lista.length;
+  const hasta = Math.min(desde + porPagina, lista.length);
+  $("#conteo").textContent = `${desde + 1}${hasta > desde + 1 ? "–" + hasta : ""} de ${lista.length} productos`;
+  $("#por-pagina").value = String(porPagina);
+  $("#grilla").replaceChildren(...lista.slice(desde, desde + porPagina).map(tarjeta));
+  pintarPaginas(paginas);
   pintarCarrito();
 }
 
@@ -224,7 +261,12 @@ $("#crear-cuenta").addEventListener("click", () => {
 $("#wa-flotante").href = waLink("Hola Aukan3D! Quería hacer una consulta.");
 
 const verCarrito = () => $("#carrito").showModal();
-$("#buscar").addEventListener("input", (e) => { filtro.q = e.target.value; pintar(); });
+$("#buscar").addEventListener("input", (e) => { filtro.q = e.target.value; pagina = 1; pintar(); });
+$("#por-pagina").addEventListener("change", (e) => {
+  porPagina = +e.target.value;
+  try { localStorage.aukan_por_pagina = porPagina; } catch { /* sin storage */ }
+  irA(1);
+});
 $("#ver-carrito").addEventListener("click", verCarrito);
 $("#barra-ver").addEventListener("click", verCarrito);
 $("#detalle-add").addEventListener("click", () => cambiar(enDetalle.id, 1));

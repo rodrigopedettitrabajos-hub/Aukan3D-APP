@@ -2,6 +2,10 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número y actualiza `version` en `config.js`.
 
+## V0.09 · 2026-11-27
+- Elegir cuántos productos ver: 10, 20 o 50 (recuerda la elección). Paginación cuando hay más productos que eso.
+- Contador "1–20 de 161 productos".
+
 ## V0.08 · 2026-11-27
 - Invitación a crear cuenta más visible en el carrito, con botón "Crear cuenta". Se sigue pudiendo pedir como invitado.
 

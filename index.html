@@ -43,7 +43,18 @@
       <input id="buscar" type="search" placeholder="Buscar: Pikachu, llavero, Naruto..." aria-label="Buscar productos">
     </div>
     <p id="estado" class="estado" role="status">Cargando catálogo…</p>
+    <div id="lista-barra" class="lista-barra" hidden>
+      <span id="conteo"></span>
+      <label>Mostrar
+        <select id="por-pagina">
+          <option>10</option>
+          <option>20</option>
+          <option>50</option>
+        </select>
+      </label>
+    </div>
     <section id="grilla" class="grid"></section>
+    <nav id="paginas" class="paginas" aria-label="Páginas" hidden></nav>
   </main>
 
   <footer class="pie">

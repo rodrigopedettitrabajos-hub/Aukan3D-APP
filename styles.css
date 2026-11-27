@@ -61,6 +61,17 @@ input[type=search] { padding-left: 40px; background: var(--soft) url("data:image
 .estado { color: var(--muted); margin: 8px 0; }
 .estado:empty { display: none; }
 
+/* Cantidad por página y paginación */
+.lista-barra { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: 6px; font-size: 14px; color: var(--muted); }
+.lista-barra label { display: flex; align-items: center; gap: 8px; }
+.lista-barra select { font: inherit; color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; }
+.paginas { display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap; padding: 0 0 32px; }
+.pag { min-width: 40px; height: 40px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: 500 16px Oswald, sans-serif; }
+.pag:hover:not(:disabled) { border-color: var(--muted); }
+.pag[aria-current="page"] { background: var(--brand-ink); border-color: var(--brand-ink); color: var(--on-brand); }
+.pag:disabled { opacity: .35; cursor: default; }
+.pag-gap { color: var(--muted); padding: 0 2px; }
+
 /* Grilla de productos */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 14px; padding: 10px 0 32px; }
 @media (min-width: 720px) { .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; } }
