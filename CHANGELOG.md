@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.27 · 2026-11-27
+- Puente para la demo: los pedidos que se hacen en la tienda aparecen solos en el panel de gestión (Ventas y pedidos, como "Tienda web", con el cliente creado o encontrado por su WhatsApp), aunque el panel ya esté abierto. Solo ve los pedidos hechos desde el mismo navegador; con la base de datos van a llegar todos.
+
 ## V0.26 · 2026-11-27
 Cambios aprobados de las auditorías del panel de gestión (`auditorias/admin-v025.md`).
 - Los meses y el "hoy" se cuentan con la hora de Uruguay (antes, una venta del último día después de las 21:00 caía en el mes siguiente).

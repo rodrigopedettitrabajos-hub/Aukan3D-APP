@@ -52,7 +52,14 @@ function guardar() {
   try { localStorage.setItem(CLAVE_DB, JSON.stringify(db)); }
   catch { avisar("No se pudo guardar: el navegador no tiene más lugar. Probá con fotos más livianas."); }
 }
+// Pedidos hechos en la tienda desde este navegador (puente de la demo, ver importarPedidosWeb).
+function traerPedidosWeb() {
+  const n = importarPedidosWeb(db, leerJson("aukan_pedidos_panel", []));
+  if (n) avisar(n === 1 ? "Llegó 1 pedido nuevo de la tienda." : `Llegaron ${n} pedidos nuevos de la tienda.`);
+  return n;
+}
 guardar();
+addEventListener("storage", (e) => { if (e.key === "aukan_pedidos_panel" && conSesion() && traerPedidosWeb()) { guardar(); repintar(); } });
 const cliente = (id) => db.clientes.find((c) => c.id === id) || { nombre: "Sin cliente", whatsapp: "" };
 const usuario = (id) => db.usuarios.find((u) => u.id === id);
 const medio = (id) => db.medios.find((m) => m.id === id)?.nombre || "—";
@@ -562,4 +569,5 @@ $("#reiniciar").addEventListener("click", () => {
   avisar("Volvimos a los datos de ejemplo.");
 });
 
+if (traerPedidosWeb()) guardar();
 mostrarApp();

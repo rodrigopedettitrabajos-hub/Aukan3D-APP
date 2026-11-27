@@ -58,6 +58,26 @@ function comisiones(db, mes) {
   });
 }
 
+// Puente de la demo: los pedidos que la tienda guardó en este navegador entran como ventas web.
+// shortcut: solo ve pedidos de este navegador; con la base de datos llegan todos desde el servidor.
+function importarPedidosWeb(db, pedidos) {
+  const ya = new Set(db.ventas.map((v) => String(v.numero)));
+  const nuevos = pedidos.filter((p) => p?.numero && Array.isArray(p.items) && p.items.length && !ya.has(String(p.numero)));
+  for (const p of nuevos.reverse()) { // del más viejo al más nuevo, para que el más nuevo quede primero
+    const c = p.cliente || {}, tel = String(c.whatsapp || "").replace(/\D/g, "");
+    let cli = tel && db.clientes.find((x) => String(x.whatsapp).replace(/\D/g, "") === tel);
+    if (!cli) {
+      cli = { id: "c" + String(p.numero).toLowerCase(), nombre: String(c.nombre || "Cliente de la tienda").slice(0, 80),
+        whatsapp: String(c.whatsapp || "").slice(0, 20), email: String(c.email || "").slice(0, 120), zona: String(p.direccion || "").slice(0, 80) };
+      db.clientes.push(cli);
+    }
+    db.ventas.unshift({ numero: String(p.numero), fecha: p.fecha || new Date().toISOString(), origen: "web", cliente: cli.id, vendedor: "",
+      moneda: "UYU", pagos: [], estado: 0, sena: p.sena !== false, entrega: String(p.entrega || "Retiro coordinado"), nota: "",
+      items: p.items.map((i) => ({ id: String(i.id), nombre: String(i.nombre).slice(0, 120), precio: Math.max(Math.round(+i.precio || 0), 0), cant: Math.min(Math.max(Math.round(+i.cant || 1), 1), 99) })) });
+  }
+  return nuevos.length;
+}
+
 function nuevoNumero(db) { db.ultimo = (db.ultimo || 0) + 1; return db.ultimo; }
 
 function registrarPago(v, monto, medio, fecha = new Date().toISOString()) {
@@ -119,4 +139,4 @@ function datosEjemplo(catalogo, ahora = Date.now()) {
 }
 
 if (typeof module !== "undefined") module.exports = { ESTADOS, totalVenta, cobrado, saldo, porMoneda, catalogoDesdeCsv, catalogoACsv,
-  resumenMes, comisiones, registrarPago, datosEjemplo, nuevoNumero, mesDe, suma, hoy };
+  resumenMes, comisiones, registrarPago, datosEjemplo, nuevoNumero, mesDe, suma, hoy, importarPedidosWeb };
