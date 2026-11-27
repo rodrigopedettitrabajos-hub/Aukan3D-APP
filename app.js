@@ -153,8 +153,11 @@ async function enviar(ev) {
   const cliente = Object.fromEntries(new FormData(ev.target));
   const items = itemsCarrito();
   const texto = resumenPedido(items, cliente);
+  ultimoCliente = cliente;
   if (!cfg.pedidosUrl) { // sin servidor: directo a WhatsApp
     window.open(waLink(texto), "_blank");
+    mostrarPago("", $("#total").textContent, texto);
+    $("#pago-titulo").textContent = "¡Pedido listo!";
     return terminar(ev.target);
   }
   $("#enviar").disabled = true;
@@ -173,25 +176,28 @@ async function enviar(ev) {
   terminar(ev.target);
 }
 
+let ultimoCliente = null;
 const waLink = (texto) => `https://wa.me/${cfg.whatsapp}?text=${encodeURIComponent(texto)}`;
 
 function terminar(form) {
   carrito.clear();
   form.reset();
   pintar();
-  if ($("#pago").hidden) $("#carrito").close();
+  pintarCuenta(); // vuelve a completar los datos si hay sesión
 }
 
 // Pantalla final del carrito: QR y botón de Mercado Pago, más el aviso por WhatsApp.
 function mostrarPago(pago, total, texto) {
   for (const e of [$("#items"), $(".total"), $("#checkout")]) e.hidden = true;
   $("#pago").hidden = false;
+  $("#pago-titulo").textContent = "¡Pedido recibido!";
   $("#pago-total").textContent = total;
   $("#pago-wa").href = waLink(texto);
   $("#pago-link").hidden = $("#pago-qr").hidden = !pago;
   $("#pago-texto").textContent = pago
     ? "Pagalo con Mercado Pago: escaneá el QR con el celular o tocá el botón."
-    : "Mandanos el pedido por WhatsApp y te pasamos cómo pagarlo.";
+    : "Te abrimos WhatsApp con tu pedido. Si no se abrió, tocá el botón y te pasamos cómo pagarlo.";
+  $("#ofrecer-cuenta").hidden = !!leerPerfil()?.activo; // a los invitados les ofrecemos crear cuenta
   if (!pago) return;
   $("#pago-link").href = pago;
   const qr = qrcode(0, "M");
@@ -203,6 +209,16 @@ function mostrarPago(pago, total, texto) {
 $("#carrito").addEventListener("close", () => {
   for (const e of [$("#items"), $(".total"), $("#checkout")]) e.hidden = false;
   $("#pago").hidden = true;
+});
+// Registro opcional: desde el carrito o después de pedir como invitado.
+$("#invitado-ingresar").addEventListener("click", () => { elegirTab(false); $("#cuenta").showModal(); });
+$("#crear-cuenta").addEventListener("click", () => {
+  const f = $("#form-registro");
+  for (const k of ["nombre", "whatsapp", "email"]) f[k].value = ultimoCliente?.[k] || "";
+  $("#carrito").close();
+  elegirTab(true);
+  $("#cuenta").showModal();
+  f.clave.focus();
 });
 $("#wa-flotante").href = waLink("Hola Aukan3D! Quería hacer una consulta.");
 

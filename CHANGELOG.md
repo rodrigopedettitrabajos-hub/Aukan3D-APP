@@ -2,6 +2,10 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número y actualiza `version` en `config.js`.
 
+## V0.07 · 2026-11-27
+- Se puede pedir sin cuenta. El carrito avisa que no hace falta y ofrece ingresar.
+- Después de pedir como invitado se ofrece crear la cuenta con los datos ya cargados.
+
 ## V0.06 · 2026-11-27
 - Botón de WhatsApp con animación: onda que late y un saludo cada 4 segundos (se apaga si el sistema pide menos movimiento).
 

@@ -84,6 +84,7 @@
     <p class="total">Total <strong id="total">$0</strong></p>
 
     <form id="checkout" class="checkout">
+      <p id="invitado" class="invitado">No hace falta cuenta para pedir. ¿Ya tenés una? <button id="invitado-ingresar" class="enlace" type="button">Ingresá</button> y se completan tus datos.</p>
       <label>Nombre *<input name="nombre" required maxlength="80" autocomplete="name"></label>
       <label>WhatsApp *<input name="whatsapp" required maxlength="20" inputmode="tel" pattern="\+?[0-9 ]{8,20}" autocomplete="tel" placeholder="09X XXX XXX"></label>
       <label>Correo electrónico<input name="email" type="email" maxlength="120" autocomplete="email"></label>
@@ -98,12 +99,16 @@
     </form>
 
     <div id="pago" class="pago" hidden>
-      <h3>¡Pedido recibido!</h3>
+      <h3 id="pago-titulo">¡Pedido recibido!</h3>
       <p id="pago-texto">Pagalo con Mercado Pago: escaneá el QR con el celular o tocá el botón.</p>
       <img id="pago-qr" alt="Código QR para pagar con Mercado Pago" width="232" height="232">
       <a id="pago-link" class="primary azul" target="_blank" rel="noopener">Pagar con Mercado Pago</a>
       <a id="pago-wa" class="primary" target="_blank" rel="noopener">Avisar por WhatsApp</a>
       <p class="fine">Total <strong id="pago-total"></strong></p>
+      <div id="ofrecer-cuenta" class="ofrecer">
+        <p>¿Guardamos tus datos para la próxima?</p>
+        <button id="crear-cuenta" class="secundario" type="button">Crear mi cuenta</button>
+      </div>
     </div>
   </dialog>
 

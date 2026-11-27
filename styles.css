@@ -126,6 +126,10 @@ legend { font-size: 14px; color: var(--muted); padding: 0 4px; }
 .pago p { margin: 0; }
 .pago img { width: 232px; height: 232px; border-radius: 12px; background: #fff; image-rendering: pixelated; }
 .pago .primary { width: 100%; text-decoration: none; text-align: center; }
+.invitado { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--soft); font-size: 14px; color: var(--muted); }
+.enlace { border: 0; background: none; padding: 0; color: var(--brand-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.ofrecer { width: 100%; border-top: 1px solid var(--line); padding-top: 16px; margin-top: 4px; display: grid; gap: 8px; justify-items: center; }
+.ofrecer .secundario { margin: 0; }
 .fine { margin: 0; font-size: 13px; color: var(--muted); text-align: center; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before { transition: none !important; animation: none !important; } }

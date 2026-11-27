@@ -16,6 +16,7 @@ function pintarCuenta() {
   $("#ver-cuenta").textContent = activo ? `Hola, ${p.nombre.split(" ")[0]}` : "Ingresar";
   $("#cuenta-sesion").hidden = !activo;
   $("#cuenta-forms").hidden = activo;
+  $("#invitado").hidden = activo;
   if (activo) $("#cuenta-nombre").textContent = p.nombre;
   // Completa el formulario del pedido con los datos de la cuenta.
   const f = $("#checkout");
