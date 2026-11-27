@@ -1,8 +1,14 @@
 const cfg = window.AUKAN_CONFIG;
 if (cfg.apiUrl) { // servidor propio (api/): catálogo y pedidos salen de ahí
   const api = cfg.apiUrl.replace(/\/+$/, "");
-  cfg.catalogoCsvUrl = api + "/api/productos.csv";
-  cfg.pedidosUrl = api + "/api/pedidos";
+  // Modo pruebas: lo activa el usuario dev desde el panel, en este mismo navegador.
+  let pruebas = false;
+  try { pruebas = localStorage.getItem("aukan_entorno") === "pruebas"; } catch { /* sin almacenamiento */ }
+  const e = pruebas ? "?e=pruebas" : "";
+  cfg.catalogoCsvUrl = api + "/api/productos.csv" + e;
+  cfg.pedidosUrl = api + "/api/pedidos" + e;
+  if (pruebas) document.addEventListener("DOMContentLoaded", () => document.body.prepend(Object.assign(document.createElement("p"),
+    { className: "banda-pruebas", textContent: "Tienda en modo pruebas: los pedidos van a la base de pruebas." })));
 }
 const $ = (s) => document.querySelector(s);
 const pesos = (n) => "$" + n.toLocaleString("es-UY");

@@ -29,8 +29,11 @@ node semilla.mjs && npx wrangler d1 execute aukan3d --remote --file=semilla.sql
 npx wrangler secret put ADMIN_USUARIO     # ej. admin
 npx wrangler secret put ADMIN_CLAVE_HASH  # salida de: node clave.mjs "contraseña"
 npx wrangler secret put FIRMA             # texto largo al azar
+npx wrangler secret put DEV_CLAVE_HASH    # opcional: usuario "dev" (node clave.mjs "contraseña")
 npx wrangler secret put MP_ACCESS_TOKEN   # opcional: token de Mercado Pago (TEST-... para pruebas)
 npx wrangler deploy
 ```
+Base de pruebas (para el usuario dev): `npx wrangler d1 create aukan3d-pruebas`, copiar su id en `DB_PRUEBAS` de wrangler.toml y cargarle `schema.sql` y `semilla.sql` igual que a la real (con `aukan3d-pruebas`). El panel la usa con el botón "Pasar a pruebas" (solo dev); las llamadas llevan `?e=pruebas`.
+
 Después poner la dirección que muestra `deploy` (https://aukan3d-api.<cuenta>.workers.dev) en `apiUrl` de `config.js`.
 Los secretos nunca van en el repo ni en config.js.

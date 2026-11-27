@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.31">
-  <script src="../tema.js?v=0.31"></script>
+  <link rel="stylesheet" href="admin.css?v=0.32">
+  <script src="../tema.js?v=0.32"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -51,11 +51,13 @@
       <button id="tema" class="tema-btn" type="button"></button>
       <a href="../" class="side-link" target="_blank" rel="noopener">Ver la tienda ↗</a>
       <span class="version" data-version></span>
+      <button type="button" class="btn chico entorno-btn" data-entorno hidden></button>
       <button type="button" class="btn sec chico salir-movil" data-salir>Salir</button>
     </div>
   </aside>
 
   <main>
+    <p class="banda-pruebas" id="banda-pruebas" hidden>Modo pruebas: estás usando la base de pruebas. Nada de esto afecta los datos reales.</p>
     <header class="top">
       <p class="crumb">Aukan3D Gestión / <b id="crumb">Panel principal</b></p>
       <div class="user"><span class="avatar" aria-hidden="true">A</span><span><b>Administrador</b><small id="user-sub">Vista previa con datos de ejemplo</small></span><button type="button" class="btn sec chico" data-salir>Salir</button></div>
@@ -339,10 +341,10 @@
 
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
-<script src="../config.js?v=0.31"></script>
-<script src="../productos.js?v=0.31"></script>
-<script src="../catalogo.js?v=0.31"></script>
-<script src="datos.js?v=0.31"></script>
-<script src="admin.js?v=0.31"></script>
+<script src="../config.js?v=0.32"></script>
+<script src="../productos.js?v=0.32"></script>
+<script src="../catalogo.js?v=0.32"></script>
+<script src="datos.js?v=0.32"></script>
+<script src="admin.js?v=0.32"></script>
 </body>
 </html>

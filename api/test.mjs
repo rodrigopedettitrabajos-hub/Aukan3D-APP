@@ -79,4 +79,19 @@ assert.strictEqual((await pedir("/api/admin/lote", { token, body: { set: [{ col:
 const n = (await pedir("/api/admin/numero", { token, body: {} })).j.numero;
 assert.ok(n > ped.j.numero);
 
+// Base de pruebas: solo el usuario dev; lo de pruebas no aparece en la real.
+const ipDev = "10.9." + (unico % 250) + ".1";
+const dev = (await pedir("/api/login", { body: { usuario: "dev", clave: process.argv[4] || "dev-de-prueba-123" }, ip: ipDev })).j;
+assert.strictEqual(dev.usuario, "dev");
+assert.strictEqual(log.j.usuario, "admin");
+assert.strictEqual((await pedir("/api/admin/datos?e=pruebas", { token })).r.status, 403); // admin no entra a pruebas
+assert.strictEqual((await pedir("/api/login", { body: { usuario: "dev", clave: CLAVE }, ip: ipDev })).r.status, 401);
+const pedPrueba = await pedir("/api/pedidos?e=pruebas", { body: { cliente: { ...cliente, whatsapp: "+598 98" + unico.slice(-6) }, items: [{ id: idProd, cant: 1 }] } });
+assert.strictEqual(pedPrueba.r.status, 200, pedPrueba.t);
+const enPruebas = (await pedir("/api/admin/datos?e=pruebas", { token: dev.token })).j;
+assert.ok(enPruebas.ventas.some((v) => v.numero === String(pedPrueba.j.numero) && v.cliente));
+assert.ok(enPruebas.productos.length >= 170);
+const enReal = (await pedir("/api/admin/datos", { token: dev.token })).j; // dev también ve producción
+assert.ok(!enReal.clientes.some((c) => c.whatsapp === "+598 98" + unico.slice(-6)));
+
 console.log("api ok");
