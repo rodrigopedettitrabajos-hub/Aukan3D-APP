@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número y actualiza `version` en `config.js`.
 
+## V0.03 · 2026-11-27
+- Modo claro y oscuro con botón en el encabezado. Arranca según el sistema y recuerda la elección.
+
 ## V0.02 · 2026-11-27
 - Panel de cuenta: crear cuenta e ingresar (vista previa: se guarda solo en el dispositivo, sin contraseña guardada).
 - Los datos de la cuenta completan el formulario del pedido.

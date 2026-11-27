@@ -11,9 +11,12 @@
   --shadow: 0 1px 2px rgb(0 0 0 / .04), 0 8px 24px -12px rgb(0 0 0 / .18);
   color-scheme: light dark;
 }
+/* Oscuro: sigue al sistema salvo que el usuario elija con el botón (data-theme en <html>). */
 @media (prefers-color-scheme: dark) {
-  :root { --ink: #f1f2f3; --muted: #a3a7ad; --line: #2c2f33; --bg: #111214; --soft: #1b1d20; --brand-ink: #2bb0e6; --on-brand: #0b0c0d; }
+  :root:not([data-theme="light"]) { --ink: #f1f2f3; --muted: #a3a7ad; --line: #2c2f33; --bg: #111214; --soft: #1b1d20; --brand-ink: #2bb0e6; --on-brand: #0b0c0d; }
 }
+:root[data-theme="dark"] { --ink: #f1f2f3; --muted: #a3a7ad; --line: #2c2f33; --bg: #111214; --soft: #1b1d20; --brand-ink: #2bb0e6; --on-brand: #0b0c0d; color-scheme: dark; }
+:root[data-theme="light"] { color-scheme: light; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 "Open Sans", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
@@ -105,6 +108,9 @@ legend { font-size: 14px; color: var(--muted); padding: 0 4px; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
+.tema-btn { background: none; border: 1px solid #444; color: #fff; border-radius: 50%; width: 36px; height: 36px; display: grid; place-items: center; font-size: 17px; line-height: 1; }
+.tema-btn:hover { border-color: #888; }
+
 /* Cuenta */
 .acciones { display: flex; gap: 8px; align-items: center; }
 .user-btn { background: none; color: #fff; border: 1px solid #444; border-radius: 999px; padding: 7px 14px; font: 500 15px Oswald, sans-serif; letter-spacing: .02em; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -128,4 +134,4 @@ legend { font-size: 14px; color: var(--muted); padding: 0 4px; }
 .pie { border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; padding: 16px 0 88px; }
 .pie-row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .version { font-family: ui-monospace, monospace; }
-@media (max-width: 420px) { .cart-btn { padding: 8px 12px; } .user-btn { max-width: 110px; } }
+@media (max-width: 480px) { .brand h1 { display: none; } .acciones { gap: 6px; } .cart-btn { padding: 8px 12px; } .user-btn { max-width: 110px; padding: 7px 12px; } }
