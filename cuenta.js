@@ -21,7 +21,8 @@ function pintarCuenta() {
   if (activo) {
     $("#cuenta-nombre").textContent = p.nombre;
     const fd = $("#form-datos");
-    for (const k of ["nombre", "whatsapp", "email", "direccion"]) fd[k].value = p[k] || "";
+    for (const k of ["nombre", "whatsapp", "email", "departamento", "ciudad", "direccion"]) fd[k].value = p[k] || "";
+    elegirBarrios(p.barrio);
     pintarPedidos();
   }
   // Completa el formulario del pedido con los datos de la cuenta.
@@ -98,10 +99,27 @@ function elegirPanel(pedidos) {
 }
 $("#tab-pedidos").addEventListener("click", () => elegirPanel(true));
 $("#tab-datos").addEventListener("click", () => elegirPanel(false));
+// Barrio: lista de los 62 barrios si la ciudad es Montevideo; si no, texto libre.
+const esMvd = (t) => t.trim().toLowerCase() === "montevideo";
+function elegirBarrios(valor) {
+  const lista = esMvd($("#form-datos").ciudad.value), sel = $("#barrio-mvd"), txt = $("#barrio-txt");
+  if (valor === undefined && sel.hidden !== lista) return; // sigue en el mismo modo: no tocar lo elegido
+  const actual = valor ?? ""; // al cambiar entre lista y texto, el barrio anterior no sirve
+  sel.hidden = sel.disabled = !lista;
+  txt.hidden = txt.disabled = lista;
+  if (lista) sel.value = [...sel.options].some((o) => o.value === actual) ? actual : "";
+  else txt.value = actual || "";
+}
+$("#form-datos").departamento.addEventListener("change", (e) => {
+  const c = $("#form-datos").ciudad;
+  if (e.target.value === "Montevideo" && !c.value) c.value = "Montevideo";
+  elegirBarrios();
+});
+$("#form-datos").ciudad.addEventListener("input", () => elegirBarrios());
 $("#form-datos").addEventListener("submit", (e) => {
   e.preventDefault();
   const d = Object.fromEntries(new FormData(e.target));
-  guardarPerfil({ ...leerPerfil(), nombre: d.nombre.trim(), whatsapp: d.whatsapp.trim(), email: d.email.trim().toLowerCase(), direccion: d.direccion.trim() });
+  guardarPerfil({ ...leerPerfil(), nombre: d.nombre.trim(), whatsapp: d.whatsapp.trim(), email: d.email.trim().toLowerCase(), departamento: d.departamento, ciudad: d.ciudad.trim(), barrio: (d.barrio || "").trim(), direccion: d.direccion.trim() });
   const f = $("#checkout");
   for (const k of ["nombre", "whatsapp", "email"]) f[k].value = ""; // que el pedido tome los datos nuevos
   pintarCuenta();

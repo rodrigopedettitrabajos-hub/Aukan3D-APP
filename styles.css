@@ -228,6 +228,10 @@ legend { font-size: 14px; color: var(--muted); padding: 0 4px; }
 .pasos .actual::before { background: var(--brand); box-shadow: 0 0 0 4px rgb(3 146 202 / .25); }
 .secundario.chico { padding: 6px 12px; font-size: 14px; margin: 0; }
 .ok:empty { display: none; }
+.domicilio { border: 0; padding: 0; margin: 0; display: grid; gap: inherit; }
+.domicilio legend { padding: 0; margin-bottom: 8px; font-weight: 600; }
+.domicilio legend span { font-weight: 400; color: var(--muted); }
+.checkout select { font: inherit; color: inherit; background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px; width: 100%; }
 .panel .fine { margin-top: 12px; }
 .link-btn { border: 0; background: none; color: var(--brand-ink); text-decoration: underline; padding: 8px 0; font: inherit; font-size: 14px; }
 .ok { color: #1f9d55; min-height: 1em; margin: 0; }
