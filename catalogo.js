@@ -54,12 +54,12 @@ function resumenPedido(items, cliente) {
   const total = items.reduce((s, i) => s + i.precio * i.cant, 0);
   const lineas = items.map((i) => `• ${i.cant} x ${i.nombre} ($${i.precio})`);
   return [
-    "Hola Aukan3D! Quiero hacer este pedido:",
+    "¡Hola, Aukan3D! Quiero hacer este pedido:",
     ...lineas,
     `Total: $${total}`,
     `Nombre: ${cliente.nombre}`,
     `Entrega: ${cliente.entrega}${cliente.envio ? ` (${cliente.envio})` : ""}`,
-    cliente.modo === "total" ? `Pago: todo ($${total})` : `Pago: seña del 50% ($${montoSena(total)})`,
+    cliente.modo === "total" ? `Pago: todo ($${total})` : `Pago: seña del 50 % ($${montoSena(total)})`,
     cliente.comentario ? `Comentario: ${cliente.comentario}` : "",
   ].filter(Boolean).join("\n");
 }

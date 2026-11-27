@@ -75,7 +75,7 @@ function comisiones(db, mes) {
   return db.usuarios.map((u) => {
     const ventas = db.ventas.filter((v) => v.vendedor === u.id && mesDe(v.fecha) === mes);
     const comision = porMoneda(ventas, (v) => totalVenta(v) * (v.comision ?? u.comision) / 100); // el % que regía al vender
-    return { ...u, cantidad: ventas.length, vendido: porMoneda(ventas, totalVenta),
+    return { ...u, porcentaje: u.comision, cantidad: ventas.length, vendido: porMoneda(ventas, totalVenta),
       comision: { UYU: Math.round(comision.UYU), USD: Math.round(comision.USD) } };
   });
 }
