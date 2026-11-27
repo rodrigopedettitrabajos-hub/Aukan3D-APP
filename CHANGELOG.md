@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.31 · 2026-11-27
+- Menú del panel ordenado por grupos (Ventas, Catálogo, Administración). Modo feria queda abajo, separado y destacado.
+
 ## V0.30 · 2026-11-27
 - Modo feria en el panel de gestión: punto de venta con las fotos del catálogo, buscador y categorías (y "Con stock"). Se toca el producto, se elige cómo paga y se cobra; en efectivo calcula el vuelto con atajos de billetes. Cada venta queda registrada como "Feria", pagada y entregada, y descuenta stock. Con "Deshacer" por si fue un error.
 - Control de caja: se abre con el efectivo inicial y quién vende, se anotan retiros o ingresos de efectivo, y al cerrar se cuenta la plata y muestra si falta o sobra. Debajo quedan las cajas anteriores.
