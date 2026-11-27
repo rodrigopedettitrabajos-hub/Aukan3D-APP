@@ -303,8 +303,9 @@ PINTAR.ventas = () => {
   const lista = db.ventas.filter((v) => (!org || v.origen === org)
     && (est === "" || (est === "saldo" ? saldo(v) > 0 : v.estado === +est))
     && (!q || normalizar([v.numero, cliente(v.cliente).nombre, ...v.items.map((i) => i.nombre)].join(" ")).includes(q)));
-  const imp = (v) => td(el("button", { type: "button", className: "btn sec chico icono-imp", textContent: "Imprimir", ariaLabel: `Imprimir pedido ${v.numero}`, onclick: () => imprimirPedido(v.numero) }), "num");
-  $("#ventas-lista").replaceChildren(tabla([...CAB_VENTAS, ""], lista.map((v) => filaVenta(v, [imp(v)])), "No hay ventas con esos filtros.", "t-ventas"));
+  const boton = (v, formato, texto, nombre) => el("button", { type: "button", className: "btn sec chico", textContent: texto, ariaLabel: `Imprimir pedido ${v.numero} en ${nombre}`, onclick: () => imprimirPedido(v.numero, formato) });
+  const imp = (v) => td(el("span", { className: "imp-formatos" }, boton(v, "a4", "A4", "A4"), boton(v, "80", "80 mm", "ticket de 80 mm")), "num");
+  $("#ventas-lista").replaceChildren(tabla([...CAB_VENTAS, "#Imprimir"], lista.map((v) => filaVenta(v, [imp(v)])), "No hay ventas con esos filtros.", "t-ventas"));
 };
 
 // Hoja del pedido para imprimir (o guardar como PDF), en A4 o en ticket de 80 mm. Se arma en #imprimir y el CSS de
