@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número y actualiza `version` en `config.js`.
 
+## V0.13 · 2026-11-27
+- Próximos eventos: tarjeta en el inicio y pantalla "Eventos" con afiche, fecha, lugar, mapa y botón "Cómo llegar" (copiado del Google Site). Los eventos se cargan en config.js.
+
 ## V0.12 · 2026-11-27
 - Al pedir se elige "Quiero dar una seña del 50%" o "Lo pago todo", con el monto de cada opción.
 - El link y QR de Mercado Pago cobran la seña o el total según lo elegido (el servidor calcula el monto). La planilla guarda el modo y el monto a pagar.

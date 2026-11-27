@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data:; connect-src 'self' https:; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; form-action 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data:; connect-src 'self' https:; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; frame-src https://maps-api-ssl.google.com; form-action 'none'; base-uri 'none'">
   <title>Pedidos Aukan3D</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
@@ -38,6 +38,8 @@
     </div>
   </section>
 
+  <section id="proximo" class="wrap proximo" aria-label="Próximo evento" hidden></section>
+
   <main id="catalogo" class="wrap">
     <div class="tools">
       <input id="buscar" type="search" placeholder="Buscar: Pikachu, llavero, Naruto..." aria-label="Buscar productos">
@@ -56,6 +58,12 @@
     <section id="grilla" class="grid"></section>
     <nav id="paginas" class="paginas" aria-label="Páginas" hidden></nav>
   </main>
+
+  <section id="eventos" class="seccion wrap" hidden aria-labelledby="eventos-titulo">
+    <h2 id="eventos-titulo">Próximos eventos</h2>
+    <p class="seccion-intro">Vení a conocer las figuras en persona.</p>
+    <div id="eventos-lista"></div>
+  </section>
 
   <section id="galeria" class="seccion wrap" hidden aria-labelledby="galeria-titulo">
     <h2 id="galeria-titulo">Galería</h2>

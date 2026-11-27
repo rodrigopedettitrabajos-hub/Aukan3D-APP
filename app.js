@@ -60,13 +60,14 @@ function pintarFiltros() {
 
 // Galería, Nosotros y Preguntas son pantallas aparte (#galeria, etc.); sin # se ve el catálogo.
 // En pantallas chicas sus botones van dentro de "Más".
-const INFO = [["#galeria", "Galería"], ["#nosotros", "Nosotros"], ["#preguntas", "Preguntas frecuentes"]];
+const INFO = [["#eventos", "Eventos"], ["#galeria", "Galería"], ["#nosotros", "Nosotros"], ["#preguntas", "Preguntas frecuentes"]];
 const enlacesInfo = (clase) => INFO.map(([href, texto]) =>
   el("a", { className: `menu-item ${clase}`, href, textContent: texto, ariaCurrent: location.hash === href ? "page" : null, onclick: cerrarMenu }));
 
 function mostrarVista() {
   const vista = INFO.some(([h]) => h === location.hash) ? location.hash.slice(1) : "";
   $("#hero").hidden = $("#catalogo").hidden = !!vista;
+  $("#proximo").hidden = !!vista || !eventos.length;
   for (const [h] of INFO) $(h).hidden = h.slice(1) !== vista;
   vista ? (document.body.dataset.vista = vista) : delete document.body.dataset.vista;
   pintarFiltros();
@@ -290,6 +291,33 @@ $("#crear-cuenta").addEventListener("click", () => {
   $("#cuenta").showModal();
   f.clave.focus();
 });
+// Eventos (config.js): tarjeta en el inicio y pantalla "Eventos" con mapa.
+const eventos = cfg.eventos || [];
+const mapaUrl = (ev) => `https://maps-api-ssl.google.com/maps?hl=es&q=${encodeURIComponent(ev.mapa)}&z=16&output=embed`;
+const lugarUrl = (ev) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.mapa)}`;
+function datosEvento(ev) {
+  return el("div", { className: "evento-datos" },
+    el("span", { className: "evento-etiqueta", textContent: "Próximo evento" }),
+    el("h3", { textContent: ev.nombre }),
+    el("p", { className: "evento-cuando", textContent: `${ev.fecha} · ${ev.horario}` }),
+    el("p", { textContent: ev.lugar }),
+    ev.detalle ? el("p", { className: "evento-detalle", textContent: ev.detalle }) : "");
+}
+if (eventos.length) {
+  const ev = eventos[0];
+  $("#proximo").replaceChildren(el("a", { className: "proximo-card", href: "#eventos" },
+    el("img", { src: ev.foto, alt: "", loading: "lazy" }), datosEvento(ev),
+    el("span", { className: "proximo-ver", textContent: "Ver mapa y detalles ›" })));
+  $("#proximo").hidden = false;
+}
+$("#eventos-lista").replaceChildren(...(eventos.length ? eventos.map((ev) =>
+  el("article", { className: "evento-full" },
+    el("img", { className: "evento-flyer", src: ev.foto, alt: `Afiche de ${ev.nombre}`, loading: "lazy" }),
+    el("div", {}, datosEvento(ev),
+      ev.mapa ? el("iframe", { className: "evento-mapa", src: mapaUrl(ev), title: `Mapa: ${ev.lugar}`, loading: "lazy", referrerPolicy: "no-referrer-when-downgrade" }) : "",
+      ev.mapa ? el("a", { className: "secundario", href: lugarUrl(ev), target: "_blank", rel: "noopener", textContent: "Cómo llegar" }) : "")))
+  : [el("p", { textContent: "Por ahora no hay eventos agendados. Seguinos en Instagram para enterarte." })]));
+
 $("#wa-flotante").href = $("#nosotros-wa").href = waLink("Hola Aukan3D! Quería hacer una consulta.");
 
 const verCarrito = () => $("#carrito").showModal();
