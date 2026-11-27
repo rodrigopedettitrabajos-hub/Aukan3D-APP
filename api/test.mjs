@@ -45,6 +45,11 @@ const sigue = [];
 for (let i = 0; i < 4; i++) sigue.push((await pedir("/api/pedidos", { body: { cliente, items: [{ id: idProd, cant: 1 }] } })).r.status);
 assert.deepStrictEqual(sigue, [200, 200, 200, 429]);
 
+// Estado para "Mis pedidos": solo con el WhatsApp del pedido.
+const est = (wa) => pedir("/api/pedidos/estado", { body: { pedidos: [{ numero: String(ped.j.numero), whatsapp: wa }] }, ip: "10.8.0." + (unico % 250) });
+assert.deepStrictEqual((await est(cliente.whatsapp)).j.estados, { [ped.j.numero]: 0 });
+assert.deepStrictEqual((await est("+598 91111111")).j.estados, {});
+
 // Ingreso al panel.
 const ip = "10.0." + (unico % 250) + "." + (unico % 7);
 assert.strictEqual((await pedir("/api/login", { body: { usuario: "admin", clave: "mal" }, ip })).r.status, 401);

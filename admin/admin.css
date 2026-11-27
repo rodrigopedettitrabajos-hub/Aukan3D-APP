@@ -203,6 +203,21 @@ legend { padding: 0 6px; font-weight: 600; }
 .saldo-mini, .salir-movil { display: none; }
 .demo-pie { margin: 28px 0 0; color: var(--muted); font-size: 13px; text-align: center; }
 
+/* Campana de pedidos nuevos */
+.campana { position: relative; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--ink); display: grid; place-items: center; }
+.campana:hover { border-color: var(--brand); }
+.campana-n { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 99px; background: #e53935; color: #fff; font: 700 12px/20px "Open Sans", sans-serif; text-align: center; box-shadow: 0 0 0 2px var(--card); }
+.campana-movil { display: none; border-color: #333; background: none; color: #fff; }
+.campana-movil .campana-n { box-shadow: 0 0 0 2px #000; }
+.notis { position: fixed; top: 70px; right: 20px; z-index: 50; width: min(380px, calc(100% - 32px)); max-height: min(70dvh, 560px); overflow-y: auto; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 24px 60px -20px rgb(0 0 0 / .45); padding: 14px; display: grid; gap: 8px; }
+.notis-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.notis-cab h2 { margin: 0; font-size: 18px; }
+.noti { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; width: 100%; text-align: left; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); padding: 10px 12px; color: var(--ink); }
+.noti:hover { border-color: var(--brand); }
+.noti small { color: var(--muted); grid-column: 1 / -1; }
+.noti b:last-of-type { font-variant-numeric: tabular-nums; }
+@media (max-width: 700px) { .campana-movil { display: grid; } .notis { top: 64px; right: 16px; } }
+
 /* Modo pruebas (usuario dev) */
 .entorno-btn { flex: 1 0 100%; background: #c25e00; color: #fff; }
 .pruebas .entorno-btn { background: var(--brand-ink); }
@@ -301,6 +316,7 @@ legend { padding: 0 6px; font-weight: 600; }
   .salir-movil { display: inline-flex; }
   .side-pie { gap: 6px; }
   .t-ventas th:nth-child(2), .t-ventas td:nth-child(2), .t-ventas th:nth-child(5), .t-ventas td:nth-child(5) { display: none; }
+  #ventas-lista th:nth-child(7), #ventas-lista td:nth-child(7) { display: none; } /* en el celular se imprime desde el detalle */
   .saldo-mini { display: block; }
   .t-ventas td, .t-ventas th { padding-inline: 8px; }
   .caja .t-ventas td, .caja .t-ventas th { padding-inline: 5px; }
@@ -308,3 +324,21 @@ legend { padding: 0 6px; font-weight: 600; }
   .paso { width: 44px; height: 44px; }
 }
 @media (max-width: 760px) { body:has(#pos:not([hidden])) .aviso { bottom: 84px; } }
+
+/* Imprimir pedido: solo se ve la hoja #imprimir. */
+.ventana header h2 { margin-right: auto; }
+#imprimir { display: none; }
+@media print {
+  body > :not(#imprimir) { display: none !important; }
+  body { background: #fff !important; }
+  #imprimir { display: block; color: #000; background: #fff; font: 13px/1.45 system-ui, sans-serif; max-width: 18cm; margin: 0 auto; }
+  #imprimir header { display: flex; gap: 14px; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 8px; }
+  #imprimir header img { width: 56px; height: 56px; }
+  #imprimir h1 { font-size: 22px; margin: 0; }
+  #imprimir h2 { font-size: 14px; margin: 14px 0 4px; text-transform: uppercase; }
+  #imprimir p { margin: 2px 0; }
+  #imprimir table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  #imprimir td { border-bottom: 1px solid #ccc; padding: 5px 0; }
+  #imprimir .num { text-align: right; }
+  #imprimir .linea { display: flex; justify-content: space-between; }
+}

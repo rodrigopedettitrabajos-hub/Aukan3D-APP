@@ -56,7 +56,25 @@ function pintarPedidos() {
   $("#pedidos-historial").replaceChildren(...(hist.length ? hist.map(tarjetaPedido) : [el("p", { className: "vacio", textContent: "Todavía no hay pedidos entregados." })]));
   const hayEjemplos = lista.some((p) => p.ejemplo);
   $("#pedidos-ejemplo").textContent = hayEjemplos ? "Quitar los pedidos de ejemplo" : "Ver con pedidos de ejemplo";
+  actualizarEstados();
 }
+// Con servidor: trae el estado que marcó Aukan3D en el panel (como mucho cada 30 s).
+let estadosAl = 0;
+async function actualizarEstados() {
+  const abiertos = leerPedidos().filter((p) => !p.ejemplo && /^\d+$/.test(p.numero) && p.estado < ESTADOS.length - 1 && p.cliente?.whatsapp);
+  if (!cfg.pedidosUrl || !abiertos.length || Date.now() - estadosAl < 30_000) return;
+  estadosAl = Date.now();
+  try {
+    const r = await fetch(cfg.pedidosUrl.replace("/api/pedidos", "/api/pedidos/estado"), { method: "POST", headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ pedidos: abiertos.map((p) => ({ numero: String(p.numero), whatsapp: p.cliente.whatsapp })) }) });
+    const estados = (await r.json()).estados || {};
+    let cambio = false;
+    const lista = leerPedidos().map((p) => (p.numero in estados && estados[p.numero] !== p.estado ? (cambio = true, { ...p, estado: estados[p.numero] }) : p));
+    if (cambio) { guardarPedidos(lista); pintarPedidos(); }
+  } catch { /* sin conexión: queda el último estado conocido */ }
+}
+if (cfg.pedidosUrl) for (const n of document.querySelectorAll(".nota-estado"))
+  n.textContent = "Tus pedidos se guardan en este dispositivo. El estado se actualiza solo cuando Aukan3D lo cambia.";
 $("#pedidos-ejemplo").addEventListener("click", () => {
   if (leerPedidos().some((p) => p.ejemplo)) { guardarPedidos(leerPedidos().filter((p) => !p.ejemplo)); return pintarPedidos(); }
   const item = (id, cant) => { const x = productos.find((p) => p.id === id) || {}; return { id, cant, nombre: x.nombre || "Figura", precio: x.precio || 0 }; };

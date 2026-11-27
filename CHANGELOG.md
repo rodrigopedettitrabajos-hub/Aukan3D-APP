@@ -2,6 +2,11 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.34 · 2026-11-27
+- Panel: campana arriba con los pedidos nuevos de la tienda (número rojo, lista, tocar abre el pedido, "Marcar todo como visto"). El título de la pestaña muestra cuántos hay y, si se permite, el navegador avisa aunque estés en otra pestaña.
+- Panel: botón "Imprimir" en cada venta y en el detalle del pedido (hoja limpia, sirve para guardar como PDF).
+- Tienda: "Mis pedidos" toma el estado que se marca en el panel (servidor: `POST /api/pedidos/estado`, pide número + WhatsApp del pedido y devuelve solo el estado).
+
 ## V0.33 · 2026-11-27
 - Panel: al volver a la pestaña trae los pedidos nuevos en el momento (además de buscar cada 20 segundos).
 
