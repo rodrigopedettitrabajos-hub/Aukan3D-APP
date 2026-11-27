@@ -2,6 +2,11 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número y actualiza `version` en `config.js`.
 
+## V0.10 · 2026-11-27
+- Secciones Galería (fotos de eventos), Nosotros (con redes sociales) y Preguntas frecuentes, copiadas del Google Site.
+- En el menú: a la derecha en PC y dentro de "Más" en el celular.
+- Elegir una categoría vuelve arriba de la lista.
+
 ## V0.09 · 2026-11-27
 - Elegir cuántos productos ver: 10, 20 o 50 (recuerda la elección). Paginación cuando hay más productos que eso.
 - Contador "1–20 de 161 productos".

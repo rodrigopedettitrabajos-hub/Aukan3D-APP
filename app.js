@@ -34,7 +34,7 @@ async function cargar() {
 
 function opcion(texto, activo, elegir) {
   return el("button", { className: "menu-item", type: "button", textContent: texto, ariaPressed: String(activo),
-    onclick: () => { elegir(); pagina = 1; cerrarMenu(); pintar(); } });
+    onclick: () => { elegir(); cerrarMenu(); irA(1); } });
 }
 
 function cerrarMenu() {
@@ -53,8 +53,14 @@ function pintarFiltros() {
       opcion(`Todo ${c}`, elegida && !filtro.sub, () => { filtro.cat = c; filtro.sub = ""; }),
       ...subs.map((s) => opcion(s, elegida && filtro.sub === s, () => { filtro.cat = c; filtro.sub = s; })));
     return el("details", { className: "drop" }, titulo, panel);
-  }));
+  }), ...enlacesInfo("link-info"), el("details", { className: "drop mas" },
+    el("summary", { className: "menu-item" }, "Más"), el("div", { className: "drop-panel" }, ...enlacesInfo(""))));
 }
+
+// Secciones fijas de la página. En pantallas chicas van dentro de "Más".
+const INFO = [["#galeria", "Galería"], ["#nosotros", "Nosotros"], ["#preguntas", "Preguntas frecuentes"]];
+const enlacesInfo = (clase) => INFO.map(([href, texto]) =>
+  el("a", { className: `menu-item ${clase}`, href, textContent: texto, onclick: cerrarMenu }));
 
 document.addEventListener("click", (e) => { if (!e.target.closest("#menu details")) cerrarMenu(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarMenu(); });
@@ -139,6 +145,7 @@ function pintarPaginas(total) {
 
 function pintar() {
   pintarFiltros();
+  altoTop();
   const lista = visibles();
   const paginas = Math.max(1, Math.ceil(lista.length / porPagina));
   pagina = Math.min(pagina, paginas);
@@ -258,7 +265,10 @@ $("#crear-cuenta").addEventListener("click", () => {
   $("#cuenta").showModal();
   f.clave.focus();
 });
-$("#wa-flotante").href = waLink("Hola Aukan3D! Quería hacer una consulta.");
+$("#wa-flotante").href = $("#nosotros-wa").href = waLink("Hola Aukan3D! Quería hacer una consulta.");
+// Alto real del encabezado fijo, para que los saltos a secciones no queden tapados.
+const altoTop = () => document.documentElement.style.setProperty("--alto-top", $(".top").offsetHeight + "px");
+addEventListener("resize", altoTop);
 
 const verCarrito = () => $("#carrito").showModal();
 $("#buscar").addEventListener("input", (e) => { filtro.q = e.target.value; pagina = 1; pintar(); });
