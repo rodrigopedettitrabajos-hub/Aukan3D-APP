@@ -2,6 +2,13 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.14 · 2026-11-27
+- Carrusel de fotos en la ficha del producto (se desliza con el dedo, con flechas y puntos). En la columna foto del catálogo se separan varias fotos con |.
+- Fotos para Rumi/Zoey/Mira, Mazinger Z y San Expedito (venían en carrusel en el sitio).
+- Nueva categoría Ideas personalizadas (9 trabajos) con botón "Consultar" por WhatsApp.
+- Inicio como el sitio: "Proyectos personalizados y modelos listos para imprimir", temas y las mascotas.
+- El afiche del evento se agranda al tocarlo.
+
 ## V0.13 · 2026-11-27
 - Próximos eventos: tarjeta en el inicio y pantalla "Eventos" con afiche, fecha, lugar, mapa y botón "Cómo llegar" (copiado del Google Site). Los eventos se cargan en config.js.
 

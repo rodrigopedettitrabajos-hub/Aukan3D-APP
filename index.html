@@ -10,8 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
   <link rel="icon" href="favicon.png">
   <meta name="theme-color" content="#000000">
-  <link rel="stylesheet" href="styles.css?v=0.13">
-  <script src="tema.js?v=0.13"></script>
+  <link rel="stylesheet" href="styles.css?v=0.14">
+  <script src="tema.js?v=0.14"></script>
 </head>
 <body>
   <header class="top">
@@ -32,9 +32,17 @@
   </header>
 
   <section id="hero" class="hero">
-    <div class="wrap">
-      <h2>Tu idea, hecha realidad en 3D</h2>
-      <p>Figuras estilo amigurumi, llaveros, soportes y piezas personalizadas. Elegí, armá tu pedido y lo coordinamos por WhatsApp.</p>
+    <div class="wrap hero-row">
+      <div>
+        <h2>Tu idea, hecha realidad en 3D</h2>
+        <p class="hero-sub">Proyectos personalizados y modelos listos para imprimir.</p>
+        <p class="hero-tags">Anime · Videojuegos · Películas · Series · Decoración · Artículos útiles</p>
+        <p>Elegí, armá tu pedido y lo coordinamos por WhatsApp.</p>
+      </div>
+      <div class="mascotas" aria-hidden="true">
+        <img src="fotos/mascota-casco.webp" alt="" width="367" height="480">
+        <img src="fotos/mascota-hecho-en-aukan3d.webp" alt="" width="367" height="480">
+      </div>
     </div>
   </section>
 
@@ -125,6 +133,11 @@
     <span><strong id="barra-cant">0</strong> · <strong id="barra-total">$0</strong></span>
     <button id="barra-ver" class="primary-sm" type="button">Ver pedido</button>
   </div>
+
+  <dialog id="visor" class="visor" aria-label="Imagen en grande">
+    <form method="dialog"><button class="icon cerrar" aria-label="Cerrar">✕</button></form>
+    <img id="visor-img" alt="">
+  </dialog>
 
   <dialog id="detalle" class="modal" aria-labelledby="detalle-nombre">
     <form method="dialog"><button class="icon cerrar" aria-label="Cerrar">✕</button></form>
@@ -227,11 +240,11 @@
     </div>
   </dialog>
 
-  <script src="config.js?v=0.13"></script>
-  <script src="catalogo.js?v=0.13"></script>
-  <script src="productos.js?v=0.13"></script>
-  <script src="qrcode.js?v=0.13"></script>
-  <script src="app.js?v=0.13"></script>
-  <script src="cuenta.js?v=0.13"></script>
+  <script src="config.js?v=0.14"></script>
+  <script src="catalogo.js?v=0.14"></script>
+  <script src="productos.js?v=0.14"></script>
+  <script src="qrcode.js?v=0.14"></script>
+  <script src="app.js?v=0.14"></script>
+  <script src="cuenta.js?v=0.14"></script>
 </body>
 </html>

@@ -18,11 +18,11 @@ id,categoria,subcategoria,nombre,precio,foto,activo
 17,Figuras,,HELLO KITTY,300,fotos/17-hello-kitty.webp,SI
 18,Figuras,,LUIGI IRON MAN,700,fotos/18-luigi-iron-man.webp,SI
 19,Figuras,,DERPY,900,fotos/19-derpy.webp,SI
-20,Figuras,,"RUMI, ZOEY Y MIRA (C/U)",400,,SI
-21,Figuras,,MAZINGER Z (20CM),1000,,SI
+20,Figuras,,"RUMI, ZOEY Y MIRA (C/U)",400,fotos/20-rumi-zoey-mira-1.webp|fotos/20-rumi-zoey-mira-2.webp|fotos/20-rumi-zoey-mira-3.webp,SI
+21,Figuras,,MAZINGER Z (20CM),1000,fotos/21-mazinger-z-1.webp|fotos/21-mazinger-z-2.webp,SI
 22,Figuras,,CHIMUELO,380,fotos/22-chimuelo.webp,SI
 23,Figuras,,BOONIE (FNAF),1200,fotos/23-boonie-fnaf.webp,SI
-24,Figuras,,SAN EXPEDITO,400,,SI
+24,Figuras,,SAN EXPEDITO,400,fotos/24-san-expedito-1.webp|fotos/24-san-expedito-2.webp|fotos/24-san-expedito-3.webp,SI
 25,Figuras,,SASUKE,1000,fotos/25-sasuke.webp,SI
 26,Soportes y exhibidores,,GOING MERRY,650,fotos/26-going-merry.webp,SI
 27,Soportes y exhibidores,,THOUSAND SUNNY,650,fotos/27-thousand-sunny.webp,SI
@@ -160,3 +160,12 @@ id,categoria,subcategoria,nombre,precio,foto,activo
 159,Crochet,Harry Potter,DRACO,700,fotos/159-draco.webp,SI
 160,Crochet,Harry Potter,HAGRID,800,fotos/160-hagrid.webp,SI
 161,Crochet,Harry Potter,DOBBY,700,fotos/161-dobby.webp,SI
+162,Ideas personalizadas,,Litofanía con luz LED,,fotos/162-litofania-led-1.webp|fotos/162-litofania-led-2.webp,SI
+163,Ideas personalizadas,,Llaveros con tu logo,,fotos/163-llaveros-logo-1.webp|fotos/163-llaveros-logo-2.webp|fotos/163-llaveros-logo-3.webp|fotos/163-llaveros-logo-4.webp|fotos/163-llaveros-logo-5.webp,SI
+164,Ideas personalizadas,,Carteles y escudos,,fotos/164-carteles-escudos-1.webp|fotos/164-carteles-escudos-2.webp,SI
+165,Ideas personalizadas,,Bustos y cajas personalizadas,,fotos/165-bustos-cajas-1.webp|fotos/165-bustos-cajas-2.webp|fotos/165-bustos-cajas-3.webp|fotos/165-bustos-cajas-4.webp,SI
+166,Ideas personalizadas,,Souvenirs con nombre,,fotos/166-souvenirs-nombre-1.webp|fotos/166-souvenirs-nombre-2.webp,SI
+167,Ideas personalizadas,,Souvenirs para eventos y empresas,,fotos/167-souvenirs-empresas-1.webp|fotos/167-souvenirs-empresas-2.webp,SI
+168,Ideas personalizadas,,Cortantes de galletitas,,fotos/168-cortantes-1.webp|fotos/168-cortantes-2.webp,SI
+169,Ideas personalizadas,,Portarretratos personalizados,,fotos/169-portarretratos-1.webp,SI
+170,Ideas personalizadas,,Macetas y lapiceros,,fotos/170-macetas-1.webp,SI

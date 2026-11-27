@@ -13,7 +13,9 @@ assert.strictEqual(productosDesdeCsv("id,nombre,precio,foto\n1,A,1,fotos/a-1.web
 assert.strictEqual(productosDesdeCsv("id,nombre,precio,foto\n1,A,1,../x.png\n")[0].foto, "");
 
 const real = productosDesdeCsv(fs.readFileSync(__dirname + "/productos.csv", "utf8"));
-assert.ok(real.length > 150 && real.every((p) => p.precio > 0));
+assert.ok(real.length > 150 && real.every((p) => p.precio > 0 || p.categoria === "Ideas personalizadas"));
+const multi = productosDesdeCsv("id,nombre,precio,foto\n1,A,10,fotos/a.webp| fotos/b.webp |javascript:x\n");
+assert.deepStrictEqual([multi[0].foto, multi[0].fotos], ["fotos/a.webp", ["fotos/a.webp", "fotos/b.webp"]]);
 
 const r = resumenPedido([{ nombre: "Kirby", precio: 400, cant: 2 }], { nombre: "Ana", entrega: "Retiro coordinado" });
 assert.ok(r.includes("2 x Kirby") && r.includes("Total: $800") && r.includes("seña del 50% ($400)"));

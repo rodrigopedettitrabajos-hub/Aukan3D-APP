@@ -37,9 +37,11 @@ function productosDesdeCsv(text) {
       subcategoria: col(r, "subcategoria"),
       nombre: col(r, "nombre"),
       precio: Number(col(r, "precio").replace(/[^\d]/g, "")) || 0,
-      foto: fotoSegura(col(r, "foto")),
+      // Varias fotos separadas por | (la primera es la de la tarjeta, el resto va al carrusel).
+      fotos: col(r, "foto").split("|").map((f) => fotoSegura(f.trim())).filter(Boolean),
       activo: !/^(no|false|0)$/i.test(col(r, "activo")),
     }))
+    .map((p) => ({ ...p, foto: p.fotos[0] || "" })) // sin precio = "Consultar"
     .filter((p) => p.id && p.nombre && p.activo);
 }
 

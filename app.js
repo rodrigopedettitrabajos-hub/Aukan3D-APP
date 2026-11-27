@@ -62,7 +62,7 @@ function pintarFiltros() {
 // En pantallas chicas sus botones van dentro de "Más".
 const INFO = [["#eventos", "Eventos"], ["#galeria", "Galería"], ["#nosotros", "Nosotros"], ["#preguntas", "Preguntas frecuentes"]];
 const enlacesInfo = (clase) => INFO.map(([href, texto]) =>
-  el("a", { className: `menu-item ${clase}`, href, textContent: texto, ariaCurrent: location.hash === href ? "page" : null, onclick: cerrarMenu }));
+  el("a", { className: `menu-item ${clase}`, href, textContent: clase && href === "#preguntas" ? "Preguntas" : texto, ariaCurrent: location.hash === href ? "page" : null, onclick: cerrarMenu }));
 
 function mostrarVista() {
   const vista = INFO.some(([h]) => h === location.hash) ? location.hash.slice(1) : "";
@@ -107,31 +107,58 @@ function textoBoton(id) {
   return cant ? `En pedido (${cant})` : "Agregar";
 }
 
+const precioTexto = (p) => (p.precio ? pesos(p.precio) : "Consultar");
+const waConsulta = (p) => waLink(`Hola Aukan3D! Quiero consultar por: ${p.nombre}`);
+
 function tarjeta(p) {
   return el("article", { className: "card" },
-    el("button", { className: "foto", type: "button", ariaLabel: `Ver ${p.nombre}`, onclick: () => abrirDetalle(p) }, foto(p)),
+    el("button", { className: "foto", type: "button", ariaLabel: `Ver ${p.nombre}`, onclick: () => abrirDetalle(p) }, foto(p),
+      p.fotos.length > 1 ? el("span", { className: "n-fotos", textContent: `${p.fotos.length} fotos` }) : ""),
     el("div", { className: "info" },
       el("span", { className: "sub", textContent: p.subcategoria || p.categoria }),
       el("h3", { textContent: p.nombre }),
       el("div", { className: "row" },
-        el("strong", { className: "precio", textContent: pesos(p.precio) }),
-        el("button", { className: carrito.has(p.id) ? "add on" : "add", type: "button",
-          textContent: textoBoton(p.id), ariaLabel: `Agregar ${p.nombre}`, onclick: () => cambiar(p.id, 1) }))));
+        el("strong", { className: "precio", textContent: precioTexto(p) }),
+        p.precio
+          ? el("button", { className: carrito.has(p.id) ? "add on" : "add", type: "button",
+              textContent: textoBoton(p.id), ariaLabel: `Agregar ${p.nombre}`, onclick: () => cambiar(p.id, 1) })
+          : el("a", { className: "add", href: waConsulta(p), target: "_blank", rel: "noopener", textContent: "Consultar" }))));
 }
 
 function abrirDetalle(p) {
   enDetalle = p;
-  $("#detalle-foto").replaceChildren(foto(p));
+  $("#detalle-foto").replaceChildren(...carrusel(p));
   $("#detalle-sub").textContent = [p.categoria, p.subcategoria].filter(Boolean).join(" · ");
   $("#detalle-nombre").textContent = p.nombre;
-  $("#detalle-precio").textContent = pesos(p.precio);
+  $("#detalle-precio").textContent = precioTexto(p);
   pintarDetalle();
   $("#detalle").showModal();
+}
+
+// Carrusel con scroll-snap: se desliza con el dedo; flechas y puntos para PC.
+function carrusel(p) {
+  const fotos = p.fotos.length ? p.fotos : [""];
+  const pista = el("div", { className: "carrusel" }, ...fotos.map((f) => foto({ ...p, foto: f })));
+  if (fotos.length < 2) return [pista];
+  const ir = (d) => pista.scrollBy({ left: d * pista.clientWidth, behavior: "smooth" });
+  const puntos = el("div", { className: "puntos" }, ...fotos.map((_, i) =>
+    el("button", { type: "button", ariaLabel: `Foto ${i + 1}`, onclick: () => pista.scrollTo({ left: i * pista.clientWidth, behavior: "smooth" }) })));
+  const marcar = () => {
+    const i = Math.round(pista.scrollLeft / pista.clientWidth);
+    [...puntos.children].forEach((b, k) => { b.ariaCurrent = k === i ? "true" : null; });
+  };
+  pista.addEventListener("scroll", marcar, { passive: true });
+  requestAnimationFrame(marcar);
+  return [pista,
+    el("button", { className: "car-btn ant", type: "button", ariaLabel: "Foto anterior", textContent: "‹", onclick: () => ir(-1) }),
+    el("button", { className: "car-btn sig", type: "button", ariaLabel: "Foto siguiente", textContent: "›", onclick: () => ir(1) }),
+    puntos];
 }
 
 function pintarDetalle() {
   if (!enDetalle) return;
   const b = $("#detalle-add");
+  if (!enDetalle.precio) { b.textContent = "Consultar por WhatsApp"; b.className = "add"; return; }
   b.textContent = carrito.has(enDetalle.id) ? `En pedido (${carrito.get(enDetalle.id)}) · sumar otro` : "Agregar al pedido";
   b.className = carrito.has(enDetalle.id) ? "add on" : "add";
 }
@@ -291,6 +318,11 @@ $("#crear-cuenta").addEventListener("click", () => {
   $("#cuenta").showModal();
   f.clave.focus();
 });
+function verGrande(src, alt) {
+  Object.assign($("#visor-img"), { src, alt });
+  $("#visor").showModal();
+}
+
 // Eventos (config.js): tarjeta en el inicio y pantalla "Eventos" con mapa.
 const eventos = cfg.eventos || [];
 const mapaUrl = (ev) => `https://www.google.com/maps?hl=es&q=${encodeURIComponent(ev.mapa)}&z=16&output=embed`;
@@ -312,7 +344,8 @@ if (eventos.length) {
 }
 $("#eventos-lista").replaceChildren(...(eventos.length ? eventos.map((ev) =>
   el("article", { className: "evento-full" },
-    el("img", { className: "evento-flyer", src: ev.foto, alt: `Afiche de ${ev.nombre}`, loading: "lazy" }),
+    el("button", { className: "flyer-btn", type: "button", ariaLabel: `Ver afiche de ${ev.nombre} en grande`, onclick: () => verGrande(ev.foto, `Afiche de ${ev.nombre}`) },
+      el("img", { className: "evento-flyer", src: ev.foto, alt: `Afiche de ${ev.nombre}`, loading: "lazy" })),
     el("div", {}, datosEvento(ev),
       ev.mapa ? el("iframe", { className: "evento-mapa", src: mapaUrl(ev), title: `Mapa: ${ev.lugar}`, loading: "lazy", referrerPolicy: "no-referrer-when-downgrade" }) : "",
       ev.mapa ? el("a", { className: "secundario", href: lugarUrl(ev), target: "_blank", rel: "noopener", textContent: "Cómo llegar" }) : "")))
@@ -329,7 +362,8 @@ $("#por-pagina").addEventListener("change", (e) => {
 });
 $("#ver-carrito").addEventListener("click", verCarrito);
 $("#barra-ver").addEventListener("click", verCarrito);
-$("#detalle-add").addEventListener("click", () => cambiar(enDetalle.id, 1));
+$("#detalle-add").addEventListener("click", () =>
+  enDetalle.precio ? cambiar(enDetalle.id, 1) : window.open(waConsulta(enDetalle), "_blank"));
 $("#detalle").addEventListener("close", () => { enDetalle = null; });
 // Tocar fuera del contenido cierra el modal.
 for (const d of document.querySelectorAll("dialog")) d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
