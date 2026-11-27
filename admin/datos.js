@@ -39,13 +39,35 @@ function catalogoACsv(productos) {
 }
 
 // Resumen de un mes ("AAAA-MM"): vendido, cobrado y gastado por moneda.
-function resumenMes(db, mes) {
-  const ventas = db.ventas.filter((v) => mesDe(v.fecha) === mes);
-  const pagos = db.ventas.flatMap((v) => v.pagos.filter((p) => mesDe(p.fecha) === mes).map((p) => ({ ...p, moneda: v.moneda })));
-  const gastos = db.gastos.filter((g) => mesDe(g.fecha) === mes);
+const diaDe = (fecha) => (fecha.length > 10 ? diaLocal(new Date(fecha)) : fecha);
+const resumenMes = (db, mes) => resumenRango(db, mes + "-01", mes + "-31");
+// Período de días "AAAA-MM-DD", los dos incluidos.
+function resumenRango(db, desde, hasta) {
+  const en = (f) => { const d = diaDe(f); return d >= desde && d <= hasta; };
+  const ventas = db.ventas.filter((v) => en(v.fecha));
+  const pagos = db.ventas.flatMap((v) => v.pagos.filter((p) => en(p.fecha)).map((p) => ({ ...p, moneda: v.moneda })));
+  const gastos = db.gastos.filter((g) => en(g.fecha));
   const vendido = porMoneda(ventas, totalVenta), cobrados = porMoneda(pagos, (p) => p.monto), gastado = porMoneda(gastos, (g) => g.monto);
   return { ventas, pagos, gastos, vendido, cobrado: cobrados, gastado,
     resultado: { UYU: cobrados.UYU - gastado.UYU, USD: cobrados.USD - gastado.USD } };
+}
+
+// Total en pesos de cada día (o mes, con largo 7) del período, incluidos los que no tuvieron ventas.
+function serieVentas(ventas, desde, hasta, largo = 10) {
+  const serie = new Map();
+  for (let d = new Date(desde + "T12:00"); diaLocal(d) <= hasta; d.setDate(d.getDate() + 1)) serie.set(diaLocal(d).slice(0, largo), 0);
+  for (const v of ventas) if (v.moneda === "UYU") { const k = diaDe(v.fecha).slice(0, largo); if (serie.has(k)) serie.set(k, serie.get(k) + totalVenta(v)); }
+  return [...serie];
+}
+// Productos más vendidos por cantidad (todas las monedas); el importe es solo en pesos.
+function masVendidos(ventas, n = 10) {
+  const m = new Map();
+  for (const v of ventas) for (const i of v.items) {
+    const x = m.get(i.id) || { id: i.id, nombre: i.nombre, cant: 0, pesos: 0 };
+    x.cant += i.cant; if (v.moneda === "UYU") x.pesos += i.precio * i.cant;
+    m.set(i.id, x);
+  }
+  return [...m.values()].sort((a, b) => b.cant - a.cant || b.pesos - a.pesos).slice(0, n);
 }
 
 // Comisión: % sobre lo vendido en el mes por cada vendedor, con el % guardado en cada venta (los pedidos de la tienda no tienen vendedor).
@@ -193,5 +215,5 @@ function aplicarServidor(db, r, enviado) {
 }
 
 if (typeof module !== "undefined") module.exports = { ESTADOS, totalVenta, cobrado, saldo, porMoneda, catalogoDesdeCsv, catalogoACsv,
-  resumenMes, comisiones, registrarPago, datosEjemplo, nuevoNumero, mesDe, suma, hoy, importarPedidosWeb,
+  resumenMes, resumenRango, serieVentas, masVendidos, comisiones, registrarPago, datosEjemplo, nuevoNumero, mesDe, suma, hoy, importarPedidosWeb,
   dbVacia, cambiosDb, marcarEnviado, aplicarServidor, resumenCaja, cajaAbierta, esEfectivo };

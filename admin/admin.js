@@ -252,7 +252,7 @@ function barras(filas) { // filas: [[etiqueta, valor, texto]]
   const max = Math.max(1, ...filas.map((f) => f[1]));
   return filas.length ? el("div", { className: "barras" }, ...filas.map(([t, n, txt]) => el("div", { className: "barra" },
     el("span", { textContent: t, title: t }), el("i", { ariaHidden: "true" }, n ? el("b", { style: `width:${(n / max) * 100}%` }) : ""), el("span", { className: "num", textContent: txt }))))
-    : el("p", { className: "vacio", textContent: "Sin datos este mes." });
+    : el("p", { className: "vacio", textContent: "Sin datos en este período." });
 }
 function tabla(cabeza, filas, vacio, clase = "") {
   if (!filas.length) return el("p", { className: "vacio caja", textContent: vacio });
@@ -843,7 +843,7 @@ $("#f-medio").addEventListener("submit", async (e) => {
 });
 
 // --- Usuarios y comisiones ---
-$("#usuarios-mes").value = $("#reportes-mes").value = mesActual();
+$("#usuarios-mes").value = mesActual();
 $("#usuarios-mes").addEventListener("input", () => PINTAR.usuarios());
 PINTAR.usuarios = () => {
   const mes = $("#usuarios-mes").value || mesActual();
@@ -879,28 +879,81 @@ $("#f-usuario").addEventListener("submit", (e) => {
 });
 
 // --- Reportes y gastos ---
-$("#reportes-mes").addEventListener("input", () => PINTAR.reportes());
+// Período del reporte: día, mes, trimestre, semestre, año o entre fechas; las flechas viajan de a un período.
+const rep = { tipo: "mes", ancla: hoy() };
+const MESES_DE = { mes: 1, trimestre: 3, semestre: 6, anio: 12 };
+function rangoReporte() {
+  if (rep.tipo === "rango") {
+    const d = $("#rep-desde").value || mesActual() + "-01", h = $("#rep-hasta").value || hoy();
+    return d <= h ? [d, h] : [h, d];
+  }
+  if (rep.tipo === "dia") return [rep.ancla, rep.ancla];
+  const n = MESES_DE[rep.tipo], [a, m] = rep.ancla.split("-").map(Number);
+  const ini = new Date(a, Math.floor((m - 1) / n) * n, 1), fin = new Date(ini.getFullYear(), ini.getMonth() + n, 0);
+  return [diaLocal(ini), diaLocal(fin)];
+}
+function etiquetaReporte([d, h]) {
+  const f = (x, o) => new Date(x + "T12:00").toLocaleDateString("es-UY", o);
+  const a = d.slice(0, 4), m = +d.slice(5, 7);
+  return { dia: f(d, { weekday: "long", day: "numeric", month: "long", year: "numeric" }), mes: nombreMes(d.slice(0, 7)),
+    trimestre: `${Math.ceil(m / 3)}.º trimestre ${a}`, semestre: `${m <= 6 ? "1.er" : "2.º"} semestre ${a}`, anio: a,
+    rango: `${fecha(d + "T12:00")} al ${fecha(h + "T12:00")}` }[rep.tipo];
+}
+function moverReporte(paso) {
+  const d = new Date(rep.ancla + "T12:00");
+  if (rep.tipo === "dia") d.setDate(d.getDate() + paso); else { d.setDate(1); d.setMonth(d.getMonth() + paso * MESES_DE[rep.tipo]); }
+  rep.ancla = diaLocal(d); PINTAR.reportes();
+}
+$("#rep-tipo").addEventListener("input", (e) => {
+  rep.tipo = e.target.value;
+  if (rep.tipo === "rango" && !$("#rep-desde").value) [$("#rep-desde").value, $("#rep-hasta").value] = [mesActual() + "-01", hoy()];
+  PINTAR.reportes();
+});
+$("#rep-ant").addEventListener("click", () => moverReporte(-1));
+$("#rep-sig").addEventListener("click", () => moverReporte(1));
+$("#rep-hoy").addEventListener("click", () => { rep.ancla = hoy(); PINTAR.reportes(); });
+for (const id of ["#rep-desde", "#rep-hasta"]) $(id).addEventListener("input", () => PINTAR.reportes());
 PINTAR.reportes = () => {
-  const mes = $("#reportes-mes").value || mesActual(), r = resumenMes(db, mes);
+  const [desde, hasta] = rangoReporte(), r = resumenRango(db, desde, hasta);
+  const rango = rep.tipo === "rango";
+  $("#rep-nav").classList.toggle("solo-etiqueta", rango);
+  $("#rep-rango").hidden = !rango;
+  $("#rep-etiqueta").textContent = etiquetaReporte([desde, hasta]);
+  $("#rep-sig").disabled = !rango && hasta >= hoy();
   const usd = r.cobrado.USD || r.gastado.USD;
   $("#kpis-reporte").replaceChildren(
     kpi("Vendido", plata(r.vendido.UYU), r.vendido.USD ? plata(r.vendido.USD, "USD") : `${r.ventas.length} ventas`),
     kpi("Cobrado", plata(r.cobrado.UYU), r.cobrado.USD ? plata(r.cobrado.USD, "USD") : "Pesos", "verde"),
     kpi("Gastos", plata(r.gastado.UYU), r.gastado.USD ? plata(r.gastado.USD, "USD") : `${r.gastos.length} gastos`, "rojo"),
     kpi("Resultado", plata(r.resultado.UYU), usd ? `${plata(r.resultado.USD, "USD")} en dólares` : "Cobrado menos gastos", r.resultado.UYU >= 0 ? "verde" : "rojo"));
-  const porCat = {};
-  for (const v of r.ventas.filter((v) => v.moneda === "UYU")) for (const i of v.items) {
-    const c = db.productos.find((p) => p.id === i.id)?.categoria || "Otros";
-    porCat[c] = (porCat[c] || 0) + i.precio * i.cant;
+  // Un día: la lista de sus ventas. Hasta 2 meses: por día. Más largo: por mes.
+  const dias = (new Date(hasta) - new Date(desde)) / 864e5 + 1;
+  if (dias === 1) {
+    $("#serie-t").textContent = "Ventas del día"; $("#serie-sub").textContent = `${r.ventas.length} ventas`;
+    $("#rep-serie").replaceChildren(tabla(CAB_VENTAS, r.ventas.map((v) => filaVenta(v)), "No hubo ventas este día.", "t-ventas"));
+  } else {
+    const porMes = dias > 62, serie = serieVentas(r.ventas, desde, hasta, porMes ? 7 : 10);
+    $("#serie-t").textContent = porMes ? "Ventas por mes" : "Ventas por día"; $("#serie-sub").textContent = "Pesos vendidos";
+    const nombre = (k) => (porMes ? nombreMes(k) : new Date(k + "T12:00").toLocaleDateString("es-UY", { weekday: "short", day: "numeric", month: "numeric" }));
+    $("#rep-serie").replaceChildren(barras(serie.map(([k, n]) => [nombre(k), n, n ? plata(n) : "—"])));
   }
-  $("#por-cat").replaceChildren(barras(Object.entries(porCat).sort((a, b) => b[1] - a[1]).map(([c, n]) => [c, n, plata(n)])));
-  const porMedio = {};
-  for (const p of r.pagos.filter((p) => p.moneda === "UYU")) porMedio[medio(p.medio)] = (porMedio[medio(p.medio)] || 0) + p.monto;
-  $("#por-medio").replaceChildren(barras(Object.entries(porMedio).sort((a, b) => b[1] - a[1]).map(([m, n]) => [m, n, plata(n)])));
+  const top = masVendidos(r.ventas);
+  $("#mas-vendidos").replaceChildren(tabla(["Producto", "#Cant.", "#Pesos"], top.map((x) => el("tr", {}, td(x.nombre), td(String(x.cant), "num"), td(plata(x.pesos), "num"))),
+    "Sin ventas en el período."));
+  const sumar = (lista, clave, valor) => { const o = {}; for (const x of lista) { const k = clave(x); if (k != null) o[k] = (o[k] || 0) + valor(x); } return o; };
+  const barrasDe = (o) => barras(Object.entries(o).sort((a, b) => b[1] - a[1]).map(([k, n]) => [k, n, plata(n)]));
+  const pesos = r.ventas.filter((v) => v.moneda === "UYU");
+  const cuantas = sumar(r.ventas, (v) => ORIGEN[v.origen] || "En persona", () => 1);
+  $("#por-origen").replaceChildren(barras(Object.entries(sumar(pesos, (v) => ORIGEN[v.origen] || "En persona", totalVenta)).sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => [k, n, `${plata(n)} · ${cuantas[k]} ${cuantas[k] === 1 ? "venta" : "ventas"}`])));
+  $("#por-medio").replaceChildren(barrasDe(sumar(r.pagos.filter((p) => p.moneda === "UYU"), (p) => medio(p.medio), (p) => p.monto)));
+  const porCat = {};
+  for (const v of pesos) for (const i of v.items) { const c = db.productos.find((p) => p.id === i.id)?.categoria || "Otros"; porCat[c] = (porCat[c] || 0) + i.precio * i.cant; }
+  $("#por-cat").replaceChildren(barrasDe(porCat));
   $("#gastos-lista").replaceChildren(tabla(["Fecha", "Concepto", "#Monto", ""], [...r.gastos].sort((a, b) => b.fecha.localeCompare(a.fecha)).map((g) => el("tr", {},
     td(fecha(g.fecha + "T12:00")), td(g.concepto), td(plata(g.monto, g.moneda), "num"),
     td(el("button", { type: "button", className: "btn sec chico peligro", textContent: "Borrar", ariaLabel: `Borrar gasto ${g.concepto}`, onclick: () => borrarGasto(g) })))),
-  "No hay gastos cargados este mes."));
+  "No hay gastos cargados en este período."));
 };
 function borrarGasto(g) {
   const i = db.gastos.indexOf(g);
