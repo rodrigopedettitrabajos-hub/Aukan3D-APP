@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.33">
-  <script src="../tema.js?v=0.33"></script>
+  <link rel="stylesheet" href="admin.css?v=0.34">
+  <script src="../tema.js?v=0.34"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -52,6 +52,7 @@
       <a href="../" class="side-link" target="_blank" rel="noopener">Ver la tienda ↗</a>
       <span class="version" data-version></span>
       <button type="button" class="btn chico entorno-btn" data-entorno hidden></button>
+      <button type="button" class="campana campana-movil" data-campana aria-label="Pedidos nuevos" aria-expanded="false" aria-controls="notis"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1Z"/></svg><b class="campana-n" hidden></b></button>
       <button type="button" class="btn sec chico salir-movil" data-salir>Salir</button>
     </div>
   </aside>
@@ -60,7 +61,7 @@
     <p class="banda-pruebas" id="banda-pruebas" hidden>Modo pruebas: estás usando la base de pruebas. Nada de esto afecta los datos reales.</p>
     <header class="top">
       <p class="crumb">Aukan3D Gestión / <b id="crumb">Panel principal</b></p>
-      <div class="user"><span class="avatar" aria-hidden="true">A</span><span><b>Administrador</b><small id="user-sub">Vista previa con datos de ejemplo</small></span><button type="button" class="btn sec chico" data-salir>Salir</button></div>
+      <div class="user"><button type="button" class="campana" data-campana aria-label="Pedidos nuevos" aria-expanded="false" aria-controls="notis"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1Z"/></svg><b class="campana-n" hidden></b></button><span class="avatar" aria-hidden="true">A</span><span><b>Administrador</b><small id="user-sub">Vista previa con datos de ejemplo</small></span><button type="button" class="btn sec chico" data-salir>Salir</button></div>
     </header>
 
     <div class="content">
@@ -215,7 +216,7 @@
 
 <dialog id="d-detalle" class="ventana ancha" aria-labelledby="d-detalle-t">
   <form method="dialog">
-    <header><h2 id="d-detalle-t">Pedido</h2><button class="x" value="cancel" aria-label="Cerrar">×</button></header>
+    <header><h2 id="d-detalle-t">Pedido</h2><button type="button" class="btn sec chico" id="detalle-imp">Imprimir</button><button class="x" value="cancel" aria-label="Cerrar">×</button></header>
     <div id="detalle-cuerpo"></div>
   </form>
 </dialog>
@@ -339,12 +340,19 @@
   </form>
 </dialog>
 
+<div id="notis" class="notis" role="dialog" aria-label="Pedidos nuevos" hidden>
+  <div class="notis-cab"><h2>Pedidos nuevos</h2><button type="button" class="link" id="notis-todo">Marcar todo como visto</button></div>
+  <div id="notis-lista"></div>
+  <button type="button" class="btn sec chico" id="notis-permiso" hidden>Avisarme también en otras pestañas</button>
+</div>
+
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
-<script src="../config.js?v=0.33"></script>
-<script src="../productos.js?v=0.33"></script>
-<script src="../catalogo.js?v=0.33"></script>
-<script src="datos.js?v=0.33"></script>
-<script src="admin.js?v=0.33"></script>
+<section id="imprimir" aria-hidden="true"></section>
+<script src="../config.js?v=0.34"></script>
+<script src="../productos.js?v=0.34"></script>
+<script src="../catalogo.js?v=0.34"></script>
+<script src="datos.js?v=0.34"></script>
+<script src="admin.js?v=0.34"></script>
 </body>
 </html>

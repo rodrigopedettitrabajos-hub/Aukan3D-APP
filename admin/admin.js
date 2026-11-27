@@ -97,7 +97,13 @@ for (const b of document.querySelectorAll("[data-salir]")) b.addEventListener("c
 let db = API ? dbVacia() : leerJson(CLAVE_DB, null);
 if (!db?.version) db = datosEjemplo(catalogoDesdeCsv(window.PRODUCTOS_CSV));
 db.cajas ||= []; // datos guardados antes del modo feria
-const avisoPedidos = (n) => n && avisar(n === 1 ? "Llegó 1 pedido nuevo de la tienda." : `Llegaron ${n} pedidos nuevos de la tienda.`);
+function avisoPedidos(n) {
+  if (!n) return;
+  const t = n === 1 ? "Llegó 1 pedido nuevo de la tienda." : `Llegaron ${n} pedidos nuevos de la tienda.`;
+  avisar(t);
+  // En otra pestaña o ventana: aviso del navegador, si se dio permiso desde la campana.
+  try { if (document.hidden && Notification.permission === "granted") new Notification("Aukan3D", { body: t, icon: "../logo.webp", tag: "pedidos" }); } catch { /* sin notificaciones */ }
+}
 
 // Servidor: cada guardar() manda solo lo cambiado; cada 20 s se trae lo nuevo (pedidos web, otros dispositivos).
 // shortcut: si dos dispositivos editan lo mismo a la vez, queda el último que guardó.
@@ -130,7 +136,7 @@ function sincronizar() {
   return enviando;
 }
 async function actualizar() {
-  if (!API || !conSesion() || document.hidden) return;
+  if (!API || !conSesion()) return; // también en segundo plano, para avisar pedidos nuevos
   await sincronizar();
   if (document.querySelector("dialog[open]")) return; // no cambiar datos debajo de un formulario abierto
   try { const n = await traerServidor(); avisoPedidos(n); repintar(); } catch { /* reintenta en la próxima vuelta */ }
@@ -194,9 +200,49 @@ function mostrarVista() {
   $("#crumb").textContent = VISTAS[v];
   document.title = `${VISTAS[v]} · Aukan3D Gestión`;
   PINTAR[v]();
+  pintarCampana();
 }
 addEventListener("hashchange", () => { mostrarVista(); scrollTo(0, 0); });
-const repintar = () => PINTAR[location.hash.slice(1) in VISTAS ? location.hash.slice(1) : "panel"]();
+const repintar = () => { PINTAR[location.hash.slice(1) in VISTAS ? location.hash.slice(1) : "panel"](); pintarCampana(); };
+
+// --- Campana: pedidos de la tienda en "Recibido" que todavía no se abrieron en este navegador ---
+const VISTOS = "aukan_vistos";
+const vistos = new Set(leerJson(VISTOS, []).map(String));
+const nuevos = () => db.ventas.filter((v) => v.origen === "web" && v.estado === 0 && !vistos.has(String(v.numero)));
+function marcarVistos(numeros) {
+  for (const n of numeros) vistos.add(String(n));
+  try { localStorage.setItem(VISTOS, JSON.stringify([...vistos].slice(-500))); } catch { /* sin almacenamiento */ }
+  pintarCampana();
+}
+function pintarCampana() {
+  const lista = nuevos(), n = lista.length;
+  for (const b of document.querySelectorAll("[data-campana]")) {
+    const i = b.querySelector(".campana-n");
+    i.hidden = !n; i.textContent = n > 99 ? "99+" : String(n);
+    b.ariaLabel = n ? `Pedidos nuevos: ${n}` : "Pedidos nuevos: ninguno";
+  }
+  document.title = (n ? `(${n}) ` : "") + document.title.replace(/^\(\d+\+?\) /, "");
+  if ($("#notis").hidden) return;
+  $("#notis-todo").hidden = !n;
+  $("#notis-lista").replaceChildren(...lista.slice(0, 20).map((v) => el("button", { type: "button", className: "noti",
+    onclick: () => { mostrarNotis(false); abrirDetalle(v.numero); } },
+    el("b", { textContent: `N° ${v.numero} · ${cliente(v.cliente).nombre}` }), el("b", { textContent: plata(totalVenta(v), v.moneda) }),
+    el("small", { textContent: `${new Date(v.fecha).toLocaleString("es-UY", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · ${v.items.map((i) => `${i.cant}× ${i.nombre}`).join(", ")}` }))),
+  n ? "" : el("p", { className: "vacio", textContent: "No hay pedidos nuevos. Cuando llegue uno de la tienda, aparece acá." }));
+  let permiso = "denied";
+  try { permiso = Notification.permission; } catch { /* sin notificaciones */ }
+  $("#notis-permiso").hidden = permiso !== "default";
+}
+function mostrarNotis(si) {
+  $("#notis").hidden = !si;
+  for (const b of document.querySelectorAll("[data-campana]")) b.ariaExpanded = String(si);
+  if (si) pintarCampana();
+}
+for (const b of document.querySelectorAll("[data-campana]")) b.addEventListener("click", (e) => { e.stopPropagation(); mostrarNotis($("#notis").hidden); });
+document.addEventListener("click", (e) => { if (!$("#notis").hidden && !e.target.closest("#notis")) mostrarNotis(false); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#notis").hidden) mostrarNotis(false); });
+$("#notis-todo").addEventListener("click", () => marcarVistos(nuevos().map((v) => v.numero)));
+$("#notis-permiso").addEventListener("click", async () => { try { await Notification.requestPermission(); } catch { /* sin notificaciones */ } pintarCampana(); });
 
 // --- Piezas comunes ---
 const pastilla = (v) => el("span", { className: `pill e${v.estado}`, textContent: v.estado === 1 && !v.sena ? "Pagado" : ESTADOS[v.estado] });
@@ -253,13 +299,33 @@ PINTAR.ventas = () => {
   const lista = db.ventas.filter((v) => (!org || v.origen === org)
     && (est === "" || (est === "saldo" ? saldo(v) > 0 : v.estado === +est))
     && (!q || normalizar([v.numero, cliente(v.cliente).nombre, ...v.items.map((i) => i.nombre)].join(" ")).includes(q)));
-  $("#ventas-lista").replaceChildren(tabla(CAB_VENTAS, lista.map((v) => filaVenta(v)), "No hay ventas con esos filtros.", "t-ventas"));
+  const imp = (v) => td(el("button", { type: "button", className: "btn sec chico icono-imp", textContent: "Imprimir", ariaLabel: `Imprimir pedido ${v.numero}`, onclick: () => imprimirPedido(v.numero) }), "num");
+  $("#ventas-lista").replaceChildren(tabla([...CAB_VENTAS, ""], lista.map((v) => filaVenta(v, [imp(v)])), "No hay ventas con esos filtros.", "t-ventas"));
 };
+
+// Hoja del pedido para imprimir (o guardar como PDF): se arma en #imprimir y el CSS de impresión oculta todo lo demás.
+function imprimirPedido(numero) {
+  const v = venta(numero), c = cliente(v.cliente);
+  const linea = (t, b) => el("p", { className: "linea", textContent: t }, el("b", { textContent: b }));
+  $("#imprimir").replaceChildren(
+    el("header", {}, el("img", { src: "../logo.webp", alt: "" }), el("div", {}, el("h1", { textContent: `Pedido N° ${v.numero}` }),
+      el("p", { textContent: `${fecha(v.fecha)} · ${ORIGEN[v.origen] || "En persona"} · ${ESTADOS[v.estado]}` }))),
+    el("h2", { textContent: "Cliente" }), el("p", { textContent: c.nombre || "—" }),
+    c.whatsapp ? el("p", { textContent: `WhatsApp ${c.whatsapp}` }) : "", v.entrega ? el("p", { textContent: `Entrega: ${v.entrega}` }) : "",
+    el("h2", { textContent: "Productos" }),
+    el("table", {}, el("tbody", {}, ...v.items.map((i) => el("tr", {}, td(`${i.cant} x ${i.nombre}`), td(plata(i.precio * i.cant, v.moneda), "num"))))),
+    linea("Total", plata(totalVenta(v), v.moneda)), linea("Pagado", plata(cobrado(v), v.moneda)),
+    linea("Saldo", saldo(v) ? plata(saldo(v), v.moneda) : "Pagado"),
+    v.nota ? el("p", { className: "nota", textContent: `Nota: ${v.nota}` }) : "");
+  print();
+}
 
 // Detalle de una venta: estado, pagos, WhatsApp.
 function abrirDetalle(numero) {
   const v = venta(numero), c = cliente(v.cliente), d = $("#d-detalle");
+  if (!vistos.has(String(v.numero))) marcarVistos([v.numero]);
   $("#d-detalle-t").textContent = `Pedido N° ${v.numero}`;
+  $("#detalle-imp").onclick = () => imprimirPedido(v.numero);
   const pasos = el("ol", { className: "pasos" }, ...ESTADOS.map((e, i) => el("li", {},
     el("button", { type: "button", className: i < v.estado ? "hecho" : i === v.estado ? "actual" : "", ariaCurrent: i === v.estado ? "step" : null,
       textContent: i === 1 && !v.sena ? "Pagado" : e, onclick: () => cambiarEstado(v, i) }))));

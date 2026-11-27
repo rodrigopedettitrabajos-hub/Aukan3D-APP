@@ -37,6 +37,7 @@ async function rutear(req, env, url) {
   if (m === "GET" && p === "/api/productos.csv") return catalogoCsv(env, url);
   if (m === "GET" && p.startsWith("/api/fotos/")) return foto(env, p.slice(11).replace(/\.webp$/, ""));
   if (m === "POST" && p === "/api/pedidos") return nuevoPedido(req, env);
+  if (m === "POST" && p === "/api/pedidos/estado") return estadoPedidos(req, env);
   if (m === "POST" && p === "/api/login") return login(req, env);
   if (p.startsWith("/api/admin/")) {
     const quien = await tokenValido(req, env);
@@ -95,6 +96,31 @@ async function foto(env, id) {
   if (!f || !f.startsWith("data:image/webp;base64,")) return new Response("No existe", { status: 404 });
   const bytes = Uint8Array.from(atob(f.slice(23)), (c) => c.charCodeAt(0));
   return new Response(bytes, { headers: { "Content-Type": "image/webp", "Cache-Control": "public, max-age=86400" } });
+}
+
+// ---------- estado de pedidos para "Mis pedidos" de la tienda ----------
+// El número es correlativo, así que además pide el WhatsApp del pedido; solo devuelve el estado (ningún dato personal).
+async function estadoPedidos(req, env) {
+  let body;
+  try { body = await leerJson(req, 10_000); } catch { return json({ ok: false, error: "invalido" }, 400); }
+  const ip = req.headers.get("CF-Connecting-IP") || "";
+  if (!(await pasaLimite(env, "est:" + ip, 60, 600_000))) return json({ ok: false, error: "limite" }, 429);
+  const pedidos = (Array.isArray(body.pedidos) ? body.pedidos : []).slice(0, 20)
+    .map((x) => ({ numero: limpio(x && x.numero, 12), tel: digitos(x && x.whatsapp) })).filter((x) => /^\d+$/.test(x.numero) && x.tel.length >= 8);
+  const estados = {};
+  if (pedidos.length) {
+    const marcas = pedidos.map(() => "?").join(",");
+    const { results } = await env.DB.prepare(`SELECT data FROM docs WHERE col = 'ventas' AND id IN (${marcas})`).bind(...pedidos.map((x) => x.numero)).all();
+    const ventas = results.map((r) => JSON.parse(r.data)).filter((v) => !v._borrado);
+    const ids = [...new Set(ventas.map((v) => String(v.cliente)))];
+    const clientes = ids.length ? (await env.DB.prepare(`SELECT id, data FROM docs WHERE col = 'clientes' AND id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all()).results : [];
+    const telDe = new Map(clientes.map((c) => [c.id, digitos(JSON.parse(c.data).whatsapp)]));
+    for (const v of ventas) {
+      const pedido = pedidos.find((x) => x.numero === String(v.numero));
+      if (pedido && telDe.get(String(v.cliente)) === pedido.tel) estados[v.numero] = v.estado;
+    }
+  }
+  return json({ ok: true, estados });
 }
 
 // ---------- pedido de la tienda (mismo contrato que apps-script/Code.gs) ----------
