@@ -3,7 +3,7 @@
 // - Panel de gestión: ingreso con usuario y contraseña, y lectura/escritura de sus datos.
 // Cada registro del panel se guarda como JSON en la tabla docs (col, id); ver schema.sql.
 
-const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios"];
+const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas"];
 const MAX_ITEMS = 50, MAX_CANT = 99;
 
 export default {

@@ -71,4 +71,17 @@ assert.strictEqual(d.aplicarServidor(local, { ventas: [{ numero: "1002", fecha: 
   gastos: [{ _borrado: true, id: "g1" }] }, enviado), 1);
 assert.strictEqual(local.gastos.length, 0);
 assert.strictEqual(local.ventas[0].numero, "1002");
+
+// Caja de la feria: fondo + efectivo + ingresos - retiros; la diferencia contra lo contado.
+const dbF = d.datosEjemplo(cat);
+const caja = { id: "k1", abierta: "2026-11-27T13:00:00Z", cerrada: null, fondo: 1000, vendedor: "u2", movimientos: [{ tipo: "retiro", monto: 300 }, { tipo: "ingreso", monto: 50 }], contado: null };
+dbF.cajas.push(caja);
+assert.strictEqual(d.cajaAbierta(dbF), caja);
+dbF.ventas.push({ numero: "F1", caja: "k1", moneda: "UYU", items: [{ precio: 800, cant: 1 }], pagos: [{ medio: "m1", monto: 800 }] },
+  { numero: "F2", caja: "k1", moneda: "UYU", items: [{ precio: 500, cant: 2 }], pagos: [{ medio: "m3", monto: 1000 }] });
+let rc = d.resumenCaja(dbF, caja);
+assert.deepStrictEqual([rc.total, rc.efectivo, rc.esperado, rc.porMedio.m3, rc.diferencia], [1800, 800, 1550, 1000, null]);
+caja.contado = 1500; caja.cerrada = "2026-11-27T20:00:00Z";
+assert.strictEqual(d.resumenCaja(dbF, caja).diferencia, -50);
+assert.strictEqual(d.cajaAbierta(dbF), null);
 console.log("admin: ok");

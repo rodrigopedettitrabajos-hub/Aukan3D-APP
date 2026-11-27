@@ -111,7 +111,7 @@ function datosEjemplo(catalogo, ahora = Date.now()) {
     { id: "m1", nombre: "Efectivo", detalle: "" }, { id: "m2", nombre: "Transferencia BROU", detalle: "Caja de ahorro en pesos" },
     { id: "m3", nombre: "Mercado Pago", detalle: "Link o QR de la tienda" }, { id: "m4", nombre: "Tarjeta (POS)", detalle: "" },
   ];
-  const db = { version: 1, ultimo: 1040, productos, clientes, usuarios, medios, ventas: [], gastos: [] };
+  const db = { version: 1, ultimo: 1040, productos, clientes, usuarios, medios, ventas: [], gastos: [], cajas: [] };
   for (let i = 0; i < 34; i++) {
     const d = Math.floor(i * 1.9 + azar() * 2), web = azar() < 0.55, fecha = dias(d);
     const items = Array.from({ length: 1 + Math.floor(azar() * 3) }, () => { const p = elegir(conPrecio); return { id: p.id, nombre: p.nombre, precio: p.precio, cant: 1 + Math.floor(azar() * 2) }; });
@@ -138,8 +138,27 @@ function datosEjemplo(catalogo, ahora = Date.now()) {
   return db;
 }
 
+// --- Modo feria: caja ---
+// Caja: { id, abierta, cerrada, fondo, vendedor, movimientos: [{ fecha, tipo: "retiro" | "ingreso", monto, nota }], contado }.
+// Las ventas de la feria guardan caja: <id>. En pesos; el efectivo es el medio que se llama "Efectivo".
+const esEfectivo = (db, medioId) => /efectivo/i.test(db.medios.find((m) => m.id === medioId)?.nombre || "");
+function resumenCaja(db, caja) {
+  const ventas = db.ventas.filter((v) => v.caja === caja.id);
+  const porMedio = {};
+  let efectivo = 0;
+  for (const v of ventas) for (const p of v.pagos) {
+    porMedio[p.medio] = (porMedio[p.medio] || 0) + p.monto;
+    if (esEfectivo(db, p.medio)) efectivo += p.monto;
+  }
+  const mov = (t) => suma(caja.movimientos.filter((m) => m.tipo === t), (m) => m.monto);
+  const esperado = caja.fondo + efectivo + mov("ingreso") - mov("retiro");
+  return { ventas, total: suma(ventas, totalVenta), porMedio, efectivo, retiros: mov("retiro"), ingresos: mov("ingreso"), esperado,
+    diferencia: caja.contado == null ? null : caja.contado - esperado };
+}
+const cajaAbierta = (db) => db.cajas.find((c) => !c.cerrada) || null;
+
 // --- Sincronización con el servidor (api/) ---
-const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios"];
+const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas"];
 const idDoc = (col, d) => String(col === "ventas" ? d.numero : d.id);
 const dbVacia = () => ({ version: 1, ultimo: 0, ...Object.fromEntries(COLECCIONES.map((c) => [c, []])) });
 // Lo cambiado desde el último envío. enviado: Map "col id" -> JSON tal como lo tiene el servidor.
@@ -175,4 +194,4 @@ function aplicarServidor(db, r, enviado) {
 
 if (typeof module !== "undefined") module.exports = { ESTADOS, totalVenta, cobrado, saldo, porMoneda, catalogoDesdeCsv, catalogoACsv,
   resumenMes, comisiones, registrarPago, datosEjemplo, nuevoNumero, mesDe, suma, hoy, importarPedidosWeb,
-  dbVacia, cambiosDb, marcarEnviado, aplicarServidor };
+  dbVacia, cambiosDb, marcarEnviado, aplicarServidor, resumenCaja, cajaAbierta, esEfectivo };
