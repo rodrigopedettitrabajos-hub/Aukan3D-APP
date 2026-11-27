@@ -163,7 +163,7 @@ async function hmac(clave, datos) {
 }
 // Formato del hash: pbkdf2$<iteraciones>$<sal base64>$<hash base64> (lo genera api/clave.mjs).
 export async function claveCorrecta(clave, guardado) {
-  const [tipo, iter, sal, hash] = String(guardado || "").split("$");
+  const [tipo, iter, sal, hash] = String(guardado || "").trim().split("$"); // trim: PowerShell agrega un salto de línea al cargar el secreto
   if (tipo !== "pbkdf2" || !hash) return false;
   const k = await crypto.subtle.importKey("raw", texto(clave), "PBKDF2", false, ["deriveBits"]);
   const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: deB64(sal), iterations: Number(iter) }, k, 256);
