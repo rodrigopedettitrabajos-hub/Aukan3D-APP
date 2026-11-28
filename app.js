@@ -413,6 +413,9 @@ function comprobante(p) {
       el("tfoot", {}, fila("", "Total", "", pesos(p.total)),
         p.sena ? fila("", "Seña 50 % a pagar", "", pesos(aPagar)) : fila("", "Pago total", "", pesos(aPagar)),
         p.sena ? fila("", "Saldo al entregar", "", pesos(p.total - aPagar)) : "")),
+    p.pagos ? el("section", {}, el("h2", { textContent: "Pagos" }),
+      ...(p.pagos.length ? p.pagos.map((x) => el("p", { textContent: lineaPago(x).join(" · ") })) : [el("p", { textContent: "Todavía no registramos pagos." })]),
+      el("p", {}, el("strong", { textContent: resumenPago(p).texto }))) : "",
     el("p", { className: "comp-pie", textContent: `Aukan3D · Montevideo, Uruguay · WhatsApp ${cfg.whatsapp.replace(/^598/, "0")} · Instagram @aukan3d` }),
     el("p", { className: "comp-pie", textContent: "Este comprobante resume tu pedido; no es una factura." }));
   window.print();

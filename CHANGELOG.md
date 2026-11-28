@@ -2,6 +2,11 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.48 · 2026-11-28
+- Tienda: avisos al cliente cuando Aukan3D cambia el estado de su pedido (seña o pago recibido, en impresión, listo, entregado). Campana arriba con los avisos nuevos y, si el cliente lo permite, notificación del dispositivo mientras la tienda esté abierta. El estado se consulta al entrar, al volver a la pestaña y cada minuto.
+- Tienda: cada pedido en Mis pedidos muestra lo pagado (seña o total, saldo) y cada pago; los de Mercado Pago con su número de operación. El comprobante suma la sección Pagos.
+- Servidor: /api/pedidos/estado devuelve también los pagos del pedido (fecha, monto y N° de operación de Mercado Pago). Hay que volver a subir el servidor.
+
 ## V0.47 · 2026-11-28
 - Panel: menú lateral más legible (letra normal en vez de mayúsculas angostas, más contraste) y títulos de sección en celeste con una línea al costado para separar mejor Ventas, Catálogo y Administración.
 

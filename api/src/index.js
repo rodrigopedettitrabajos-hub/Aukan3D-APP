@@ -125,7 +125,7 @@ async function estadoPedidos(req, env) {
   if (!(await pasaLimite(env, "est:" + ip, 60, 600_000))) return json({ ok: false, error: "limite" }, 429);
   const pedidos = (Array.isArray(body.pedidos) ? body.pedidos : []).slice(0, 20)
     .map((x) => ({ numero: limpio(x && x.numero, 12), tel: digitos(x && x.whatsapp) })).filter((x) => /^\d+$/.test(x.numero) && x.tel.length >= 8);
-  const estados = {};
+  const estados = {}, pagos = {};
   if (pedidos.length) {
     const marcas = pedidos.map(() => "?").join(",");
     const { results } = await env.DB.prepare(`SELECT data FROM docs WHERE col = 'ventas' AND id IN (${marcas})`).bind(...pedidos.map((x) => x.numero)).all();
@@ -135,10 +135,14 @@ async function estadoPedidos(req, env) {
     const telDe = new Map(clientes.map((c) => [c.id, digitos(JSON.parse(c.data).whatsapp)]));
     for (const v of ventas) {
       const pedido = pedidos.find((x) => x.numero === String(v.numero));
-      if (pedido && telDe.get(String(v.cliente)) === pedido.tel) estados[v.numero] = v.estado;
+      if (pedido && telDe.get(String(v.cliente)) === pedido.tel) {
+        estados[v.numero] = v.estado;
+        // Pagos para el comprobante del cliente: de Mercado Pago va el N° de operación; el medio interno no sale.
+        pagos[v.numero] = (v.pagos || []).map((x) => ({ fecha: x.fecha, monto: x.monto, ...(x.mp ? { mp: String(x.mp) } : {}) }));
+      }
     }
   }
-  return json({ ok: true, estados });
+  return json({ ok: true, estados, pagos });
 }
 
 // ---------- pedido de la tienda (mismo contrato que apps-script/Code.gs) ----------
