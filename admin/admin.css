@@ -541,7 +541,7 @@ legend { padding: 0 6px; font-weight: 600; }
 .resena-pie { display: flex; align-items: center; gap: 8px; justify-content: flex-end; margin: 6px 0 0; }
 @media (max-width: 700px) { .resenas-grilla { grid-template-columns: 1fr; } }
 @media (max-width: 700px) {
-  .t-stock th:nth-child(3), .t-stock td:nth-child(3), .t-stock th:nth-child(4), .t-stock td:nth-child(4), .t-stock th:nth-child(5), .t-stock td:nth-child(5), .t-stock th:nth-child(7), .t-stock td:nth-child(7), .t-stock th:nth-child(8), .t-stock td:nth-child(8) { display: none; }
+  .t-stock th:nth-child(3), .t-stock td:nth-child(3), .t-stock th:nth-child(4), .t-stock td:nth-child(4), .t-stock th:nth-child(5), .t-stock td:nth-child(5), .t-stock th:nth-child(8), .t-stock td:nth-child(8), .t-stock th:nth-child(9), .t-stock td:nth-child(9) { display: none; }
 }
 /* Carga rápida */
 .ventana.carga { width: min(1000px, calc(100% - 24px)); }
@@ -603,3 +603,5 @@ legend { padding: 0 6px; font-weight: 600; }
 .aviso-prod p { margin: 0 0 6px; }
 .aviso-prod ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .aviso-prod li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.tabla tr.bajo td { background: var(--warn-soft); }
+.tabla input.minimo { width: 64px; min-height: 36px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); padding: 4px 8px; font: inherit; text-align: right; }
