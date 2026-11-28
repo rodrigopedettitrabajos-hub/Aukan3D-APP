@@ -3,7 +3,7 @@
 // - Panel de gestión: ingreso con usuario y contraseña, y lectura/escritura de sus datos.
 // Cada registro del panel se guarda como JSON en la tabla docs (col, id); ver schema.sql.
 
-const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas", "mensajes", "resenas", "cupones"];
+const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas", "mensajes", "resenas", "cupones", "avisos"];
 const MAX_ITEMS = 50, MAX_CANT = 99;
 
 export default {
@@ -40,6 +40,7 @@ async function rutear(req, env, url) {
   if (m === "POST" && p === "/api/pedidos/estado") return estadoPedidos(req, env);
   if (m === "POST" && p === "/api/resenas") return nuevaResena(req, env);
   if (m === "GET" && p === "/api/cupon") return consultaCupon(req, env, url);
+  if (m === "POST" && p === "/api/avisos") return nuevoAviso(req, env);
   if (m === "POST" && p === "/api/login") return login(req, env);
   if (m === "POST" && p === "/api/mp/aviso") return avisoMp(req, env, url);
   if (m === "GET" && p === "/api/tienda") return datosTienda(env);
@@ -136,8 +137,28 @@ const PUBLICOS = ["negocio", "direccion", "horario", "redes", "agencias", "costo
 async function datosTienda(env) {
   const r = await env.DB.prepare("SELECT data FROM docs WHERE col = 'mensajes' AND id = 'negocio'").first();
   const d = r ? JSON.parse(r.data) : {};
-  return json({ ok: true, ...Object.fromEntries(PUBLICOS.map((k) => [k, limpio(d[k], 300)])), resenas: await resenasPublicas(env) },
+  return json({ ok: true, ...Object.fromEntries(PUBLICOS.map((k) => [k, limpio(d[k], 300)])), resenas: await resenasPublicas(env), listos: await productosListos(env) },
     200, { "Cache-Control": "public, max-age=60" });
+}
+// Productos con stock hecho (entrega inmediata): solo los ids, sin cantidades.
+async function productosListos(env) {
+  const { results } = await env.DB.prepare(`SELECT id FROM docs WHERE col = 'productos' AND json_extract(data, '$.stock') > 0
+    AND json_extract(data, '$.activo') = 1 AND json_extract(data, '$._borrado') IS NULL`).all();
+  return results.map((x) => x.id);
+}
+// "Avisame cuando esté listo": el cliente deja su WhatsApp en un producto sin stock; el panel le avisa cuando se carga stock.
+async function nuevoAviso(req, env) {
+  let b;
+  try { b = await leerJson(req, 2_000); } catch { return json({ ok: false, error: "invalido" }, 400); }
+  const nombre = limpio(b.nombre, 60), whatsapp = limpio(b.whatsapp, 20), id = limpio(b.id, 40);
+  if (b.web || !nombre || !/^\+?[0-9 ]{8,20}$/.test(whatsapp) || !/^[\w.-]{1,40}$/.test(id)) return json({ ok: false, error: "datos" }, 400);
+  if (!(await pasaLimite(env, "av:" + (req.headers.get("CF-Connecting-IP") || ""), 10, 600_000))) return json({ ok: false, error: "limite" }, 429);
+  const r = await env.DB.prepare("SELECT data FROM docs WHERE col = 'productos' AND id = ?").bind(id).first();
+  const p = r && JSON.parse(r.data);
+  if (!p || p._borrado || !p.activo) return json({ ok: false, error: "producto" }, 400);
+  const doc = { id: `${id}-${digitos(whatsapp)}`.slice(0, 60), producto: id, nombre, whatsapp, fecha: new Date().toISOString(), avisado: "" };
+  await guardarDoc(env, "avisos", doc.id, doc).run(); // el mismo WhatsApp en el mismo producto: se reemplaza
+  return json({ ok: true });
 }
 // Reseñas para la tienda: solo estrellas, comentario, nombre de pila, fecha y qué productos eran. Las ocultas en el panel no salen.
 async function resenasPublicas(env) {
@@ -427,7 +448,7 @@ function mismo(a, b) { // comparación de tiempo constante
 export const PERMISOS = ["ventas", "feria", "pendientes", "clientes", "productos", "reportes", "usuarios", "medios", "mensajes", "mp", "accesos", "base"];
 // Qué permiso hace falta para escribir cada colección (alcanza con uno de la lista).
 const ESCRIBE = { ventas: ["ventas", "feria", "pendientes"], clientes: ["clientes", "ventas", "feria"], productos: ["productos", "ventas", "feria"],
-  gastos: ["reportes"], medios: ["medios"], usuarios: ["usuarios"], cajas: ["feria"], mensajes: ["mensajes"], resenas: ["reportes"], cupones: ["productos"] };
+  gastos: ["reportes"], medios: ["medios"], usuarios: ["usuarios"], cajas: ["feria"], mensajes: ["mensajes"], resenas: ["reportes"], cupones: ["productos"], avisos: ["productos", "ventas"] };
 const puedeEscribir = (q, col) => (ESCRIBE[col] || []).some((x) => q.permisos.includes(x));
 // Lectura: sin estos permisos, los clientes llegan solo con id y nombre (sin WhatsApp ni correo) y los gastos no llegan.
 const VE_CLIENTES = ["ventas", "pendientes", "clientes", "reportes"];
@@ -562,7 +583,7 @@ async function datos(env, desde, quien) {
   let hasta = desde;
   for (const x of results) {
     let d = JSON.parse(x.data);
-    if (x.col === "gastos" && !veGastos) d = null;
+    if ((x.col === "gastos" && !veGastos) || (x.col === "avisos" && !veClientes && !d?._borrado)) d = null;
     if (x.col === "productos" && !veCosto && d) delete d.costo;
     if (x.col === "clientes" && !veClientes && d) d = { id: d.id, nombre: d.nombre, ...(d._borrado ? { _borrado: true } : {}) };
     if (d && r[x.col] && !d.espera) r[x.col].push(d); // pedidos de la tienda sin pagar: el panel no los ve hasta que se pagan

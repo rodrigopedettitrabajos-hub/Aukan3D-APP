@@ -13,8 +13,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <meta name="apple-mobile-web-app-title" content="Aukan3D">
-  <link rel="stylesheet" href="styles.css?v=0.74">
-  <script src="tema.js?v=0.74"></script>
+  <link rel="stylesheet" href="styles.css?v=0.75">
+  <script src="tema.js?v=0.75"></script>
 </head>
 <body>
   <!-- Íconos: Simple Icons (CC0) -->
@@ -231,6 +231,17 @@
       <h2 id="detalle-nombre"></h2>
       <p id="detalle-datos" class="detalle-datos"></p>
       <p id="detalle-plazo" class="plazo-chip">Se imprime a pedido · listo en 3 o más días hábiles</p>
+      <details id="avisame" class="avisame" hidden>
+        <summary>Avisame cuando esté listo para entregar</summary>
+        <form id="f-avisame" class="avisame-form">
+          <p class="avisame-ayuda">Lo hacemos a pedido. Si preferís no esperar la impresión, te escribimos por WhatsApp cuando tengamos uno hecho.</p>
+          <input name="nombre" required maxlength="60" autocomplete="given-name" aria-label="Tu nombre" placeholder="Tu nombre">
+          <input name="whatsapp" required type="tel" maxlength="20" autocomplete="tel" aria-label="Tu WhatsApp" placeholder="WhatsApp, ej. 099 123 456" pattern="\+?[0-9 ]{8,20}">
+          <input name="web" class="trampa" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <button class="cupon-btn">Avisame</button>
+        </form>
+        <p id="avisame-msj" class="cupon-msj" aria-live="polite"></p>
+      </details>
       <div id="detalle-resenas" class="detalle-resenas" hidden></div>
       <div class="row">
         <strong id="detalle-precio" class="precio"></strong>
@@ -355,10 +366,10 @@
 
   <div id="comprobante" class="comprobante" aria-hidden="true"></div>
 
-  <script src="config.js?v=0.74"></script>
-  <script src="catalogo.js?v=0.74"></script>
-  <script src="productos.js?v=0.74"></script>
-  <script src="app.js?v=0.74"></script>
-  <script src="cuenta.js?v=0.74"></script>
+  <script src="config.js?v=0.75"></script>
+  <script src="catalogo.js?v=0.75"></script>
+  <script src="productos.js?v=0.75"></script>
+  <script src="app.js?v=0.75"></script>
+  <script src="cuenta.js?v=0.75"></script>
 </body>
 </html>

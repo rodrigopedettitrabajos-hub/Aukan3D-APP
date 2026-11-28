@@ -2,6 +2,12 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.75 · 2026-11-28
+- Tienda: los productos con stock hecho muestran "Listo para entregar" en la tarjeta y en el detalle (el servidor publica solo qué productos tienen stock, no cuántos).
+- Tienda: en los demás, "Avisame cuando esté listo para entregar": el cliente deja nombre y WhatsApp.
+- Panel, Stock: "Clientes que pidieron aviso", por producto. Cuando el producto tiene stock aparece "Avisar por WhatsApp", con el mensaje y el enlace directo al producto ya armados. El aviso queda marcado como enviado. Panel principal: alerta cuando hay clientes para avisar.
+- Tienda: enlace directo a un producto con ?p=ID.
+
 ## V0.74 · 2026-11-28
 - Códigos de descuento: nueva pantalla del panel (Catálogo > Códigos de descuento) para crear códigos por porcentaje o monto fijo, con vencimiento, máximo de usos y pausa. Muestra los usos y cuánto se descontó.
 - Tienda: en el carrito, "¿Tenés un código de descuento?". El servidor lo valida (existe, activo, sin vencer, con usos disponibles) y lo vuelve a aplicar al hacer el pedido. El descuento queda como un renglón del pedido, así el total, la seña, el comprobante y los reportes ya lo restan.

@@ -592,3 +592,14 @@ legend { padding: 0 6px; font-weight: 600; }
   .carga-tabla td[data-l="Nombre"] input, .carga-tabla td.num input { min-width: 0; }
   .carga-tabla .tabla { display: block; }
 }
+/* Alertas del panel principal y avisos de stock */
+.alertas { display: grid; gap: 8px; margin-bottom: 16px; }
+.alertas:empty { display: none; }
+.alerta { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 12px 16px; border-radius: 12px; background: var(--warn-soft); color: var(--ink); border: 1px solid var(--warn); }
+.alerta a { flex: none; font-weight: 600; color: var(--ink); }
+.avisos-stock { margin-bottom: 16px; }
+.avisos-stock h2 { margin: 0; }
+.aviso-prod { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
+.aviso-prod p { margin: 0 0 6px; }
+.aviso-prod ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.aviso-prod li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }

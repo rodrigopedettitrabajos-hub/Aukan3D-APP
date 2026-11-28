@@ -122,6 +122,7 @@ let db = API ? dbVacia() : leerJson(CLAVE_DB, null);
 if (!db?.version) db = datosEjemplo(catalogoDesdeCsv(window.PRODUCTOS_CSV));
 db.mensajes ||= []; // datos guardados antes de V0.51
 db.cupones ||= []; // antes de V0.74
+db.avisos ||= []; // antes de V0.75
 db.cajas ||= []; // datos guardados antes del modo feria
 function avisoPedidos(n) {
   if (n) notificar(n === 1 ? "Llegó 1 pedido nuevo de la tienda." : `Llegaron ${n} pedidos nuevos de la tienda.`);
@@ -356,7 +357,17 @@ const botonImp = (v, formato, texto, nombre) => el("button", { type: "button", c
 const celdaComprobante = (v) => td(el("span", { className: "imp-formatos" }, botonImp(v, "a4", "A4", "A4"), botonImp(v, "80", "80 mm", "ticket para impresora térmica de 80 mm")), "num");
 
 // --- Panel principal ---
+// Avisos del día a día arriba del panel principal: enlaces a la pantalla donde se resuelven.
+function pintarAlertas() {
+  const a = [];
+  if (puede("productos")) {
+    const listos = db.avisos.filter((x) => !x._borrado && !x.avisado && productoDe(x.producto)?.stock > 0).length;
+    if (listos) a.push([`${plural(listos, "cliente")} ${listos === 1 ? "espera" : "esperan"} aviso: ya tenés stock de lo que pidieron.`, "#stock", "Avisar"]);
+  }
+  $("#panel-alertas").replaceChildren(...a.map(([t, href, accion]) => el("p", { className: "alerta" }, el("span", { textContent: t }), el("a", { href, textContent: accion }))));
+}
 PINTAR.panel = () => {
+  pintarAlertas();
   const r = resumenMes(db, mesActual());
   const pendiente = porMoneda(db.ventas, saldo);
   const curso = db.ventas.filter((v) => v.estado < 4);
@@ -1060,7 +1071,31 @@ const productosStock = () => {
   return db.productos.filter((p) => !p._borrado && (!cat || p.categoria === cat) && (!q || normalizar(`${p.nombre} ${p.subcategoria}`).includes(q))
     && (f === "" || (f === "con" ? p.stock > 0 : !p.stock))).sort((a, b) => a.categoria.localeCompare(b.categoria) || a.nombre.localeCompare(b.nombre));
 };
+// "Avisame cuando esté listo" (tienda): los que esperan un producto; con stock cargado se les avisa por WhatsApp.
+const TIENDA = new URL("../", location.href).href;
+function pintarAvisosStock() {
+  const esperan = db.avisos.filter((a) => !a._borrado && !a.avisado), caja = $("#avisos-stock");
+  if (!esperan.length) return caja.replaceChildren();
+  const porProd = new Map();
+  for (const a of esperan) porProd.set(a.producto, [...(porProd.get(a.producto) || []), a]);
+  const filas = [...porProd].map(([id, lista]) => ({ p: productoDe(id), lista })).filter((x) => x.p && !x.p._borrado)
+    .sort((a, b) => (b.p.stock > 0) - (a.p.stock > 0) || b.lista.length - a.lista.length);
+  const listos = filas.filter((x) => x.p.stock > 0).reduce((s, x) => s + x.lista.length, 0);
+  caja.replaceChildren(el("div", { className: "caja avisos-stock" },
+    el("h2", { textContent: "Clientes que pidieron aviso" }),
+    el("p", { className: "sub", textContent: listos ? `${plural(listos, "cliente")} para avisar: ya tenés stock de lo que esperan.` : "Cuando cargues stock de estos productos vas a poder avisarles desde acá." }),
+    ...filas.map(({ p, lista }) => el("div", { className: "aviso-prod" },
+      el("p", {}, el("strong", { textContent: p.nombre }), " ", el("span", { className: "pill " + (p.stock > 0 ? "e3" : "e4"), textContent: p.stock > 0 ? `${p.stock} listos` : "Sin stock" })),
+      el("ul", {}, ...lista.map((a) => el("li", {}, el("span", { textContent: `${a.nombre} · ${a.whatsapp}` }),
+        el("span", { className: "acciones" },
+          p.stock > 0 ? el("a", { className: "btn chico", target: "_blank", rel: "noopener", textContent: "Avisar por WhatsApp",
+            href: `https://wa.me/${waDe(a.whatsapp)}?text=${encodeURIComponent(`¡Hola, ${a.nombre.split(" ")[0]}! Ya tenemos ${p.nombre} listo para entregar. Lo podés pedir acá: ${TIENDA}?p=${encodeURIComponent(p.id)}`)}`,
+            onclick: () => { a.avisado = new Date().toISOString(); guardar(); setTimeout(pintarAvisosStock, 0); } }) : "",
+          el("button", { type: "button", className: "btn sec chico", textContent: "Descartar", ariaLabel: `Descartar el aviso de ${a.nombre}`,
+            onclick: () => { db.avisos = db.avisos.filter((x) => x !== a); guardar(); pintarAvisosStock(); } })))))))));
+}
 PINTAR.stock = () => {
+  pintarAvisosStock();
   const sel = $("#stock-cat"), actual = sel.value;
   sel.replaceChildren(el("option", { value: "", textContent: "Todas las categorías" }), ...cats().map((c) => el("option", { value: c, textContent: c })));
   sel.value = actual;

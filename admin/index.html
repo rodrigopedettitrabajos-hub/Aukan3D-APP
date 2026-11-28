@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.74">
-  <script src="../tema.js?v=0.74"></script>
+  <link rel="stylesheet" href="admin.css?v=0.75">
+  <script src="../tema.js?v=0.75"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -79,6 +79,7 @@
         <div class="cabeza"><div><p class="eyebrow">Resumen del negocio</p><h1>Hola, Aukan3D</h1><p class="sub" id="panel-sub"></p></div>
           <button class="btn" type="button" data-nueva-venta>+ Registrar venta</button></div>
         <div class="kpis" id="kpis"></div>
+        <div id="panel-alertas" class="alertas"></div>
         <div class="grilla">
           <div class="caja"><h2>Pedidos en curso</h2><p class="sub">Por estado, de la tienda y en persona</p><div id="embudo"></div></div>
           <div class="caja"><h2>Más vendidos del mes</h2><p class="sub">Unidades</p><div id="top"></div></div>
@@ -171,6 +172,7 @@
         <div class="cabeza"><div><p class="eyebrow">Catálogo</p><h1>Stock</h1><p class="sub">Lo que tenés hecho y listo para entregar, valorizado al costo y a precio de venta. Sin stock, el producto se imprime a pedido.</p></div>
           <div class="botones"><button class="btn sec" type="button" id="inv-excel">Planilla de stock a Excel</button><button class="btn sec" type="button" id="inv-subir">Importar inventario</button><button class="btn" type="button" id="inv-imprimir">Imprimir planilla</button></div></div>
         <div class="kpis" id="inv-kpis"></div>
+        <div id="avisos-stock"></div>
         <div class="filtros">
           <input id="stock-q" type="search" placeholder="Buscar producto" aria-label="Buscar en stock">
           <select id="stock-cat" aria-label="Categoría"><option value="">Todas las categorías</option></select>
@@ -647,11 +649,11 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.74"></script>
-<script src="../productos.js?v=0.74"></script>
-<script src="../catalogo.js?v=0.74"></script>
-<script src="datos.js?v=0.74"></script>
-<script src="excel.js?v=0.74"></script>
-<script src="admin.js?v=0.74"></script>
+<script src="../config.js?v=0.75"></script>
+<script src="../productos.js?v=0.75"></script>
+<script src="../catalogo.js?v=0.75"></script>
+<script src="datos.js?v=0.75"></script>
+<script src="excel.js?v=0.75"></script>
+<script src="admin.js?v=0.75"></script>
 </body>
 </html>
