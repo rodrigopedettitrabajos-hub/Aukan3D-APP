@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.62 · 2026-11-28
+- Menú del panel: los grupos arrancan plegados. Se ve abierto solo el de la pantalla actual y los que abras vos (se recuerda en ese navegador).
+
 ## V0.61 · 2026-11-28
 - Menú del panel: los grupos (Ventas, Catálogo, Administración, Panel Developers) se pliegan y despliegan tocando el título, con una flechita. Se recuerda en ese navegador, y el grupo de la pantalla abierta siempre queda desplegado. En el celular el menú sigue siendo la barra de arriba, sin grupos.
 

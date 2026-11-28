@@ -229,24 +229,23 @@ const VISTAS = { panel: "Panel principal", ventas: "Ventas y pedidos", feria: "M
   productos: "Productos y precios", stock: "Stock", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Estadísticas", base: "Base de datos", mp: "Mercado Pago",
   accesos: "Accesos al panel", mensajes: "Mensajes de WhatsApp", envios: "Entregas y envíos" };
 const PINTAR = {};
-// Grupos del menú: se pliegan tocando el título; se recuerda en este navegador. El de la pantalla abierta siempre se ve.
-const PLEGADOS = "aukan_menu_plegado";
+// Grupos del menú: plegados de entrada; se abren tocando el título y se recuerda en este navegador. El de la pantalla abierta siempre se ve.
+const ABIERTOS = "aukan_menu_abierto";
 const linksDe = (g) => { const r = []; for (let n = g.nextElementSibling; n && n.tagName === "A"; n = n.nextElementSibling) r.push(n); return r; };
+const abiertos = () => { try { return JSON.parse(leerLocal(ABIERTOS) || "[]"); } catch { return []; } };
 function pintarGrupos() {
-  let plegados = []; try { plegados = JSON.parse(leerLocal(PLEGADOS) || "[]"); } catch { /* dato viejo */ }
   for (const g of document.querySelectorAll(".nav-grupo")) {
-    const abierto = !plegados.includes(g.textContent) || linksDe(g).some((a) => a.ariaCurrent === "page");
+    const abierto = abiertos().includes(g.textContent) || linksDe(g).some((a) => a.ariaCurrent === "page");
     g.setAttribute("aria-expanded", abierto);
     for (const a of linksDe(g)) a.classList.toggle("plegado", !abierto);
   }
 }
 for (const g of document.querySelectorAll(".nav-grupo")) g.addEventListener("click", () => {
-  let plegados = []; try { plegados = JSON.parse(leerLocal(PLEGADOS) || "[]"); } catch { /* dato viejo */ }
-  const cerrar = g.getAttribute("aria-expanded") === "true";
-  plegados = cerrar ? [...new Set([...plegados, g.textContent])] : plegados.filter((x) => x !== g.textContent);
-  try { localStorage.setItem(PLEGADOS, JSON.stringify(plegados)); } catch { /* sin almacenamiento */ }
-  g.setAttribute("aria-expanded", !cerrar);
-  for (const a of linksDe(g)) a.classList.toggle("plegado", cerrar);
+  const abrir = g.getAttribute("aria-expanded") !== "true";
+  const lista = abrir ? [...new Set([...abiertos(), g.textContent])] : abiertos().filter((x) => x !== g.textContent);
+  try { localStorage.setItem(ABIERTOS, JSON.stringify(lista)); } catch { /* sin almacenamiento */ }
+  g.setAttribute("aria-expanded", abrir);
+  for (const a of linksDe(g)) a.classList.toggle("plegado", !abrir);
 });
 function mostrarVista() {
   let v = location.hash.slice(1) in VISTAS ? location.hash.slice(1) : "panel";
