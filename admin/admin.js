@@ -301,7 +301,7 @@ function barras(filas) { // filas: [[etiqueta, valor, texto]]
 function tabla(cabeza, filas, vacio, clase = "") {
   if (!filas.length) return el("p", { className: "vacio caja", textContent: vacio });
   return el("div", { className: "tabla-caja" }, el("table", { className: "tabla " + clase },
-    el("thead", {}, el("tr", {}, ...cabeza.map((c) => el("th", { textContent: c.replace(/^#/, ""), className: c.startsWith("#") ? "num" : "" })))),
+    el("thead", {}, el("tr", {}, ...cabeza.map((c) => typeof c === "string" ? el("th", { textContent: c.replace(/^#/, ""), className: c.startsWith("#") ? "num" : "" }) : el("th", {}, c)))),
     el("tbody", {}, ...filas)));
 }
 const td = (t, cls = "") => el("td", { className: cls }, t);
@@ -871,23 +871,159 @@ $("#f-cliente").addEventListener("submit", (e) => {
 const cats = () => [...new Set(db.productos.map((p) => p.categoria))].sort();
 $("#prod-cat").append(...cats().map((c) => el("option", { textContent: c })));
 for (const id of ["#prod-q", "#prod-cat", "#prod-stock"]) $(id).addEventListener("input", () => PINTAR.productos());
-PINTAR.productos = () => {
+const seleccion = new Set(); // ids marcados en la lista (pueden estar fuera de la página visible)
+let listaProductos = [];
+function filtrarProductos() {
   const q = normalizar($("#prod-q").value.trim()), cat = $("#prod-cat").value, st = $("#prod-stock").value;
-  const lista = db.productos.filter((p) => (!cat || p.categoria === cat) && (!q || normalizar(`${p.nombre} ${p.subcategoria}`).includes(q))
-    && (st === "" || (st === "sin" ? !p.stock : st === "con" ? p.stock > 0 : st === "faltan" ? !(p.tamano && p.material) : !p.activo)));
+  const filtro = { sin: (p) => !p.stock, con: (p) => p.stock > 0, oculto: (p) => !p.activo, faltan: (p) => !(p.tamano && p.material), sincosto: (p) => !p.costo }[st];
+  return db.productos.filter((p) => !p._borrado && (!cat || p.categoria === cat) && (!q || normalizar(`${p.nombre} ${p.subcategoria}`).includes(q)) && (!filtro || filtro(p)));
+}
+function pintarSeleccion() {
+  for (const id of seleccion) if (!db.productos.some((p) => p.id === id && !p._borrado)) seleccion.delete(id);
+  $("#prod-sel").hidden = !seleccion.size;
+  $("#prod-sel-n").textContent = `${plural(seleccion.size, "producto marcado", "productos marcados")}`;
+  const todos = $("#sel-todos");
+  if (todos) { const n = listaProductos.filter((p) => seleccion.has(p.id)).length; todos.checked = n > 0 && n === listaProductos.length; todos.indeterminate = n > 0 && n < listaProductos.length; }
+}
+$("#sel-limpiar").addEventListener("click", () => { seleccion.clear(); PINTAR.productos(); });
+PINTAR.productos = () => {
+  const lista = listaProductos = filtrarProductos();
   const mostrar = lista.slice(0, 60); // shortcut: muestra 60 por vez; paginar si el catálogo pasa de unos cientos
-  $("#prod-lista").replaceChildren(tabla(["", "Producto", "Categoría", "#Precio", "#Stock listo", "Tienda", ""], mostrar.map((p) => el("tr", {},
+  const todos = el("input", { type: "checkbox", id: "sel-todos", ariaLabel: `Marcar los ${lista.length} productos de este filtro`, title: "Marcar todos los del filtro",
+    onchange: (e) => { for (const p of lista) e.target.checked ? seleccion.add(p.id) : seleccion.delete(p.id); PINTAR.productos(); } });
+  const gan = (p) => { const g = gananciaPct(p); return g == null ? "—" : g + " %"; };
+  $("#prod-lista").replaceChildren(tabla([todos, "", "Producto", "Categoría", "#Costo", "#Precio", "#Ganancia", "#Stock listo", "Tienda", ""], mostrar.map((p) => el("tr", { className: seleccion.has(p.id) ? "marcado" : "" },
+    td(el("input", { type: "checkbox", checked: seleccion.has(p.id), ariaLabel: `Marcar ${p.nombre}`, onchange: (e) => { e.target.checked ? seleccion.add(p.id) : seleccion.delete(p.id); e.target.closest("tr").classList.toggle("marcado", e.target.checked); pintarSeleccion(); } }), "marca"),
     td(p.foto ? el("img", { src: foto(p.foto), alt: "", width: 44, height: 44, loading: "lazy", className: "mini-foto" }) : el("span", { className: "mini-foto vacia", textContent: "3D" })),
     td(el("span", {}, el("b", { textContent: p.nombre }), el("small", { textContent: [p.subcategoria, p.tamano, p.material].filter(Boolean).join(" · ") || "Sin tamaño ni material" }))), td(p.categoria),
-    td(p.precio ? plata(p.precio) : "Consultar", "num"),
+    td(p.costo ? plata(p.costo) : "—", "num"), td(p.precio ? plata(p.precio) : "Consultar", "num"), td(gan(p), "num"),
     td(el("span", { className: "stock" },
       el("button", { type: "button", className: "paso", textContent: "−", ariaLabel: `Restar stock de ${p.nombre}`, disabled: !p.stock, onclick: () => { p.stock--; guardar(); PINTAR.productos(); } }),
       el("b", { textContent: p.stock || 0 }),
       el("button", { type: "button", className: "paso", textContent: "+", ariaLabel: `Sumar stock de ${p.nombre}`, onclick: () => { p.stock = (p.stock || 0) + 1; guardar(); PINTAR.productos(); } })), "num"),
     td(el("span", { className: "pill " + (p.activo ? "e4" : "e0"), textContent: p.activo ? "Visible" : "Oculto" })),
     td(el("button", { type: "button", className: "btn sec chico", textContent: "Editar", onclick: () => abrirProducto(p) })))),
-  "No hay productos con esos filtros."), lista.length > mostrar.length ? el("p", { className: "sub", textContent: `Se muestran 60 de ${lista.length}. Buscá para encontrar el resto.` }) : "");
+  "No hay productos con esos filtros.", "t-productos"), lista.length > mostrar.length ? el("p", { className: "sub", textContent: `Se muestran 60 de ${lista.length}. Buscá para encontrar el resto (marcar todos incluye los ${lista.length}).` }) : "");
+  pintarSeleccion();
 };
+
+// Cambiar precios (o cargar costo) de los productos marcados. Se puede deshacer.
+const fpr = $("#f-precios");
+const marcados = () => db.productos.filter((p) => seleccion.has(p.id) && !p._borrado);
+function calcularPrecios() {
+  const modo = fpr.modo.value, v = +fpr.valor.value, r = +fpr.redondeo.value, hay = fpr.valor.value.trim() !== "" && Number.isFinite(v);
+  $("#precios-etiqueta").textContent = { ganancia: "Ganancia sobre el costo (%)", ajuste: "Cuánto (%; en negativo baja)", costo: "Costo ($)" }[modo];
+  fpr.redondeo.disabled = modo === "costo";
+  const cambios = [], saltados = [];
+  for (const p of marcados()) {
+    if (!hay) continue;
+    if (modo === "costo") { if (v >= 0 && Math.round(v) !== (p.costo || 0)) cambios.push([p, "costo", Math.round(v)]); continue; }
+    if (modo === "ganancia" && !p.costo) { saltados.push(p); continue; }
+    if (modo === "ajuste" && !p.precio) { saltados.push(p); continue; }
+    const nuevo = modo === "ganancia" ? precioConGanancia(p.costo, v, r) : Math.max(Math.ceil(Math.round(p.precio * (1 + v / 100)) / r) * r, 0);
+    if (nuevo !== p.precio) cambios.push([p, "precio", nuevo]);
+  }
+  return { cambios, saltados, hay };
+}
+function previaPrecios() {
+  const { cambios, saltados, hay } = calcularPrecios(), modo = fpr.modo.value;
+  $("#precios-cuantos").textContent = `${plural(marcados().length, "producto marcado", "productos marcados")}.`;
+  const motivo = modo === "ganancia" ? "no tienen costo cargado" : "no tienen precio (Consultar)";
+  $("#precios-previa").replaceChildren(!hay ? el("p", { className: "sub chico", textContent: "Escribí el valor para ver cómo quedan." }) : el("div", {},
+    el("p", { className: "sub chico", textContent: [`Cambian ${cambios.length}.`, saltados.length ? `Se saltean ${saltados.length} porque ${motivo}.` : ""].filter(Boolean).join(" ") }),
+    tabla(["Producto", "#Antes", "#Después"], cambios.slice(0, 8).map(([p, k, n]) => el("tr", {}, td(p.nombre), td(p[k] ? plata(p[k]) : "—", "num"), td(plata(n), "num"))), "No hay cambios con ese valor."),
+    cambios.length > 8 ? el("p", { className: "sub chico", textContent: `y ${cambios.length - 8} más.` }) : ""));
+}
+$("#sel-precios").addEventListener("click", () => { fpr.reset(); previaPrecios(); $("#d-precios").showModal(); fpr.valor.focus(); });
+fpr.addEventListener("input", previaPrecios);
+fpr.addEventListener("submit", (e) => {
+  if (e.submitter?.value !== "ok") return;
+  const { cambios } = calcularPrecios();
+  if (!cambios.length) { e.preventDefault(); return previaPrecios(); }
+  const antes = cambios.map(([p, k]) => [p, k, p[k]]);
+  for (const [p, k, n] of cambios) p[k] = n;
+  guardar(); PINTAR.productos();
+  avisar(`Listo: cambiamos ${plural(cambios.length, "producto")}.`, () => { for (const [p, k, n] of antes) p[k] = n; });
+});
+
+// Inventario: lo que hay en stock, valorizado al costo y al precio de venta.
+const fi = $("#f-inventario");
+const productosInventario = () => db.productos.filter((p) => !p._borrado && (!fi.categoria.value || p.categoria === fi.categoria.value) && (!fi.soloStock.checked || p.stock > 0))
+  .sort((a, b) => a.categoria.localeCompare(b.categoria) || a.nombre.localeCompare(b.nombre));
+function pintarInventario() {
+  const lista = productosInventario(), t = inventario(lista);
+  $("#inv-kpis").replaceChildren(kpi("Unidades", String(t.unidades), plural(lista.filter((p) => p.stock > 0).length, "producto")),
+    kpi("Valor al costo", plata(t.costo), t.sinCosto ? `${plural(t.sinCosto, "producto")} sin costo` : "Lo que te costó"),
+    kpi("Valor de venta", plata(t.venta), "A precio de la tienda"), kpi("Ganancia posible", plata(t.venta - t.costo), "Venta menos costo", "verde"));
+  $("#inv-lista").replaceChildren(tabla(["Producto", "Categoría", "#Stock", "#Costo", "#Valor costo", "#Valor venta"], lista.slice(0, 100).map((p) => el("tr", {},
+    td(p.nombre), td(p.categoria), td(String(p.stock || 0), "num"), td(p.costo ? plata(p.costo) : "—", "num"),
+    td(plata((p.stock || 0) * (p.costo || 0)), "num"), td(plata((p.stock || 0) * (p.precio || 0)), "num"))), "No hay productos con stock en esta selección."),
+  lista.length > 100 ? el("p", { className: "sub chico", textContent: `Se muestran 100 de ${lista.length}; la planilla los incluye todos.` }) : "");
+}
+$("#inventario").addEventListener("click", () => {
+  fi.reset();
+  fi.categoria.replaceChildren(el("option", { value: "", textContent: "Todas las categorías" }), ...cats().map((c) => el("option", { value: c, textContent: c })));
+  pintarInventario(); $("#d-inventario").showModal();
+});
+fi.addEventListener("input", pintarInventario);
+const bajarArchivo = (blob, nombre) => { const url = URL.createObjectURL(blob); el("a", { href: url, download: nombre }).click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
+$("#inv-excel").addEventListener("click", () => {
+  bajarArchivo(crearXlsx(inventarioAFilas(productosInventario()), { hoja: "Inventario", anchos: [8, 40, 18, 18, 10, 10, 16, 12] }), `inventario-aukan3d-${hoy()}.xlsx`);
+  avisar("Planilla descargada. Completá Contado y subila con Importar Excel.");
+});
+$("#inv-imprimir").addEventListener("click", () => {
+  const lista = productosInventario(), cat = fi.categoria.value;
+  $("#imprimir").className = "";
+  $("#imprimir").replaceChildren(
+    el("header", {}, el("img", { src: "../logo-comprobante.webp", alt: "" }), el("div", {}, el("h1", { textContent: "Planilla de conteo" }),
+      el("p", { textContent: `${fecha(new Date())} · ${cat || "Todas las categorías"}${fi.soloStock.checked ? " · solo con stock" : ""} · ${plural(lista.length, "producto")}` }))),
+    el("table", { className: "conteo" }, el("thead", {}, el("tr", {}, ...["ID", "Producto", "Categoría", "En sistema", "Contado"].map((t) => el("th", { textContent: t })))),
+      el("tbody", {}, ...lista.map((p) => el("tr", {}, td(p.id), td(p.nombre), td(p.categoria), td(String(p.stock || 0), "num"), td(""))))),
+    el("p", { className: "pie-imp", textContent: "Contado por: ____________________   Fecha: ____/____/______" }));
+  print();
+});
+
+// Excel: exportar todo el catálogo e importarlo de vuelta (con vista previa antes de aplicar).
+$("#bajar-excel").addEventListener("click", () => {
+  const lista = db.productos.filter((p) => !p._borrado).sort((a, b) => (+a.id || 0) - (+b.id || 0));
+  bajarArchivo(crearXlsx(productosAFilas(lista), { hoja: "Productos", anchos: [8, 40, 18, 18, 10, 12, 10, 8, 18, 14, 9] }), `productos-aukan3d-${hoy()}.xlsx`);
+  avisar(`Excel descargado con ${plural(lista.length, "producto")}.`);
+});
+let importacion = null;
+$("#subir-excel").addEventListener("click", () => $("#excel-input").click());
+$("#excel-input").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  let filas;
+  try { filas = /\.csv$/i.test(file.name) ? parseCsv((await file.text()).replace(/^\ufeff/, "")) : await leerXlsx(await file.arrayBuffer()); }
+  catch { return avisar("No pudimos leer ese archivo. Guardalo como Excel (.xlsx) y probá de nuevo."); }
+  importacion = filasAProductos(filas, db.productos);
+  const { cambios, nuevos, errores, iguales } = importacion;
+  const NOMBRE = { nombre: "nombre", categoria: "categoría", subcategoria: "subcategoría", costo: "costo", precio: "precio", stock: "stock", tamano: "tamaño", material: "material", activo: "visible" };
+  const valor = (k, v) => (k === "activo" ? (v ? "SI" : "NO") : ["costo", "precio"].includes(k) ? (v ? plata(v) : "—") : v === "" || v == null ? "vacío" : String(v));
+  $("#importar-previa").replaceChildren(
+    el("div", { className: "kpis" }, kpi("Cambian", String(cambios.length), "productos"), kpi("Nuevos", String(nuevos.length), "productos", "verde"),
+      kpi("Sin cambios", String(iguales), "productos"), kpi("Con error", String(errores.length), "filas", errores.length ? "rojo" : "")),
+    errores.length ? el("div", { className: "caja error-lista" }, el("h3", { textContent: "Filas que no se cargan" }), el("ul", {}, ...errores.slice(0, 10).map((t) => el("li", { textContent: t }))),
+      errores.length > 10 ? el("p", { className: "sub chico", textContent: `y ${errores.length - 10} más.` }) : "") : "",
+    tabla(["Producto", "Cambios"], [...cambios.slice(0, 15).map((c) => el("tr", {}, td(c.producto.nombre),
+      td(Object.entries(c.datos).map(([k, v]) => `${NOMBRE[k]}: ${valor(k, c.producto[k])} → ${valor(k, v)}`).join(" · ")))),
+    ...nuevos.slice(0, 15).map((p) => el("tr", {}, td(p.nombre), td(el("span", { className: "pill e4", textContent: "Nuevo" }))))], "No hay nada para cambiar en este archivo."),
+    cambios.length + nuevos.length > 30 ? el("p", { className: "sub chico", textContent: "Se muestran los primeros; al aplicar se cargan todos." }) : "");
+  $("#importar-ok").disabled = !cambios.length && !nuevos.length;
+  $("#d-importar").showModal();
+});
+$("#f-importar").addEventListener("submit", (e) => {
+  if (e.submitter?.value !== "ok" || !importacion) return;
+  const { cambios, nuevos } = importacion;
+  for (const c of cambios) Object.assign(c.producto, c.datos);
+  db.productos.push(...nuevos);
+  importacion = null;
+  guardar(); repintar();
+  avisar(`Importación lista: ${plural(cambios.length, "producto actualizado", "productos actualizados")} y ${plural(nuevos.length, "nuevo", "nuevos")}.`);
+});
+
 // Tamaño y material a una categoría (o subcategoría) entera.
 const fl = $("#f-lote");
 const productosLote = () => db.productos.filter((p) => !p._borrado && p.categoria === fl.categoria.value && (!fl.subcategoria.value || p.subcategoria === fl.subcategoria.value));
@@ -932,7 +1068,8 @@ function abrirProducto(p) {
   productoEdit = p; fotoNueva = null;
   fp.reset();
   for (const k of ["nombre", "categoria", "subcategoria", "tamano", "material"]) fp[k].value = p?.[k] || "";
-  fp.precio.value = p?.precio || ""; fp.stock.value = p?.stock || "";
+  fp.precio.value = p?.precio || ""; fp.stock.value = p?.stock || ""; fp.costo.value = p?.costo || "";
+  fp.ganancia.value = p ? gananciaPct(p) ?? "" : ""; gananciaForm();
   fp.activo.checked = p ? p.activo : true;
   $("#lista-cats").replaceChildren(...cats().map((c) => el("option", { value: c })));
   $("#foto-prev").hidden = !p?.foto; $("#foto-vacia").hidden = !!p?.foto;
@@ -943,6 +1080,16 @@ function abrirProducto(p) {
   $("#d-producto").showModal();
 }
 $("#nuevo-producto").addEventListener("click", () => abrirProducto(null));
+// Costo, ganancia y precio se mueven juntos: costo o ganancia calculan el precio; el precio recalcula la ganancia.
+function gananciaForm() {
+  const c = +fp.costo.value || 0, pr = +fp.precio.value || 0;
+  $("#producto-ganancia").textContent = c && pr ? `Ganás ${plata(pr - c)} por unidad.` : c ? "Poné la ganancia o el precio." : "Con el costo cargado vas a ver la ganancia en los reportes.";
+}
+for (const k of ["costo", "ganancia"]) fp[k].addEventListener("input", () => {
+  if (+fp.costo.value > 0 && fp.ganancia.value.trim() !== "") fp.precio.value = precioConGanancia(+fp.costo.value, +fp.ganancia.value);
+  gananciaForm();
+});
+fp.precio.addEventListener("input", () => { fp.ganancia.value = gananciaPct({ costo: +fp.costo.value, precio: +fp.precio.value }) ?? ""; gananciaForm(); });
 // Del prototipo de Rodrigo: 600 × 600, fondo blanco, sin recortar, WebP de hasta ~140 KB.
 async function optimizarFoto(file, lado = 600, maxKb = 140) {
   const bmp = await createImageBitmap(file);
@@ -977,7 +1124,7 @@ fp.addEventListener("submit", (e) => {
   if (!d.nombre.trim() || !d.categoria.trim()) return error("Poné nombre y categoría.");
   const p = productoEdit || { id: String(Math.max(0, ...db.productos.map((x) => +x.id || 0)) + 1), foto: "" };
   Object.assign(p, { nombre: d.nombre.trim(), categoria: d.categoria.trim(), subcategoria: d.subcategoria.trim(), tamano: d.tamano.trim(), material: d.material.trim(),
-    precio: Math.max(Math.round(+d.precio || 0), 0), stock: Math.max(Math.round(+d.stock || 0), 0), activo: fp.activo.checked });
+    precio: Math.max(Math.round(+d.precio || 0), 0), costo: Math.max(Math.round(+d.costo || 0), 0), stock: Math.max(Math.round(+d.stock || 0), 0), activo: fp.activo.checked });
   if (fotoNueva && API) { p.foto = fotoNueva; p.fotoV = (p.fotoV || 0) + 1; } // el servidor la publica para la tienda
   else if (fotoNueva) {
     // Demo: la foto nueva se baja con el nombre que usa el CSV, para subirla a fotos/ del sitio.
@@ -989,14 +1136,6 @@ fp.addEventListener("submit", (e) => {
   guardar(); repintar();
   avisar(fotoNueva && !API ? "Producto guardado. La foto se descargó para subirla a la carpeta fotos." : "Producto guardado.");
 });
-$("#bajar-csv").addEventListener("click", () => {
-  const csv = catalogoACsv(db.productos.map((p) => ({ ...p, foto: p.fotoArchivo || p.foto })));
-  const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
-  el("a", { href: url, download: `productos-aukan3d-${hoy()}.csv` }).click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-  avisar("CSV descargado. En la planilla: Archivo > Importar > Reemplazar hoja.");
-});
-
 // --- Medios de pago ---
 PINTAR.medios = () => {
   const usos = (id) => db.ventas.filter((v) => v.pagos.some((p) => p.medio === id)).length;
@@ -1290,6 +1429,26 @@ $("#rep-ant").addEventListener("click", () => moverReporte(-1));
 $("#rep-sig").addEventListener("click", () => moverReporte(1));
 $("#rep-hoy").addEventListener("click", () => { rep.ancla = hoy(); PINTAR.reportes(); });
 for (const id of ["#rep-desde", "#rep-hasta"]) $(id).addEventListener("input", () => PINTAR.reportes());
+// Pestañas de reportes (se recuerda la última en este navegador).
+const PESTANA = "aukan_pestana_rep";
+function elegirPestana(id, foco = false) {
+  for (const t of document.querySelectorAll("#v-reportes [role=tab]")) {
+    const si = t.id === id;
+    t.setAttribute("aria-selected", si); t.tabIndex = si ? 0 : -1;
+    $("#" + t.getAttribute("aria-controls")).hidden = !si;
+    if (si && foco) t.focus();
+  }
+  try { localStorage.setItem(PESTANA, id); } catch { /* sin almacenamiento */ }
+}
+const pestanas = [...document.querySelectorAll("#v-reportes [role=tab]")];
+for (const t of pestanas) {
+  t.addEventListener("click", () => elegirPestana(t.id));
+  t.addEventListener("keydown", (e) => { // flechas entre pestañas, como pide el patrón de accesibilidad
+    const i = pestanas.indexOf(t), n = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+    if (n) { e.preventDefault(); elegirPestana(pestanas[(i + n + pestanas.length) % pestanas.length].id, true); }
+  });
+}
+if (pestanas.some((t) => t.id === leerLocal(PESTANA))) elegirPestana(leerLocal(PESTANA));
 PINTAR.reportes = () => {
   const [desde, hasta] = rangoReporte(), r = resumenRango(db, desde, hasta);
   const rango = rep.tipo === "rango";
@@ -1330,6 +1489,20 @@ PINTAR.reportes = () => {
   const porCat = {};
   for (const v of pesos) for (const i of v.items) { const c = db.productos.find((p) => p.id === i.id)?.categoria || "Otros"; porCat[c] = (porCat[c] || 0) + i.precio * i.cant; }
   $("#por-cat").replaceChildren(barrasDe(porCat));
+  const mg = margenes(r.ventas, db.productos), t = mg.total;
+  $("#kpis-margen").replaceChildren(kpi("Vendido con costo", plata(t.vendido), t.sinCosto ? `${plata(t.sinCosto)} sin costo cargado` : "Pesos"),
+    kpi("Costo", plata(t.costo), "De lo vendido", "rojo"), kpi("Ganancia", plata(t.ganancia), "Vendido menos costo", t.ganancia >= 0 ? "verde" : "rojo"),
+    kpi("Margen", t.costo ? `${Math.round((t.ganancia / t.costo) * 100)} %` : "—", t.vendido ? `${Math.round((t.ganancia / t.vendido) * 100)} % del precio` : "Sobre el costo"));
+  $("#margenes").replaceChildren(tabla(["Producto", "#Cant.", "#Vendido", "#Costo", "#Ganancia", "#% s/costo"], mg.filas.map((x) => el("tr", {},
+    td(x.nombre), td(String(x.cant), "num"), td(plata(x.vendido), "num"), td(x.sinCosto ? "Sin costo" : plata(x.costo), "num"),
+    td(x.ganancia == null ? "—" : plata(x.ganancia), "num"), td(x.ganancia == null || !x.costo ? "—" : `${Math.round((x.ganancia / x.costo) * 100)} %`, "num"))),
+  "Sin ventas en pesos en el período."));
+  const porConcepto = {};
+  for (const g of r.gastos.filter((g) => g.moneda === "UYU")) porConcepto[g.concepto] = (porConcepto[g.concepto] || 0) + g.monto;
+  const mayor = Object.entries(porConcepto).sort((a, b) => b[1] - a[1])[0];
+  $("#kpis-gastos").replaceChildren(kpi("Gastos", plata(r.gastado.UYU), r.gastado.USD ? plata(r.gastado.USD, "USD") : plural(r.gastos.length, "gasto"), "rojo"),
+    kpi("Mayor gasto", mayor ? plata(mayor[1]) : "—", mayor ? mayor[0] : "Sin gastos"),
+    kpi("Ganancia de productos", plata(t.ganancia), "Del período, con costo cargado"), kpi("Después de gastos", plata(t.ganancia - r.gastado.UYU), "Ganancia menos gastos", t.ganancia - r.gastado.UYU >= 0 ? "verde" : "rojo"));
   $("#gastos-lista").replaceChildren(tabla(["Fecha", "Concepto", "#Monto", ""], [...r.gastos].sort((a, b) => b.fecha.localeCompare(a.fecha)).map((g) => el("tr", {},
     td(fecha(g.fecha + "T12:00")), td(el("span", {}, g.concepto, el("small", { className: "fecha-movil", textContent: fecha(g.fecha + "T12:00") }))), td(plata(g.monto, g.moneda), "num"),
     td(el("button", { type: "button", className: "btn sec chico peligro", textContent: "Borrar", ariaLabel: `Borrar gasto ${g.concepto}`, onclick: () => borrarGasto(g) })))),

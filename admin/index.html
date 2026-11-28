@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.53">
-  <script src="../tema.js?v=0.53"></script>
+  <link rel="stylesheet" href="admin.css?v=0.54">
+  <script src="../tema.js?v=0.54"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -46,8 +46,9 @@
       <a href="#medios" data-permiso="medios">Medios de pago</a>
       <a href="#mensajes" data-permiso="mensajes">Mensajes de WhatsApp</a>
       <a href="#envios" data-permiso="mensajes">Entregas y envíos</a>
-      <a href="#mp" data-permiso="mp" data-solo-servidor hidden>Mercado Pago</a>
       <a href="#accesos" data-permiso="accesos" data-solo-servidor hidden>Accesos al panel</a>
+      <p class="nav-grupo">Panel Developers</p>
+      <a href="#mp" data-permiso="mp" data-solo-servidor hidden>Mercado Pago</a>
       <a href="#base" data-permiso="base" data-solo-servidor hidden>Base de datos</a>
       <hr class="nav-sep">
       <a href="#feria" class="nav-feria" data-permiso="feria">Modo feria</a>
@@ -148,12 +149,16 @@
       </section>
 
       <section id="v-productos" class="vista" hidden>
-        <div class="cabeza"><div><p class="eyebrow">Catálogo</p><h1>Productos y stock</h1><p class="sub">El mismo catálogo de la tienda. Los cambios se bajan en un CSV para pegar en la planilla.</p></div>
-          <div class="botones"><button class="btn sec" type="button" id="bajar-csv">Descargar CSV</button><button class="btn sec" type="button" id="lote-productos">Tamaño y material</button><button class="btn" type="button" id="nuevo-producto">+ Producto</button></div></div>
+        <div class="cabeza"><div><p class="eyebrow">Catálogo</p><h1>Productos y stock</h1><p class="sub">El mismo catálogo de la tienda, con costo y ganancia. Marcá productos para cambiarles el precio juntos.</p></div>
+          <div class="botones"><button class="btn sec" type="button" id="inventario">Inventario</button><button class="btn sec" type="button" id="bajar-excel">Exportar Excel</button><button class="btn sec" type="button" id="subir-excel">Importar Excel</button><input id="excel-input" type="file" accept=".xlsx,.csv" class="sr" tabindex="-1" aria-hidden="true"><button class="btn sec" type="button" id="lote-productos">Tamaño y material</button><button class="btn" type="button" id="nuevo-producto">+ Producto</button></div></div>
         <div class="filtros">
           <input id="prod-q" type="search" placeholder="Buscar producto" aria-label="Buscar productos">
           <select id="prod-cat" aria-label="Categoría"><option value="">Todas las categorías</option></select>
-          <select id="prod-stock" aria-label="Stock"><option value="">Con y sin stock</option><option value="sin">Sin stock (se imprime a pedido)</option><option value="con">Con stock</option><option value="oculto">Ocultos en la tienda</option><option value="faltan">Sin tamaño o material</option></select>
+          <select id="prod-stock" aria-label="Stock"><option value="">Con y sin stock</option><option value="sin">Sin stock (se imprime a pedido)</option><option value="con">Con stock</option><option value="oculto">Ocultos en la tienda</option><option value="faltan">Sin tamaño o material</option><option value="sincosto">Sin costo cargado</option></select>
+        </div>
+        <div class="barra-sel caja" id="prod-sel" hidden>
+          <strong id="prod-sel-n" aria-live="polite"></strong>
+          <span class="acciones"><button class="btn chico" type="button" id="sel-precios">Cambiar precios</button><button class="btn sec chico" type="button" id="sel-limpiar">Quitar selección</button></span>
         </div>
         <div id="prod-lista"></div>
       </section>
@@ -259,15 +264,32 @@
             <label>Desde <input type="date" id="rep-desde"></label><label>Hasta <input type="date" id="rep-hasta"></label>
           </div>
         </div>
-        <div class="kpis" id="kpis-reporte"></div>
-        <div class="caja"><h2 id="serie-t">Ventas por día</h2><p class="sub" id="serie-sub">Pesos vendidos</p><div id="rep-serie"></div></div>
-        <div class="grilla">
-          <div class="caja"><h2>Productos más vendidos</h2><p class="sub">Por cantidad · importe en pesos</p><div id="mas-vendidos"></div></div>
-          <div class="caja"><h2>Ventas por tipo</h2><p class="sub">Pesos vendidos según de dónde vino la venta</p><div id="por-origen"></div></div>
-          <div class="caja"><h2>Cobrado por forma de pago</h2><p class="sub">Pesos cobrados en el período</p><div id="por-medio"></div></div>
-          <div class="caja"><h2>Ventas por categoría</h2><p class="sub">Pesos vendidos en el período</p><div id="por-cat"></div></div>
+        <div class="pestanas" role="tablist" aria-label="Reportes">
+          <button type="button" role="tab" id="tab-resumen" aria-controls="rep-resumen" aria-selected="true">Resumen</button>
+          <button type="button" role="tab" id="tab-ventas" aria-controls="rep-ventas" aria-selected="false" tabindex="-1">Ventas</button>
+          <button type="button" role="tab" id="tab-productos" aria-controls="rep-productos" aria-selected="false" tabindex="-1">Productos y márgenes</button>
+          <button type="button" role="tab" id="tab-gastos" aria-controls="rep-gastos" aria-selected="false" tabindex="-1">Gastos</button>
         </div>
-        <div class="caja"><h2>Gastos del período</h2><div id="gastos-lista"></div></div>
+        <div role="tabpanel" id="rep-resumen" aria-labelledby="tab-resumen">
+          <div class="kpis" id="kpis-reporte"></div>
+          <div class="caja"><h2 id="serie-t">Ventas por día</h2><p class="sub" id="serie-sub">Pesos vendidos</p><div id="rep-serie"></div></div>
+        </div>
+        <div role="tabpanel" id="rep-ventas" aria-labelledby="tab-ventas" hidden>
+          <div class="caja"><h2>Ventas por tipo</h2><p class="sub">Pesos vendidos según de dónde vino la venta</p><div id="por-origen"></div></div>
+          <div class="grilla">
+            <div class="caja"><h2>Cobrado por forma de pago</h2><p class="sub">Pesos cobrados en el período</p><div id="por-medio"></div></div>
+            <div class="caja"><h2>Ventas por categoría</h2><p class="sub">Pesos vendidos en el período</p><div id="por-cat"></div></div>
+          </div>
+        </div>
+        <div role="tabpanel" id="rep-productos" aria-labelledby="tab-productos" hidden>
+          <div class="kpis" id="kpis-margen"></div>
+          <div class="caja"><h2>Ganancia por producto</h2><p class="sub">Ventas en pesos, con el costo cargado hoy en cada producto</p><div id="margenes"></div></div>
+          <div class="caja"><h2>Productos más vendidos</h2><p class="sub">Por cantidad · importe en pesos</p><div id="mas-vendidos"></div></div>
+        </div>
+        <div role="tabpanel" id="rep-gastos" aria-labelledby="tab-gastos" hidden>
+          <div class="kpis" id="kpis-gastos"></div>
+          <div class="caja"><h2>Gastos del período</h2><div id="gastos-lista"></div></div>
+        </div>
       </section>
 
       <p class="demo-pie" data-demo>Vista previa: los datos son de ejemplo y se guardan solo en este navegador.
@@ -359,6 +381,47 @@
   </form>
 </dialog>
 
+<dialog id="d-precios" class="ventana ancha" aria-labelledby="d-precios-t">
+  <form method="dialog" id="f-precios" novalidate>
+    <header><h2 id="d-precios-t">Cambiar precios</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
+    <p class="sub" id="precios-cuantos"></p>
+    <div class="campos dos">
+      <label class="todo">Qué querés hacer <select name="modo">
+        <option value="ganancia">Poner el precio con un % de ganancia sobre el costo</option>
+        <option value="ajuste">Subir o bajar el precio actual un %</option>
+        <option value="costo">Cargar el mismo costo a todos</option>
+      </select></label>
+      <label><span id="precios-etiqueta">Ganancia (%)</span> <input name="valor" type="number" step="1" inputmode="numeric" required></label>
+      <label>Redondear hacia arriba <select name="redondeo"><option value="1">Sin redondear</option><option value="10" selected>A $10</option><option value="50">A $50</option><option value="100">A $100</option></select></label>
+    </div>
+    <div id="precios-previa" aria-live="polite"></div>
+    <footer><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok">Aplicar</button></footer>
+  </form>
+</dialog>
+
+<dialog id="d-inventario" class="ventana ancha" aria-labelledby="d-inventario-t">
+  <form method="dialog" id="f-inventario" novalidate>
+    <header><h2 id="d-inventario-t">Inventario</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
+    <div class="filtros">
+      <select name="categoria" aria-label="Categoría"><option value="">Todas las categorías</option></select>
+      <label class="check"><input type="checkbox" name="soloStock" checked> Solo con stock</label>
+    </div>
+    <div class="kpis" id="inv-kpis"></div>
+    <div id="inv-lista"></div>
+    <p class="sub chico">Para contar: imprimí la planilla o bajala en Excel, anotá lo que hay en la columna Contado y subila con Importar Excel. El stock se actualiza solo.</p>
+    <footer><button class="btn sec" type="button" id="inv-excel">Bajar planilla en Excel</button><button class="btn" type="button" id="inv-imprimir">Imprimir planilla de conteo</button></footer>
+  </form>
+</dialog>
+
+<dialog id="d-importar" class="ventana ancha" aria-labelledby="d-importar-t">
+  <form method="dialog" id="f-importar" novalidate>
+    <header><h2 id="d-importar-t">Importar productos</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
+    <p class="sub">Se actualizan los productos por su ID y las filas sin ID se agregan como productos nuevos. No se borra nada. Si dejás el precio vacío y ponés costo y ganancia, el precio se calcula.</p>
+    <div id="importar-previa"></div>
+    <footer><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok" id="importar-ok">Aplicar cambios</button></footer>
+  </form>
+</dialog>
+
 <dialog id="d-lote" class="ventana" aria-labelledby="d-lote-t">
   <form method="dialog" id="f-lote" novalidate>
     <header><h2 id="d-lote-t">Tamaño y material en lote</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
@@ -385,7 +448,10 @@
         <label>Categoría <input name="categoria" list="lista-cats" required maxlength="40"></label>
         <label>Subcategoría <input name="subcategoria" maxlength="40" placeholder="Opcional"></label>
         <datalist id="lista-cats"></datalist>
+        <label>Costo ($) <input name="costo" type="number" min="0" step="1" inputmode="numeric" placeholder="Lo que te cuesta hacerlo"></label>
+        <label>Ganancia sobre el costo (%) <input name="ganancia" type="number" step="1" inputmode="numeric" placeholder="Ej. 150"></label>
         <label>Precio ($) <input name="precio" type="number" min="0" step="1" inputmode="numeric" placeholder="Vacío = Consultar"></label>
+        <p class="sub chico" id="producto-ganancia" aria-live="polite"></p>
         <label>Stock listo <input name="stock" type="number" min="0" step="1" inputmode="numeric" placeholder="0 = a pedido"></label>
         <label>Tamaño <input name="tamano" maxlength="40" placeholder="Ej. 12 cm de alto"></label>
         <label>Material <input name="material" maxlength="40" placeholder="Ej. PLA"></label>
@@ -517,10 +583,11 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.53"></script>
-<script src="../productos.js?v=0.53"></script>
-<script src="../catalogo.js?v=0.53"></script>
-<script src="datos.js?v=0.53"></script>
-<script src="admin.js?v=0.53"></script>
+<script src="../config.js?v=0.54"></script>
+<script src="../productos.js?v=0.54"></script>
+<script src="../catalogo.js?v=0.54"></script>
+<script src="datos.js?v=0.54"></script>
+<script src="excel.js?v=0.54"></script>
+<script src="admin.js?v=0.54"></script>
 </body>
 </html>
