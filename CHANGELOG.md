@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.79 · 2026-11-28
+- Arreglos de las auditorías V0.78 (informe en la carpeta auditorias): el respaldo saca las fotos y arma el JSON en la base, sin parsear cada registro, para no pasarse del tiempo de CPU del plan gratis. Textos de avisos sin palabras sueltas.
+
 ## V0.78 · 2026-11-28
 - Respaldo automático semanal: cada lunes a las 03:00 (Montevideo) el servidor guarda una copia de la base real (sin fotos subidas, contraseñas ni credencial de Mercado Pago). Quedan las últimas 8.
 - Panel, Administración > Respaldos: lista de copias con "Bajar Excel" (una hoja por cada parte de la base, con nombres de clientes, medios y vendedores en texto) y "Hacer un respaldo ahora".
