@@ -1510,6 +1510,7 @@ async function bajarRespaldo(fecha, boton) {
 }
 PINTAR.respaldos = async () => {
   const caja = $("#respaldos-lista");
+  $("#respaldo-ahora").hidden = PRUEBAS; // el servidor solo respalda la base real
   if (PRUEBAS) return caja.replaceChildren(el("p", { className: "vacio caja", textContent: "Los respaldos son de la base real. Volvé a producción para verlos." }));
   caja.replaceChildren(el("p", { className: "vacio", textContent: "Cargando…" }));
   await traerRespaldos();
