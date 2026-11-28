@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.42 · 2026-11-28
+- Mercado Pago: el nombre largo de la cuenta ya no se sale de su recuadro (los recuadros de números cortan el texto largo en vez de desbordar).
+
 ## V0.41 · 2026-11-28
 - El pedido de la tienda se paga antes de entrar: con link de Mercado Pago queda en espera y no aparece en el panel. Cuando Mercado Pago confirma el pago entra como pedido nuevo (campana y aviso), ya en Seña pagada o Pagado. Si no hay credencial de Mercado Pago, el pedido entra igual para no perderlo.
 - Tienda: botón "Hacer pedido y pagar" y pantalla "Último paso: pagá con Mercado Pago".

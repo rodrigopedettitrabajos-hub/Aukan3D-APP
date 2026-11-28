@@ -1013,7 +1013,7 @@ function pintarMp(r) {
     : kpi("Estado", r.conectado ? "Conectado" : "Sin conexión", r.conectado ? "Mercado Pago acepta la credencial" : "Mercado Pago no la acepta: cargala de nuevo", r.conectado ? "verde" : "rojo");
   $("#mp-estado").replaceChildren(el("div", { className: "kpis" }, estado, ...(r.configurado ? [
     kpi("Modo", r.modo === "prueba" ? "Prueba" : "Producción", r.modo === "prueba" ? "Cobros de mentira, para probar" : "Cobros reales", r.modo === "prueba" ? "ambar" : "verde"),
-    kpi("Cuenta", r.cuenta ? r.cuenta.nombre || String(r.cuenta.id) : "—", r.cuenta ? `N° ${r.cuenta.id}${r.cuenta.pais ? " · " + r.cuenta.pais : ""}` : ""),
+    kpi("Cuenta", r.cuenta ? r.cuenta.nombre || String(r.cuenta.id) : "—", r.cuenta ? `N° ${r.cuenta.id}${r.cuenta.pais ? " · " + r.cuenta.pais : ""}` : "", "largo"),
     kpi("Credencial", "…" + r.final, r.origen === "panel" ? `Cargada desde el panel${r.actualizado ? " el " + fecha(new Date(r.actualizado).toISOString()) : ""}` : "Cargada en el servidor")] : [])));
   pintarPagosMp(r.pagos || []);
 }
