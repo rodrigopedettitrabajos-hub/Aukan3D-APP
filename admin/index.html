@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.54">
-  <script src="../tema.js?v=0.54"></script>
+  <link rel="stylesheet" href="admin.css?v=0.55">
+  <script src="../tema.js?v=0.55"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -268,6 +268,7 @@
           <button type="button" role="tab" id="tab-resumen" aria-controls="rep-resumen" aria-selected="true">Resumen</button>
           <button type="button" role="tab" id="tab-ventas" aria-controls="rep-ventas" aria-selected="false" tabindex="-1">Ventas</button>
           <button type="button" role="tab" id="tab-productos" aria-controls="rep-productos" aria-selected="false" tabindex="-1">Productos y márgenes</button>
+          <button type="button" role="tab" id="tab-resenas" aria-controls="rep-resenas" aria-selected="false" tabindex="-1">Reseñas</button>
           <button type="button" role="tab" id="tab-gastos" aria-controls="rep-gastos" aria-selected="false" tabindex="-1">Gastos</button>
         </div>
         <div role="tabpanel" id="rep-resumen" aria-labelledby="tab-resumen">
@@ -285,6 +286,13 @@
           <div class="kpis" id="kpis-margen"></div>
           <div class="caja"><h2>Ganancia por producto</h2><p class="sub">Ventas en pesos, con el costo cargado hoy en cada producto</p><div id="margenes"></div></div>
           <div class="caja"><h2>Productos más vendidos</h2><p class="sub">Por cantidad · importe en pesos</p><div id="mas-vendidos"></div></div>
+        </div>
+        <div role="tabpanel" id="rep-resenas" aria-labelledby="tab-resenas" hidden>
+          <div class="kpis" id="kpis-resenas"></div>
+          <div class="grilla resenas-grilla">
+            <div class="caja"><h2>Estrellas</h2><p class="sub">Cuántas reseñas de cada una</p><div id="resenas-dist"></div></div>
+            <div class="caja"><h2>Lo que dicen los clientes</h2><p class="sub">Más nuevas primero. Tocá el pedido para verlo.</p><div id="resenas-lista" class="resenas"></div></div>
+          </div>
         </div>
         <div role="tabpanel" id="rep-gastos" aria-labelledby="tab-gastos" hidden>
           <div class="kpis" id="kpis-gastos"></div>
@@ -583,11 +591,11 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.54"></script>
-<script src="../productos.js?v=0.54"></script>
-<script src="../catalogo.js?v=0.54"></script>
-<script src="datos.js?v=0.54"></script>
-<script src="excel.js?v=0.54"></script>
-<script src="admin.js?v=0.54"></script>
+<script src="../config.js?v=0.55"></script>
+<script src="../productos.js?v=0.55"></script>
+<script src="../catalogo.js?v=0.55"></script>
+<script src="datos.js?v=0.55"></script>
+<script src="excel.js?v=0.55"></script>
+<script src="admin.js?v=0.55"></script>
 </body>
 </html>

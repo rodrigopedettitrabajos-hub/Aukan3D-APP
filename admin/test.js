@@ -133,6 +133,11 @@ const vi = { ...vm3, entrega: "", items: [{ nombre: "Kirby", precio: 600, cant: 
 assert.strictEqual(d.armarMensaje("¡Hola {nombre}! Gracias por comprar en {negocio}:\n🗒 {items}\n💲 Total: {total} · Pagaste: {pagado}\n{resta}\n📅 {entrega}\n{direccion}", vi, "Ana", pl, { negocio: "Aukan3D", direccion: "Av. Italia 1" }),
   "¡Hola Ana! Gracias por comprar en Aukan3D:\n🗒 2 x Kirby\n💲 Total: $ 1200 · Pagaste: $ 1000\nQueda un saldo de $ 200.\nAv. Italia 1");
 
+// Reseñas y link en el mensaje de entregado.
+const rr = d.resumenResenas([{ estrellas: 5, fecha: "2026-11-02" }, { estrellas: 4, fecha: "2026-11-03" }, { _borrado: true, id: "x" }]);
+assert.deepStrictEqual([rr.cantidad, rr.promedio, rr.por[0], rr.lista[0].estrellas], [2, 4.5, [5, 1], 4]);
+assert.ok(d.mensajeDe({ mensajes: [] }, { ...vi, estado: 4 }, "Ana", pl, { resena: "https://t/#historial" }).endsWith("estrellas: https://t/#historial"));
+
 // Excel: lo que se escribe se vuelve a leer igual.
 const x = require("./excel.js");
 (async () => {

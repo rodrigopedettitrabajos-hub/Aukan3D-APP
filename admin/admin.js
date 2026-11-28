@@ -395,7 +395,9 @@ const botonesImp = (numero, extra) => el("span", { className: "imp-formatos" },
   el("button", { type: "button", className: "btn sec chico", textContent: "Ticket 80 mm", onclick: () => imprimirPedido(numero, "80", extra) }));
 
 // Mensaje de WhatsApp para avisar al cliente que su pedido cambió de estado (sale desde el WhatsApp de quien toca).
-const mensajeEstado = (v, nombre) => mensajeDe(db, v, nombre, plata); // textos editables en la pantalla Mensajes
+// Link a "Historial de compras" de la tienda, donde el cliente deja la reseña de un pedido entregado.
+const LINK_RESENA = new URL("../#historial", location.href).href;
+const mensajeEstado = (v, nombre) => mensajeDe(db, v, nombre, plata, { resena: LINK_RESENA }); // textos editables en la pantalla Mensajes
 const i18nEstado = (v) => (v.estado === 1 && pagadoTodo(v) ? "Pagado" : ESTADOS[v.estado]);
 let recienCambiado = null; // { numero, estado }: muestra "Avisarle por WhatsApp" después de cambiar el estado
 // Detalle de una venta: estado, pagos, WhatsApp.
@@ -430,9 +432,19 @@ function abrirDetalle(numero) {
     el("h3", { textContent: "Productos" }),
     el("table", { className: "tabla" }, el("tbody", {}, ...v.items.map((i) => el("tr", {}, td(`${i.cant} x ${i.nombre}`), td(plata(i.precio * i.cant, v.moneda), "num")))),
       el("tfoot", {}, el("tr", {}, td("Total"), td(plata(totalVenta(v), v.moneda), "num")))),
-    v.nota ? el("p", { className: "nota", textContent: `Nota: ${v.nota}` }) : "");
+    v.nota ? el("p", { className: "nota", textContent: `Nota: ${v.nota}` }) : "",
+    resenaDe(v.numero) ? el("div", { className: "resena-detalle" }, el("h3", { textContent: "Reseña del cliente" }), tarjetaResena(resenaDe(v.numero))) : "");
   if (!d.open) d.showModal();
 }
+
+// Reseñas que dejan los clientes desde la tienda (una por pedido entregado).
+const resenaDe = (numero) => (db.resenas || []).find((r) => r.id === String(numero) && !r._borrado);
+const estrellasTxt = (n) => "★".repeat(n) + "☆".repeat(5 - n);
+const tarjetaResena = (r, conPedido = false) => el("div", { className: "resena" },
+  el("p", { className: "resena-cab" }, el("span", { className: "estrellas", textContent: estrellasTxt(r.estrellas), ariaLabel: `${r.estrellas} de 5 estrellas`, role: "img" }),
+    el("small", { textContent: [fecha(r.fecha), conPedido ? cliente(r.cliente)?.nombre : ""].filter(Boolean).join(" · ") }),
+    conPedido && venta(r.numero) ? el("button", { type: "button", className: "link", textContent: `Pedido N° ${r.numero}`, onclick: () => abrirDetalle(r.numero) }) : ""),
+  r.comentario ? el("p", { textContent: r.comentario }) : el("p", { className: "sub chico", textContent: "Sin comentario." }));
 
 let confirmarEstado = ""; // D1: pasar a impresión o más sin ningún pago pide un segundo toque
 function cambiarEstado(v, i) {
@@ -1227,7 +1239,7 @@ PINTAR.mensajes = () => {
     const editor = el("div", { className: "editor-msj", contentEditable: "true", role: "textbox", ariaMultiLine: "true", ariaLabel: "Mensaje: " + b.nombre, dataset: { id: b.id } }, ...aEditor(m.texto));
     const activo = el("input", { type: "checkbox", name: "activo-" + b.id, checked: m.activo });
     const pintarPrevia = () => {
-      previa.textContent = activo.checked ? armarMensaje(deEditor(editor), EJEMPLO_MSJ(b.id), "Lucía", plata, { ...NEGOCIO_BASE, ...negocioActual() })
+      previa.textContent = activo.checked ? armarMensaje(deEditor(editor), EJEMPLO_MSJ(b.id), "Lucía", plata, { ...NEGOCIO_BASE, ...negocioActual(), resena: LINK_RESENA })
         : "Desactivado: al cambiar a este paso no se propone mensaje.";
       previa.classList.toggle("apagado", !activo.checked); editor.contentEditable = String(activo.checked);
     };
@@ -1503,6 +1515,12 @@ PINTAR.reportes = () => {
   $("#kpis-gastos").replaceChildren(kpi("Gastos", plata(r.gastado.UYU), r.gastado.USD ? plata(r.gastado.USD, "USD") : plural(r.gastos.length, "gasto"), "rojo"),
     kpi("Mayor gasto", mayor ? plata(mayor[1]) : "—", mayor ? mayor[0] : "Sin gastos"),
     kpi("Ganancia de productos", plata(t.ganancia), "Del período, con costo cargado"), kpi("Después de gastos", plata(t.ganancia - r.gastado.UYU), "Ganancia menos gastos", t.ganancia - r.gastado.UYU >= 0 ? "verde" : "rojo"));
+  const rr = resumenResenas((db.resenas || []).filter((x) => diaDe(x.fecha) >= desde && diaDe(x.fecha) <= hasta));
+  $("#kpis-resenas").replaceChildren(kpi("Promedio", rr.cantidad ? `${String(rr.promedio).replace(".", ",")} ★` : "—", rr.cantidad ? "de 5 estrellas" : "Sin reseñas en el período"),
+    kpi("Reseñas", String(rr.cantidad), "En el período"), kpi("5 estrellas", rr.cantidad ? `${Math.round((rr.por[0][1] / rr.cantidad) * 100)} %` : "—", "De las reseñas", "verde"),
+    kpi("3 o menos", String(rr.por.slice(2).reduce((t, x) => t + x[1], 0)), "Para revisar", rr.por.slice(2).some((x) => x[1]) ? "rojo" : ""));
+  $("#resenas-dist").replaceChildren(barras(rr.cantidad ? rr.por.map(([n, c]) => [estrellasTxt(n), c, plural(c, "reseña")]) : []));
+  $("#resenas-lista").replaceChildren(...(rr.lista.length ? rr.lista.map((x) => tarjetaResena(x, true)) : [el("p", { className: "vacio", textContent: "Todavía no hay reseñas en este período." })]));
   $("#gastos-lista").replaceChildren(tabla(["Fecha", "Concepto", "#Monto", ""], [...r.gastos].sort((a, b) => b.fecha.localeCompare(a.fecha)).map((g) => el("tr", {},
     td(fecha(g.fecha + "T12:00")), td(el("span", {}, g.concepto, el("small", { className: "fecha-movil", textContent: fecha(g.fecha + "T12:00") }))), td(plata(g.monto, g.moneda), "num"),
     td(el("button", { type: "button", className: "btn sec chico peligro", textContent: "Borrar", ariaLabel: `Borrar gasto ${g.concepto}`, onclick: () => borrarGasto(g) })))),
