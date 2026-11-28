@@ -67,9 +67,9 @@ function resumenResenas(resenas) {
 
 // --- Excel de productos: exportar todo y volver a importarlo ---
 const COLS_EXCEL = [["id", "ID"], ["nombre", "Nombre"], ["categoria", "Categoría"], ["subcategoria", "Subcategoría"], ["costo", "Costo"],
-  ["ganancia", "Ganancia %"], ["precio", "Precio"], ["stock", "Stock"], ["tamano", "Tamaño"], ["material", "Material"], ["activo", "Visible"]];
+  ["ganancia", "Ganancia %"], ["precio", "Precio"], ["tamano", "Tamaño"], ["material", "Material"], ["activo", "Visible"]];
 const productosAFilas = (productos) => [COLS_EXCEL.map((c) => c[1]), ...productos.map((p) => COLS_EXCEL.map(([k]) =>
-  k === "activo" ? (p.activo ? "SI" : "NO") : k === "ganancia" ? gananciaPct(p) ?? "" : ["costo", "precio"].includes(k) ? p[k] || "" : k === "stock" ? p.stock || 0 : p[k] || ""))];
+  k === "activo" ? (p.activo ? "SI" : "NO") : k === "ganancia" ? gananciaPct(p) ?? "" : ["costo", "precio"].includes(k) ? p[k] || "" : p[k] || ""))];
 // Planilla de conteo: la columna Contado se llena a mano y al importarla pasa a ser el stock.
 const inventarioAFilas = (productos) => [["ID", "Nombre", "Categoría", "Subcategoría", "Costo", "Precio", "Stock en sistema", "Contado"],
   ...productos.map((p) => [p.id, p.nombre, p.categoria, p.subcategoria || "", p.costo || "", p.precio || "", p.stock || 0, ""])];
@@ -84,11 +84,15 @@ function numeroCelda(v) {
 }
 // Columnas por nombre (sin importar mayúsculas ni tildes); las que no están en la hoja no se tocan.
 // Fila con ID conocido: actualiza ese producto. Sin ID o con uno nuevo: producto nuevo. Nunca borra.
-function filasAProductos(filas, productos) {
+// modo "precios" (Productos y precios) no toca el stock; modo "stock" (planilla de stock) solo toca el stock y no crea productos.
+function filasAProductos(filas, productos, modo = "precios") {
   const nombres = { id: "id", nombre: "nombre", categoria: "categoria", subcategoria: "subcategoria", costo: "costo", "ganancia %": "ganancia", ganancia: "ganancia",
     precio: "precio", stock: "stock", contado: "contado", tamano: "tamano", material: "material", visible: "activo", activo: "activo" };
   const [cab = [], ...resto] = filas, col = {};
   cab.forEach((h, i) => { const k = nombres[normalizar(String(h)).trim()]; if (k && !(k in col)) col[k] = i; });
+  if (modo === "precios") { delete col.stock; delete col.contado; }
+  else for (const k of Object.keys(col)) if (!["id", "stock", "contado"].includes(k) || (k === "stock" && "contado" in col)) delete col[k];
+  if (modo === "stock" && !("id" in col && ("stock" in col || "contado" in col))) return { cambios: [], nuevos: [], errores: ["La hoja tiene que tener las columnas ID y Contado (o Stock)."], iguales: 0 };
   if (!("id" in col) && !("nombre" in col)) return { cambios: [], nuevos: [], errores: ["La hoja no tiene columna ID ni Nombre."], iguales: 0 };
   const porId = new Map(productos.filter((p) => !p._borrado).map((p) => [String(p.id), p]));
   let proximo = Math.max(0, ...productos.map((p) => +p.id || 0)) + 1;
@@ -103,7 +107,7 @@ function filasAProductos(filas, productos) {
     for (const k of ["costo", "precio", "stock", "contado", "ganancia"]) {
       if (!(k in col)) continue;
       const n = numeroCelda(celda(k));
-      if (Number.isNaN(n) || n < 0) return errores.push(`Fila ${fila}: "${celda(k)}" no es un número válido en ${k === "contado" ? "Contado" : COLS_EXCEL.find((c) => c[0] === k)[1]}.`);
+      if (Number.isNaN(n) || n < 0) return errores.push(`Fila ${fila}: "${celda(k)}" no es un número válido en ${{ costo: "Costo", precio: "Precio", stock: "Stock", contado: "Contado", ganancia: "Ganancia %" }[k]}.`);
       d[k] = n;
     }
     if (errores.length && errores[errores.length - 1].startsWith(`Fila ${fila}:`)) return;
@@ -120,6 +124,7 @@ function filasAProductos(filas, productos) {
       if ("categoria" in d && !d.categoria) return errores.push(`Fila ${fila}: falta la categoría.`);
       cambios.push({ producto: actual, datos: Object.fromEntries(cambia.map((k) => [k, d[k]])) });
     } else {
+      if (modo === "stock") return d.stock == null ? undefined : errores.push(`Fila ${fila}: no hay ningún producto con el ID "${id}".`);
       if (!d.nombre || !d.categoria) return errores.push(`Fila ${fila}: un producto nuevo necesita nombre y categoría.`);
       const nuevoId = id || String(proximo++);
       if (nuevos.some((p) => p.id === nuevoId)) return errores.push(`Fila ${fila}: el ID ${nuevoId} está repetido.`);

@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.59">
-  <script src="../tema.js?v=0.59"></script>
+  <link rel="stylesheet" href="admin.css?v=0.60">
+  <script src="../tema.js?v=0.60"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -424,7 +424,7 @@
 <dialog id="d-importar" class="ventana ancha" aria-labelledby="d-importar-t">
   <form method="dialog" id="f-importar" novalidate>
     <header><h2 id="d-importar-t">Importar productos</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
-    <p class="sub">Se actualizan los productos por su ID y las filas sin ID se agregan como productos nuevos. No se borra nada. Si dejás el precio vacío y ponés costo y ganancia, el precio se calcula.</p>
+    <p class="sub" id="importar-ayuda"></p>
     <div id="importar-previa"></div>
     <footer><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok" id="importar-ok">Aplicar cambios</button></footer>
   </form>
@@ -591,11 +591,11 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.59"></script>
-<script src="../productos.js?v=0.59"></script>
-<script src="../catalogo.js?v=0.59"></script>
-<script src="datos.js?v=0.59"></script>
-<script src="excel.js?v=0.59"></script>
-<script src="admin.js?v=0.59"></script>
+<script src="../config.js?v=0.60"></script>
+<script src="../productos.js?v=0.60"></script>
+<script src="../catalogo.js?v=0.60"></script>
+<script src="datos.js?v=0.60"></script>
+<script src="excel.js?v=0.60"></script>
+<script src="admin.js?v=0.60"></script>
 </body>
 </html>

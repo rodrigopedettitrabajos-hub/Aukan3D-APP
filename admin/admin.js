@@ -983,7 +983,8 @@ PINTAR.stock = () => {
   lista.length > mostrar.length ? el("p", { className: "sub", textContent: `Se muestran 60 de ${lista.length}. Buscá para encontrar el resto; la planilla los incluye todos.` }) : "");
 };
 const bajarArchivo = (blob, nombre) => { const url = URL.createObjectURL(blob); el("a", { href: url, download: nombre }).click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
-$("#inv-subir").addEventListener("click", () => $("#excel-input").click());
+let modoImport = "precios"; // "stock" desde la pantalla Stock: solo cambia el stock
+$("#inv-subir").addEventListener("click", () => { modoImport = "stock"; $("#excel-input").click(); });
 $("#inv-excel").addEventListener("click", () => {
   bajarArchivo(crearXlsx(inventarioAFilas(productosStock()), { hoja: "Inventario", anchos: [8, 40, 18, 18, 10, 10, 16, 12] }), `inventario-aukan3d-${hoy()}.xlsx`);
   avisar("Planilla descargada. Completá Contado y subila con \"Importar inventario\".");
@@ -1003,11 +1004,11 @@ $("#inv-imprimir").addEventListener("click", () => {
 // Excel: exportar todo el catálogo e importarlo de vuelta (con vista previa antes de aplicar).
 $("#bajar-excel").addEventListener("click", () => {
   const lista = db.productos.filter((p) => !p._borrado).sort((a, b) => (+a.id || 0) - (+b.id || 0));
-  bajarArchivo(crearXlsx(productosAFilas(lista), { hoja: "Productos", anchos: [8, 40, 18, 18, 10, 12, 10, 8, 18, 14, 9] }), `productos-aukan3d-${hoy()}.xlsx`);
+  bajarArchivo(crearXlsx(productosAFilas(lista), { hoja: "Productos", anchos: [8, 40, 18, 18, 10, 12, 10, 18, 14, 9] }), `productos-aukan3d-${hoy()}.xlsx`);
   avisar(`Excel descargado con ${plural(lista.length, "producto")}.`);
 });
 let importacion = null;
-$("#subir-excel").addEventListener("click", () => $("#excel-input").click());
+$("#subir-excel").addEventListener("click", () => { modoImport = "precios"; $("#excel-input").click(); });
 $("#excel-input").addEventListener("change", async (e) => {
   const file = e.target.files[0];
   e.target.value = "";
@@ -1015,7 +1016,10 @@ $("#excel-input").addEventListener("change", async (e) => {
   let filas;
   try { filas = /\.csv$/i.test(file.name) ? parseCsv((await file.text()).replace(/^\ufeff/, "")) : await leerXlsx(await file.arrayBuffer()); }
   catch { return avisar("No pudimos leer ese archivo. Guardalo como Excel (.xlsx) y probá de nuevo."); }
-  importacion = filasAProductos(filas, db.productos);
+  importacion = filasAProductos(filas, db.productos, modoImport);
+  $("#d-importar-t").textContent = modoImport === "stock" ? "Importar inventario" : "Importar productos";
+  $("#importar-ayuda").textContent = modoImport === "stock" ? "Se actualiza solo el stock, por ID, con la columna Contado. Las filas con Contado vacío no se tocan. Precios y costos no cambian."
+    : "Se actualizan los productos por su ID y las filas sin ID se agregan como productos nuevos. El stock no cambia y no se borra nada. Si dejás el precio vacío y ponés costo y ganancia, el precio se calcula.";
   const { cambios, nuevos, errores, iguales } = importacion;
   const NOMBRE = { nombre: "nombre", categoria: "categoría", subcategoria: "subcategoría", costo: "costo", precio: "precio", stock: "stock", tamano: "tamaño", material: "material", activo: "visible" };
   const valor = (k, v) => (k === "activo" ? (v ? "SI" : "NO") : ["costo", "precio"].includes(k) ? (v ? plata(v) : "—") : v === "" || v == null ? "vacío" : String(v));
