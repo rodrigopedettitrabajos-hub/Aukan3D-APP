@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.58 · 2026-11-28
+- Panel: "Productos y stock" se separa en dos pantallas. "Productos y precios" tiene catálogo, costo, precio, ganancia, cambio de precios en masa, Excel, y tamaño y material. "Stock" tiene las unidades con + y −, el valor al costo y de venta, y la planilla de conteo (Excel, imprimir y "Subir conteo"). La ventana Inventario pasa a ser la pantalla Stock. Las dos usan el permiso "Productos y stock".
+
 ## V0.57 · 2026-11-28
 - Panel: en las ventanas largas (Inventario, Importar, Cambiar precios) los botones de abajo quedaban cortados. Ahora quedan fijos y completos abajo, con una línea arriba, y en el celular la tabla se desliza adentro sin empujar la ventana.
 
