@@ -121,6 +121,7 @@ for (const b of document.querySelectorAll("[data-salir]")) b.addEventListener("c
 let db = API ? dbVacia() : leerJson(CLAVE_DB, null);
 if (!db?.version) db = datosEjemplo(catalogoDesdeCsv(window.PRODUCTOS_CSV));
 db.mensajes ||= []; // datos guardados antes de V0.51
+db.cupones ||= []; // antes de V0.74
 db.cajas ||= []; // datos guardados antes del modo feria
 function avisoPedidos(n) {
   if (n) notificar(n === 1 ? "Llegó 1 pedido nuevo de la tienda." : `Llegaron ${n} pedidos nuevos de la tienda.`);
@@ -231,7 +232,7 @@ function avisar(t, deshacer) {
 
 // --- Navegación ---
 const VISTAS = { panel: "Panel principal", ventas: "Ventas y pedidos", feria: "Modo feria", pendientes: "Cuentas pendientes", clientes: "Clientes",
-  productos: "Productos y precios", stock: "Stock", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Estadísticas", base: "Base de datos", mp: "Mercado Pago",
+  productos: "Productos y precios", stock: "Stock", cupones: "Códigos de descuento", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Estadísticas", base: "Base de datos", mp: "Mercado Pago",
   accesos: "Accesos al panel", mensajes: "Mensajes de WhatsApp", envios: "Entregas y envíos" };
 const PINTAR = {};
 // Grupos del menú: plegados de entrada; se abren tocando el título y se recuerda en este navegador. El de la pantalla abierta siempre se ve.
@@ -259,7 +260,7 @@ $("#nav").addEventListener("click", (e) => { if (e.target.closest("a")) menuMovi
 addEventListener("keydown", (e) => { if (e.key === "Escape" && $(".side").classList.contains("menu-abierto")) { menuMovil(false); $("#menu-movil").focus(); } });
 function mostrarVista() {
   let v = location.hash.slice(1) in VISTAS ? location.hash.slice(1) : "panel";
-  if (!puede(v === "panel" ? "" : v === "envios" ? "mensajes" : v === "stock" ? "productos" : v) || ((v === "mp" || v === "accesos" || v === "base") && !API)) v = "panel";
+  if (!puede(v === "panel" ? "" : v === "envios" ? "mensajes" : v === "stock" || v === "cupones" ? "productos" : v) || ((v === "mp" || v === "accesos" || v === "base") && !API)) v = "panel";
   for (const s of document.querySelectorAll(".vista")) s.hidden = s.id !== "v-" + v;
   for (const a of document.querySelectorAll(".nav a")) a.ariaCurrent = a.hash === "#" + v ? "page" : null;
   pintarGrupos();
@@ -1374,6 +1375,58 @@ fc.addEventListener("submit", (e) => {
   $("#d-carga").close(); guardar(); repintar();
   avisar(`Se cargaron ${n} ${n === 1 ? "producto" : "productos"}.`);
 });
+// --- Códigos de descuento (la tienda los valida en el servidor: /api/cupon y al hacer el pedido) ---
+const hoyUy = () => new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
+const usosCupon = (c) => db.ventas.filter((v) => !v._borrado && v.cupon === c.id).length;
+function estadoCupon(c) {
+  if (!c.activo) return ["Pausado", "e4"];
+  if (c.vence && c.vence < hoyUy()) return ["Vencido", "mal"];
+  if (c.max > 0 && usosCupon(c) >= c.max) return ["Agotado", "mal"];
+  return ["Activo", "e3"];
+}
+PINTAR.cupones = () => {
+  const lista = db.cupones.filter((c) => !c._borrado).sort((a, b) => a.id.localeCompare(b.id));
+  $("#cupones-lista").replaceChildren(tabla(["Código", "Descuento", "Vence", "#Usos", "Estado", ""], lista.map((c) => {
+    const [txt, cls] = estadoCupon(c), u = usosCupon(c);
+    const pedidos = db.ventas.filter((v) => !v._borrado && v.cupon === c.id);
+    const descontado = pedidos.reduce((s, v) => s - (v.items.find((i) => i.id === DESCUENTO)?.precio || 0), 0);
+    return el("tr", {}, td(el("strong", { textContent: c.id })), td(c.tipo === "%" ? `${c.valor} %` : plata(c.valor)),
+      td(c.vence ? new Date(c.vence + "T12:00").toLocaleDateString("es-UY") : "Sin vencimiento"),
+      td(el("span", {}, `${u}${c.max ? " de " + c.max : ""}`, u ? el("small", { textContent: `${plata(descontado)} descontados` }) : ""), "num"),
+      td(el("span", { className: "pill " + cls, textContent: txt })),
+      td(el("span", { className: "acciones" },
+        el("button", { type: "button", className: "btn sec chico", textContent: "Editar", onclick: () => abrirCupon(c) }),
+        el("button", { type: "button", className: "btn sec chico", textContent: c.activo ? "Pausar" : "Activar", onclick: () => { c.activo = !c.activo; guardar(); PINTAR.cupones(); } }),
+        u ? "" : el("button", { type: "button", className: "btn sec chico peligro", textContent: "Borrar", ariaLabel: `Borrar ${c.id}`,
+          onclick: () => { db.cupones = db.cupones.filter((x) => x !== c); guardar(); PINTAR.cupones(); avisar(`Borramos ${c.id}.`); } }))));
+  }), "Todavía no hay códigos. Creá uno con \"+ Código\"."));
+};
+let cuponEdit = null;
+function abrirCupon(c) {
+  cuponEdit = c;
+  const f = $("#f-cupon");
+  f.reset();
+  f.codigo.value = c?.id || ""; f.codigo.readOnly = !!c && usosCupon(c) > 0; // con usos no se renombra: las ventas lo guardan por nombre
+  f.tipo.value = c?.tipo || "%"; f.valor.value = c?.valor || ""; f.vence.value = c?.vence || ""; f.max.value = c?.max || ""; f.activo.checked = c ? c.activo : true;
+  $("#d-cupon-t").textContent = c ? "Editar código" : "Nuevo código de descuento";
+  $("#cupon-error").textContent = "";
+  $("#d-cupon").showModal();
+}
+$("#nuevo-cupon").addEventListener("click", () => abrirCupon(null));
+$("#f-cupon").addEventListener("submit", (e) => {
+  if (e.submitter?.value !== "ok") return;
+  const f = e.target, error = (t) => { e.preventDefault(); $("#cupon-error").textContent = t; };
+  const id = f.codigo.value.trim().toUpperCase(), valor = Math.round(+f.valor.value || 0), tipo = f.tipo.value === "$" ? "$" : "%";
+  if (!/^[A-Z0-9]{3,20}$/.test(id)) return error("El código va de 3 a 20 letras o números, sin espacios.");
+  if (db.cupones.some((x) => x !== cuponEdit && !x._borrado && x.id === id)) return error("Ya existe un código con ese nombre.");
+  if (valor < 1 || (tipo === "%" && valor > 100)) return error(tipo === "%" ? "El porcentaje va de 1 a 100." : "Poné el monto del descuento.");
+  const datos = { id, tipo, valor, vence: f.vence.value, max: Math.max(Math.round(+f.max.value || 0), 0), activo: f.activo.checked };
+  if (cuponEdit && cuponEdit.id !== id) db.cupones = db.cupones.filter((x) => x !== cuponEdit); // renombrado: el viejo se borra
+  else if (cuponEdit) { Object.assign(cuponEdit, datos); guardar(); PINTAR.cupones(); return; }
+  db.cupones.push(datos);
+  guardar(); PINTAR.cupones();
+  avisar(`Código ${id} guardado.`);
+});
 // --- Medios de pago ---
 // Ícono de cada medio de pago, según su nombre (trazos simples, toman el color del texto).
 const ICONOS_MEDIO = [
@@ -1738,7 +1791,7 @@ PINTAR.reportes = () => {
     .map(([k, n]) => [k, n, [n || !enUsd[k] ? plata(n) : "", enUsd[k] ? plata(enUsd[k], "USD") : "", plural(cuantas[k], "venta")].filter(Boolean).join(" · ")])));
   $("#por-medio").replaceChildren(barrasDe(sumar(r.pagos.filter((p) => p.moneda === "UYU"), (p) => medio(p.medio), (p) => p.monto)));
   const porCat = {};
-  for (const v of pesos) for (const i of v.items) { const c = db.productos.find((p) => p.id === i.id)?.categoria || "Otros"; porCat[c] = (porCat[c] || 0) + i.precio * i.cant; }
+  for (const v of pesos) for (const i of v.items) { if (i.id === DESCUENTO) continue; const c = db.productos.find((p) => p.id === i.id)?.categoria || "Otros"; porCat[c] = (porCat[c] || 0) + i.precio * i.cant; }
   $("#por-cat").replaceChildren(barrasDe(porCat));
   const mg = margenes(r.ventas, db.productos), t = mg.total;
   $("#kpis-margen").replaceChildren(kpi("Vendido con costo", plata(t.vendido), t.sinCosto ? `${plata(t.sinCosto)} sin costo cargado` : "Pesos"),

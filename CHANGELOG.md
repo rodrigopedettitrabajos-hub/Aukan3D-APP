@@ -2,6 +2,11 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.74 · 2026-11-28
+- Códigos de descuento: nueva pantalla del panel (Catálogo > Códigos de descuento) para crear códigos por porcentaje o monto fijo, con vencimiento, máximo de usos y pausa. Muestra los usos y cuánto se descontó.
+- Tienda: en el carrito, "¿Tenés un código de descuento?". El servidor lo valida (existe, activo, sin vencer, con usos disponibles) y lo vuelve a aplicar al hacer el pedido. El descuento queda como un renglón del pedido, así el total, la seña, el comprobante y los reportes ya lo restan.
+- Con descuento y pago total, Mercado Pago recibe un solo renglón por el total (no acepta montos negativos).
+
 ## V0.73 · 2026-11-28
 - Panel, Productos: botón "Carga rápida" para cargar muchos productos de una vez. Paso 1: elegir o arrastrar fotos (una foto = un producto, el nombre sale del archivo) y/o pegar una lista "nombre; costo; stock", con categoría y subcategoría para todos. Paso 2: tabla para revisar nombre, costo, ganancia, precio y stock, con ganancia, redondeo y material para todos. Marca en ámbar los que quedan sin costo ("Consultar") y los nombres que ya existen. Hasta 60 por tanda.
 
