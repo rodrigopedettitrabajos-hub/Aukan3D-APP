@@ -58,6 +58,8 @@ button.nav-grupo:hover { color: #8fd8f5; }
 .nav a.nav-feria:hover, .nav a.nav-feria[aria-current="page"] { background: #0277a6; border-color: #0277a6; color: #fff; box-shadow: none; } /* 4,9:1 con el blanco */
 ::placeholder { color: var(--placeholder); opacity: 1; } /* 4,5:1 o más sobre los campos */
 .nav a.nav-feria[aria-current="page"]::before { background: #fff; }
+.menu-movil { display: none; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 1px solid #3a3e44; border-radius: 999px; background: none; color: #fff; font: 600 15px Oswald, sans-serif; letter-spacing: .02em; }
+.menu-movil[aria-expanded="true"] { background: #0277a6; border-color: #0277a6; }
 .side-pie { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 6px; }
 .side-link { color: #c8cacd; font-size: 13px; }
 .version { font: 12px ui-monospace, Menlo, Consolas, monospace; color: #9aa0a6; margin: 0; }
@@ -301,15 +303,18 @@ legend { padding: 0 6px; font-weight: 600; }
   .side { position: sticky; top: 0; z-index: 10; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px 0; border-right: 0; border-bottom: 3px solid var(--brand); }
   .brand img { width: 36px; height: 36px; }
   .brand strong { font-size: 18px; }
+  .brand > span { display: none; } /* solo el logo: así logo, campana, Salir y Menú entran en una fila */
   .side-pie { margin: 0 0 0 auto; padding: 0; }
   .side-link { display: none; }
-  .nav { order: 3; flex: 1 0 100%; display: flex; overflow-x: auto; scrollbar-width: none; margin: 0 -12px; padding: 0 8px; }
-  .nav a { white-space: nowrap; font-size: 14px; padding: 12px 10px; border-radius: 0; }
-  .nav a[aria-current="page"] { background: none; box-shadow: inset 0 -3px 0 var(--brand); }
-  .nav-grupo { display: none !important; }
-  .nav a.plegado { display: block; }
-  .nav-sep { border-top: 0; border-left: 1px solid #2a2d31; margin: 10px 4px; }
-  .nav a.nav-feria { border-radius: 999px; margin: 6px 8px 6px 0; padding: 6px 12px; }
+  /* El menú se abre con el botón "Menú": los mismos grupos plegables de la PC, en una lista que baja. */
+  .side { padding-bottom: 10px; }
+  .nav { order: 3; flex: 1 0 100%; display: none; max-height: calc(100dvh - 70px); overflow-y: auto; overscroll-behavior: contain; padding: 4px 0 8px; }
+  .side.menu-abierto .nav { display: grid; }
+  .nav a { padding: 12px; }
+  .nav-grupo { margin: 14px 12px 4px; }
+  button.nav-grupo { min-height: 36px; }
+  .nav a.nav-feria { margin-top: 4px; }
+  .menu-movil { display: inline-flex; }
   .top { min-height: 52px; padding: 6px 16px; } .crumb { display: none; } .user { margin-left: auto; }
   .content { padding: 18px 16px; }
   .cabeza h1 { font-size: 26px; }
