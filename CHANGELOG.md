@@ -2,6 +2,10 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.77 · 2026-11-28
+- Modo feria: al cerrar la caja aparece el resumen del cierre para compartir: ventas por medio de pago, lo más vendido, efectivo (inicial, cobrado, retiros, lo que tendría que haber, contado) y la diferencia. Botones "Compartir por WhatsApp", "Copiar" e "Imprimir o PDF".
+- Cajas anteriores: botón "Resumen" para volver a ver o mandar el cierre de cualquier caja.
+
 ## V0.76 · 2026-11-28
 - Stock mínimo por producto: se carga en la columna "Mínimo" de Stock o en el formulario del producto. Los que tienen menos que el mínimo se marcan en ámbar y tienen su filtro "Bajo el mínimo".
 - Panel principal: alerta "Stock bajo" con enlace directo a esos productos.

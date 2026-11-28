@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.76">
-  <script src="../tema.js?v=0.76"></script>
+  <link rel="stylesheet" href="admin.css?v=0.77">
+  <script src="../tema.js?v=0.77"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -641,6 +641,15 @@
   </form>
 </dialog>
 
+<dialog id="d-cierre" class="ventana" aria-labelledby="d-cierre-t">
+  <form method="dialog">
+    <header><h2 id="d-cierre-t">Cierre de caja</h2><button class="x" value="cancel" aria-label="Cerrar">×</button></header>
+    <p class="sub chico">Resumen para mandar por WhatsApp o guardar en PDF (Imprimir → Guardar como PDF).</p>
+    <pre id="cierre-texto" class="cierre-texto"></pre>
+    <footer><button class="btn sec" type="button" id="cierre-imprimir">Imprimir o PDF</button><button class="btn sec" type="button" id="cierre-copiar">Copiar</button><a class="btn" id="cierre-wa" target="_blank" rel="noopener">Compartir por WhatsApp</a></footer>
+  </form>
+</dialog>
+
 <div id="notis" class="notis" role="dialog" aria-label="Pedidos nuevos" hidden>
   <div class="notis-cab"><h2>Pedidos nuevos</h2><button type="button" class="link" id="notis-todo">Marcar todo como visto</button></div>
   <div id="notis-lista"></div>
@@ -650,11 +659,11 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.76"></script>
-<script src="../productos.js?v=0.76"></script>
-<script src="../catalogo.js?v=0.76"></script>
-<script src="datos.js?v=0.76"></script>
-<script src="excel.js?v=0.76"></script>
-<script src="admin.js?v=0.76"></script>
+<script src="../config.js?v=0.77"></script>
+<script src="../productos.js?v=0.77"></script>
+<script src="../catalogo.js?v=0.77"></script>
+<script src="datos.js?v=0.77"></script>
+<script src="excel.js?v=0.77"></script>
+<script src="admin.js?v=0.77"></script>
 </body>
 </html>
