@@ -768,8 +768,8 @@ function pintarTicket() {
   $("#pos-vaciar").hidden = !ticket.size;
   // Medios de pago y vuelto.
   if (!db.medios.some((m) => m.id === feriaMedio)) feriaMedio = db.medios.find((m) => esEfectivo(db, m.id))?.id || db.medios[0]?.id || "";
-  $("#pos-medios").replaceChildren(...db.medios.map((m) => el("button", { type: "button", className: "chip", textContent: m.nombre,
-    ariaPressed: String(m.id === feriaMedio), onclick: () => { feriaMedio = m.id; pintarTicket(); } })));
+  $("#pos-medios").replaceChildren(...db.medios.map((m) => el("button", { type: "button", className: "chip",
+    ariaPressed: String(m.id === feriaMedio), onclick: () => { feriaMedio = m.id; pintarTicket(); } }, iconoMedio(m.nombre), m.nombre)));
   const efectivo = esEfectivo(db, feriaMedio);
   $("#pos-efectivo").hidden = !efectivo;
   const billetes = [...new Set([100, 200, 500, 1000, 2000].map((b) => Math.ceil(total / b) * b))].filter((b) => b > total).slice(0, 3);
@@ -1240,11 +1240,24 @@ fp.addEventListener("submit", (e) => {
   avisar(fotoNueva && !API ? "Producto guardado. La foto se descargó para subirla a la carpeta fotos." : "Producto guardado.");
 });
 // --- Medios de pago ---
+// Ícono de cada medio de pago, según su nombre (trazos simples, toman el color del texto).
+const ICONOS_MEDIO = [
+  [/efectivo|contado|billete/i, '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>'],
+  [/transfer|banco|brou|itaú|itau|santander|scotia|bbva|depósito|deposito/i, '<path d="M3 9.5 12 4l9 5.5"/><path d="M5 10v7M9.5 10v7M14.5 10v7M19 10v7"/><path d="M3 20h18"/>'],
+  [/mercado ?pago|qr/i, '<rect x="6" y="2" width="12" height="20" rx="2.5"/><rect x="9" y="6" width="6" height="6" rx="0.5"/><path d="M9 15.5h2M13 15.5h2M11 18.5h2"/>'],
+  [/tarjeta|pos|débito|debito|crédito|credito|visa|master|oca/i, '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>'],
+];
+const ICONO_MEDIO_OTRO = '<path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18v4"/><rect x="4" y="7.5" width="17" height="12" rx="2"/><path d="M16 13.5h2"/>';
+function iconoMedio(nombre, clase = "icono-medio") {
+  const s = el("span", { className: clase, ariaHidden: "true" });
+  s.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${(ICONOS_MEDIO.find(([r]) => r.test(nombre)) || [, ICONO_MEDIO_OTRO])[1]}</svg>`;
+  return s;
+}
 PINTAR.medios = () => {
   const usos = (id) => db.ventas.filter((v) => v.pagos.some((p) => p.medio === id)).length;
   $("#medios-lista").replaceChildren(...db.medios.map((m) => el("article", { className: "caja medio" },
-    m.qr ? el("img", { src: m.qr, alt: `QR de ${m.nombre}`, width: 96, height: 96 }) : el("span", { className: "qr-vacio", textContent: "Sin QR" }),
-    el("div", {}, el("h2", { textContent: m.nombre }), m.detalle ? el("p", { className: "sub", textContent: m.detalle }) : "",
+    m.qr ? el("img", { src: m.qr, alt: `QR de ${m.nombre}`, width: 96, height: 96 }) : el("span", { className: "qr-vacio" }, iconoMedio(m.nombre), el("small", { textContent: "Sin QR" })),
+    el("div", {}, el("h2", { className: "medio-nombre" }, m.qr ? iconoMedio(m.nombre) : "", m.nombre), m.detalle ? el("p", { className: "sub", textContent: m.detalle }) : "",
       el("p", { className: "sub chico", textContent: `Usado en ${plural(usos(m.id), "venta")}` }),
       el("span", { className: "acciones" },
         el("button", { type: "button", className: "btn sec chico", textContent: "Editar", onclick: () => abrirMedio(m) }),
