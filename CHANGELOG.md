@@ -2,6 +2,10 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.76 · 2026-11-28
+- Stock mínimo por producto: se carga en la columna "Mínimo" de Stock o en el formulario del producto. Los que tienen menos que el mínimo se marcan en ámbar y tienen su filtro "Bajo el mínimo".
+- Panel principal: alerta "Stock bajo" con enlace directo a esos productos.
+
 ## V0.75 · 2026-11-28
 - Tienda: los productos con stock hecho muestran "Listo para entregar" en la tarjeta y en el detalle (el servidor publica solo qué productos tienen stock, no cuántos).
 - Tienda: en los demás, "Avisame cuando esté listo para entregar": el cliente deja nombre y WhatsApp.

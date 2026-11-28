@@ -149,5 +149,7 @@ const x = require("./excel.js");
   const filas = [["ID", "Nombre", "Precio"], ["1", 'Gato <"XL"> & ñ', 300], ["2", "", 0]];
   const leido = await x.leerXlsx(await x.crearXlsx(filas, { hoja: "Productos" }).arrayBuffer());
   assert.deepStrictEqual(leido, [["ID", "Nombre", "Precio"], ["1", 'Gato <"XL"> & ñ', 300], ["2", "", 0]]);
+  // Stock bajo: solo con mínimo cargado y menos stock que el mínimo.
+  assert.deepStrictEqual([{ minimo: 3, stock: 1 }, { minimo: 3, stock: 3 }, { minimo: 0, stock: 0 }, { minimo: 2 }, { minimo: 2, _borrado: true }].map(d.bajoMinimo), [true, false, false, true, false]);
   console.log("admin: ok");
 })();
