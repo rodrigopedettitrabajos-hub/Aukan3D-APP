@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.66 · 2026-11-28
+- Cobro con QR: al confirmarse el pago aparece un check verde grande. En Modo feria la ventana queda 10 s con "Cerrar (10…)" y se cierra sola; se puede cerrar antes. Ya no quedan a la vista "Ya pagó" ni "Cancelar cobro" después de pagar.
+
 ## V0.65 · 2026-11-28
 - Modo feria: al cobrar con Mercado Pago aparece el QR por el total y el panel espera a que el cliente pague. Cuando Mercado Pago confirma, la venta se cierra sola (con los botones de comprobante). "Cancelar cobro" borra la venta y deja los productos en el ticket; "Ya pagó: anotar a mano" sirve si el aviso de Mercado Pago tarda.
 - Servidor: las cuentas con permiso de Modo feria pueden generar el QR de cobro.
