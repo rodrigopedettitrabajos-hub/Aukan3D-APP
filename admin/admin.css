@@ -401,3 +401,18 @@ legend { padding: 0 6px; font-weight: 600; }
   #imprimir.ticket80 .pie-imp { text-align: center; }
 
 .tabla.t-ventas td > span.imp-formatos { display: inline-flex; flex-wrap: nowrap; }
+
+/* Mercado Pago */
+.pill.mal { background: none; color: var(--error); border: 1px solid currentColor; }
+.mp-grilla { align-items: start; }
+.mp-pasos { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--muted); font-size: 14px; }
+.acciones-form { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+#f-mp .sub b { color: var(--ink); }
+.acciones-pago { display: flex; flex-wrap: wrap; gap: 8px; }
+.qr-montos { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.qr-montos .btn[aria-pressed="true"] { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }
+.qr-caja { display: grid; justify-items: center; gap: 10px; text-align: center; padding: 8px 0 4px; }
+.qr-caja img { width: 240px; height: 240px; image-rendering: pixelated; background: #fff; padding: 8px; border-radius: 12px; border: 1px solid var(--line); }
+.qr-caja #qr-estado { margin: 0; font-size: 14px; color: var(--muted); max-width: 34ch; }
+.qr-caja #qr-estado.pago-ok { color: var(--ok); font-weight: 700; font-size: 16px; }
+.qr-caja a { color: var(--brand-ink); font-size: 14px; }

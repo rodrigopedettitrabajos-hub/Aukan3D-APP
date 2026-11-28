@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.39">
-  <script src="../tema.js?v=0.39"></script>
+  <link rel="stylesheet" href="admin.css?v=0.40">
+  <script src="../tema.js?v=0.40"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -44,6 +44,7 @@
       <a href="#reportes">Reportes y gastos</a>
       <a href="#usuarios">Usuarios y comisiones</a>
       <a href="#medios">Medios de pago</a>
+      <a href="#mp" data-solo-servidor hidden>Mercado Pago</a>
       <a href="#base" data-solo-dev hidden>Base de datos</a>
       <hr class="nav-sep">
       <a href="#feria" class="nav-feria">Modo feria</a>
@@ -160,6 +161,34 @@
         <div id="medios-lista" class="tarjetas"></div>
       </section>
 
+      <section id="v-mp" class="vista" hidden>
+        <div class="cabeza"><div><p class="eyebrow">Configuración</p><h1>Mercado Pago</h1><p class="sub">Cobros de la tienda con link de pago. Admin y dev ven y usan la misma cuenta.</p></div>
+          <button class="btn sec" type="button" id="mp-actualizar">Actualizar</button></div>
+        <div id="mp-estado"><p class="vacio">Cargando…</p></div>
+        <div class="grilla mp-grilla">
+          <form class="caja" id="f-mp" novalidate>
+            <h2>Credencial</h2>
+            <p class="sub">Pegá el <b>Access Token</b> de tu aplicación. Lo sacás en Mercado Pago Developers → Tus integraciones → tu aplicación → Credenciales. Las de prueba empiezan con <b>TEST-</b>; las reales con <b>APP_USR-</b>.</p>
+            <div class="campos">
+              <label>Access Token <input name="token" type="password" autocomplete="off" spellcheck="false" placeholder="TEST-… o APP_USR-…" required></label>
+            </div>
+            <p class="sub chico">Se guarda solo en el servidor y no se vuelve a mostrar. Antes de guardarlo lo probamos con Mercado Pago.</p>
+            <p class="error" id="mp-error" aria-live="polite"></p>
+            <div class="acciones-form"><button class="btn" type="submit">Guardar y probar</button><button class="btn sec peligro" type="button" id="mp-quitar" hidden>Quitar credencial</button></div>
+          </form>
+          <div class="caja">
+            <h2>Cómo funciona</h2>
+            <ol class="mp-pasos">
+              <li>El cliente hace el pedido en la tienda y ve el QR o el botón para pagar la seña (50 %) o el total.</li>
+              <li>En persona: en el pedido tocá "Cobrar con QR", elegí seña o total y el cliente escanea.</li>
+              <li>Cuando Mercado Pago confirma el pago, se anota solo en el pedido (pasa a Seña pagada o Pagado) y el panel avisa.</li>
+              <li>Si algún cobro de abajo no se anotó, tocá "Registrar".</li>
+            </ol>
+          </div>
+        </div>
+        <div class="caja"><div class="caja-cab"><h2>Últimos cobros</h2><p class="sub">Los 30 más nuevos de la cuenta.</p></div><div id="mp-pagos"></div></div>
+      </section>
+
       <section id="v-usuarios" class="vista" hidden>
         <div class="cabeza"><div><p class="eyebrow">Equipo</p><h1>Usuarios y comisiones</h1><p class="sub">Ventas y comisión de cada vendedor en el mes elegido.</p></div>
           <button class="btn" type="button" id="nuevo-usuario">+ Nuevo usuario</button></div>
@@ -257,6 +286,20 @@
     </div>
     <p class="error" id="pago-error" aria-live="polite"></p>
     <footer><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok">Guardar pago</button></footer>
+  </form>
+</dialog>
+
+<dialog id="d-qr" class="ventana" aria-labelledby="d-qr-t">
+  <form method="dialog">
+    <header><h2 id="d-qr-t">Cobrar con Mercado Pago</h2><button class="x" value="cancel" aria-label="Cerrar">×</button></header>
+    <p id="qr-sub" class="sub"></p>
+    <div class="qr-montos" id="qr-montos" aria-label="Monto a cobrar"></div>
+    <div class="qr-caja">
+      <img id="qr-img" alt="Código QR para pagar con Mercado Pago" width="240" height="240" hidden>
+      <p id="qr-estado" aria-live="polite"></p>
+      <a id="qr-link" target="_blank" rel="noopener" hidden>Abrir el link de pago (para mandarlo por WhatsApp)</a>
+    </div>
+    <footer><button class="btn sec" value="cancel">Cerrar</button></footer>
   </form>
 </dialog>
 
@@ -375,10 +418,10 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.39"></script>
-<script src="../productos.js?v=0.39"></script>
-<script src="../catalogo.js?v=0.39"></script>
-<script src="datos.js?v=0.39"></script>
-<script src="admin.js?v=0.39"></script>
+<script src="../config.js?v=0.40"></script>
+<script src="../productos.js?v=0.40"></script>
+<script src="../catalogo.js?v=0.40"></script>
+<script src="datos.js?v=0.40"></script>
+<script src="admin.js?v=0.40"></script>
 </body>
 </html>
