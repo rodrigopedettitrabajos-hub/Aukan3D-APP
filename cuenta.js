@@ -5,6 +5,7 @@ function pintarCuenta() {
   const p = leerPerfil();
   const activo = !!p?.activo;
   $("#ver-cuenta").textContent = activo ? `Hola, ${p.nombre.split(" ")[0]}` : "Mi cuenta";
+  pintarAvisos();
   $("#cuenta-forms").hidden = activo;
   $("#invitado").hidden = activo;
   if (activo) {
@@ -26,6 +27,16 @@ function elegirTab(registro) {
 }
 
 const ESTADOS = ["Recibido", "Seña pagada", "En impresión", "Listo para entregar", "Entregado"];
+// Pagos que registró Aukan3D (llegan del servidor). Sin servidor no hay datos y no se muestra nada.
+const pagadoDe = (p) => (p.pagos || []).reduce((t, x) => t + (+x.monto || 0), 0);
+function resumenPago(p) {
+  if (!p.pagos) return null;
+  const pagado = pagadoDe(p), saldo = Math.max(0, p.total - pagado);
+  if (!pagado) return { texto: "Todavía no registramos tu pago", clase: "pend" };
+  if (!saldo) return { texto: `Pagado en total: ${pesos(pagado)}`, clase: "ok" };
+  return { texto: `${p.sena ? "Seña pagada" : "Pagaste"}: ${pesos(pagado)} · Saldo ${pesos(saldo)}`, clase: "parcial" };
+}
+const lineaPago = (x) => [new Date(x.fecha).toLocaleDateString("es-UY"), x.mp ? `Mercado Pago · Operación N° ${x.mp}` : "Pago registrado por Aukan3D", pesos(+x.monto || 0)];
 const fechaCorta = (iso) => new Date(iso).toLocaleDateString("es-UY", { day: "numeric", month: "short", year: "numeric" });
 function tarjetaPedido(p) {
   const pasos = ESTADOS.map((e, i) => (i === 1 && !p.sena ? "Pagado" : e));
@@ -38,11 +49,18 @@ function tarjetaPedido(p) {
     entregado ? "" : el("ol", { className: "pasos", ariaLabel: `Estado: ${pasos[p.estado]}` },
       ...pasos.map((t, i) => el("li", { textContent: t, className: i < p.estado ? "hecho" : i === p.estado ? "actual" : "",
         ariaCurrent: i === p.estado ? "step" : null }))),
+    infoPago(p),
     el("div", { className: "pedido-pie" },
       el("span", { textContent: `${entregado ? "Entregado" : pasos[p.estado]} · Total ${pesos(p.total)}` }),
       el("div", { className: "pedido-acciones" },
         el("button", { className: "secundario chico", type: "button", textContent: "Comprobante", ariaLabel: `Descargar comprobante del pedido ${p.numero}`, onclick: () => comprobante(p) }),
         entregado ? el("button", { className: "secundario chico", type: "button", textContent: "Repetir pedido", onclick: () => repetir(p) }) : "")));
+}
+function infoPago(p) {
+  const r = resumenPago(p);
+  if (!r) return "";
+  return el("div", { className: "pedido-pago " + r.clase }, el("strong", { textContent: r.texto }),
+    ...p.pagos.map((x) => el("small", { textContent: lineaPago(x).join(" · ") })));
 }
 function repetir(p) {
   for (const i of p.items) if (productos.some((x) => x.id === i.id && x.precio)) cambiar(i.id, i.cant);
@@ -67,16 +85,75 @@ async function actualizarEstados() {
   try {
     const r = await fetch(cfg.pedidosUrl.replace("/api/pedidos", "/api/pedidos/estado"), { method: "POST", headers: { "Content-Type": "text/plain" },
       body: JSON.stringify({ pedidos: abiertos.map((p) => ({ numero: String(p.numero), whatsapp: p.cliente.whatsapp })) }) });
-    const estados = (await r.json()).estados || {};
+    const { estados = {}, pagos = {} } = await r.json();
     let cambio = false;
-    const lista = leerPedidos().map((p) => (p.numero in estados && estados[p.numero] !== p.estado ? (cambio = true, { ...p, estado: estados[p.numero] }) : p));
+    const lista = leerPedidos().map((p) => {
+      if (!(p.numero in estados)) return p;
+      const nuevo = { ...p, estado: estados[p.numero], ...(pagos[p.numero] ? { pagos: pagos[p.numero] } : {}) };
+      if (nuevo.estado !== p.estado) avisar(nuevo, p.estado);
+      if (nuevo.estado !== p.estado || JSON.stringify(nuevo.pagos) !== JSON.stringify(p.pagos)) cambio = true;
+      return nuevo;
+    });
     if (cambio) { guardarPedidos(lista); pintarPedidos(); }
   } catch { /* sin conexión: queda el último estado conocido */ }
 }
-// También al entrar a Mis pedidos / Historial o al volver a la pestaña, sin recargar la página.
-const enPedidos = () => ["#mis-pedidos", "#historial"].includes(location.hash) && sesion();
-addEventListener("hashchange", () => enPedidos() && actualizarEstados());
-document.addEventListener("visibilitychange", () => !document.hidden && enPedidos() && actualizarEstados());
+// Se consulta al entrar, al volver a la pestaña y cada minuto mientras la tienda está abierta con sesión.
+addEventListener("hashchange", () => sesion() && actualizarEstados());
+document.addEventListener("visibilitychange", () => !document.hidden && sesion() && actualizarEstados());
+setInterval(() => !document.hidden && sesion() && actualizarEstados(), 60_000);
+
+// ---------- Avisos al cliente cuando Aukan3D cambia el estado de un pedido ----------
+// Quedan en este dispositivo (campana arriba). Con permiso, también como notificación del sistema
+// mientras la tienda esté abierta (aunque sea en otra pestaña).
+const AVISOS = "aukan_avisos";
+const TEXTO_AVISO = [
+  null,
+  (p) => p.sena ? "Recibimos tu seña. ¡Tu pedido quedó confirmado!" : "Recibimos tu pago. ¡Tu pedido quedó confirmado!",
+  () => "Tu pedido entró en impresión.",
+  () => "¡Tu pedido está listo para entregar! Coordinamos la entrega por WhatsApp.",
+  () => "Pedido entregado. ¡Gracias por tu compra!",
+];
+const leerAvisos = () => { try { return JSON.parse(localStorage.getItem(AVISOS)) || []; } catch { return []; } };
+const guardarAvisos = (a) => { try { localStorage.setItem(AVISOS, JSON.stringify(a.slice(0, 20))); } catch { /* sin espacio: no pasa nada */ } };
+function avisar(p, antes) {
+  const texto = TEXTO_AVISO[p.estado]?.(p);
+  if (!texto || p.estado < antes) return;
+  guardarAvisos([{ numero: p.numero, estado: p.estado, texto, fecha: new Date().toISOString(), leido: false }, ...leerAvisos()]);
+  pintarAvisos();
+  $("#anuncio").textContent = `Pedido N° ${p.numero}: ${texto}`;
+  if ("Notification" in window && Notification.permission === "granted") {
+    const titulo = `Aukan3D · Pedido N° ${p.numero}`, op = { body: texto, icon: "logo.webp", tag: `pedido-${p.numero}` };
+    navigator.serviceWorker?.getRegistration().then((r) => (r ? r.showNotification(titulo, op) : new Notification(titulo, op))).catch(() => {});
+  }
+}
+function pintarAvisos() {
+  const activo = !!sesion(), lista = leerAvisos(), nuevos = lista.filter((a) => !a.leido).length;
+  $("#avisos").hidden = !activo;
+  $("#avisos-n").hidden = !nuevos;
+  $("#avisos-n").textContent = nuevos > 9 ? "9+" : String(nuevos);
+  $("#ver-avisos").ariaLabel = nuevos ? `Avisos: ${nuevos} nuevo${nuevos > 1 ? "s" : ""}` : "Avisos";
+  $("#avisos-lista").replaceChildren(...(lista.length
+    ? lista.map((a) => el("a", { href: a.estado >= ESTADOS.length - 1 ? "#historial" : "#mis-pedidos", className: a.leido ? "" : "nuevo" },
+        el("strong", { textContent: `Pedido N° ${a.numero}` }), el("span", { textContent: a.texto }),
+        el("small", { textContent: new Date(a.fecha).toLocaleString("es-UY", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) })))
+    : [el("p", { className: "vacio", textContent: "Cuando tu pedido cambie de estado te avisamos acá." })]));
+  const permiso = "Notification" in window ? Notification.permission : "denied";
+  $("#avisos-activar").hidden = permiso !== "default";
+}
+function abrirAvisos(si) {
+  $("#avisos-drop").hidden = !si;
+  $("#ver-avisos").ariaExpanded = String(si);
+  if (si) { actualizarEstados(); } else { guardarAvisos(leerAvisos().map((a) => ({ ...a, leido: true }))); pintarAvisos(); }
+}
+$("#ver-avisos").addEventListener("click", () => abrirAvisos($("#avisos-drop").hidden));
+document.addEventListener("click", (e) => { if (!$("#avisos-drop").hidden && !e.target.closest(".avisos")) abrirAvisos(false); });
+$("#avisos-drop").addEventListener("keydown", (e) => { if (e.key === "Escape") { abrirAvisos(false); $("#ver-avisos").focus(); } });
+$("#avisos-lista").addEventListener("click", (e) => { if (e.target.closest("a")) abrirAvisos(false); });
+$("#avisos-activar").addEventListener("click", async () => {
+  try { await Notification.requestPermission(); } catch { /* navegador viejo */ }
+  pintarAvisos();
+});
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 if (cfg.pedidosUrl) for (const n of document.querySelectorAll(".nota-estado"))
   n.textContent = "Tus pedidos se guardan en este dispositivo. El estado se actualiza solo cuando Aukan3D lo cambia.";
 $("#pedidos-ejemplo").addEventListener("click", () => {
@@ -192,3 +269,4 @@ $("#salir").addEventListener("close", () => {
 $("#version").textContent = cfg.version;
 pintarCuenta();
 cuidarCuenta();
+if (sesion()) actualizarEstados();
