@@ -40,6 +40,7 @@ async function rutear(req, env, url) {
   if (m === "POST" && p === "/api/pedidos/estado") return estadoPedidos(req, env);
   if (m === "POST" && p === "/api/login") return login(req, env);
   if (m === "POST" && p === "/api/mp/aviso") return avisoMp(req, env, url);
+  if (m === "GET" && p === "/api/tienda") return datosTienda(env);
   if (m === "GET" && p === "/api/push/clave") return json({ ok: true, clave: (await clavesPush(env)).publica });
   if (m === "POST" && p === "/api/push/alta") return altaPush(req, env);
   if (m === "POST" && p === "/api/push/ultimo") return ultimoPush(req, env);
@@ -126,6 +127,14 @@ async function usoBase(db) {
 async function estadoBases(env) {
   const [real, pruebas] = await Promise.all([usoBase(env.DB_REAL || env.DB), usoBase(env.DB_PRUEBAS)]);
   return json({ ok: true, limite: 500 * 1024 * 1024, real, pruebas });
+}
+
+// ---------- datos públicos para la tienda (envíos y negocio, se editan en el panel) ----------
+const PUBLICOS = ["negocio", "direccion", "horario", "redes", "agencias", "costo", "plazo", "retiro"];
+async function datosTienda(env) {
+  const r = await env.DB.prepare("SELECT data FROM docs WHERE col = 'mensajes' AND id = 'negocio'").first();
+  const d = r ? JSON.parse(r.data) : {};
+  return json({ ok: true, ...Object.fromEntries(PUBLICOS.map((k) => [k, limpio(d[k], 300)])) }, 200, { "Cache-Control": "public, max-age=60" });
 }
 
 // ---------- estado de pedidos para "Mis pedidos" de la tienda ----------

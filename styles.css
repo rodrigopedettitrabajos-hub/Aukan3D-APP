@@ -385,6 +385,7 @@ input[type=search]::-webkit-search-cancel-button { display: none; }
 .plazo { margin: 4px 16px 0; font-size: 13px; color: var(--muted); }
 .plazo:empty { display: none; }
 .envio { display: grid; gap: 12px; }
+.envio-info { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--soft, #f3f5f7); font-size: 14px; }
 .ayuda-campo { font-size: 12.5px; color: var(--muted); }
 .ayudas { display: grid; gap: 4px; }
 .ayudas details { border-bottom: 1px solid var(--line); }

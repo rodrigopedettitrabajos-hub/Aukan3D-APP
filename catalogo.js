@@ -95,5 +95,19 @@ function olvidarCuenta() {
 }
 try { localStorage.removeItem("aukan_pedidos"); } catch { /* clave vieja compartida (V0.20–V0.23) */ }
 
-if (typeof module !== "undefined") module.exports = { parseCsv, productosDesdeCsv, resumenPedido, montoSena, normalizar,
+// Textos de entrega y envío con los datos que carga Aukan3D en el panel (pantalla Envíos). Sin datos, quedan los textos de siempre.
+function textosEnvio(d = {}) {
+  const punto = (t) => (t && !/[.!?]$/.test(t) ? t + "." : t || "");
+  const agencias = d.agencias ? ` por ${d.agencias}` : "";
+  const costo = d.costo ? ` ${punto(d.costo)}` : " Coordinamos el costo por WhatsApp.";
+  const plazo = d.plazo ? ` Llega en ${punto(d.plazo)}` : "";
+  const retiro = d.retiro ? `Retiro coordinado: ${punto(d.retiro)}` : "Retiro coordinado: nos encontramos en un punto de Montevideo.";
+  return {
+    faq: `Sí. En Montevideo ${d.retiro ? "coordinamos el retiro: " + punto(d.retiro) : "entregamos en puntos de encuentro."} Al interior enviamos${agencias}.${costo}${plazo}`,
+    entrega: `${retiro} Envío por agencia: lo mandamos al interior${agencias}.${costo}${plazo}`,
+    info: d.agencias || d.costo || d.plazo ? `Enviamos${agencias}.${costo}${plazo}`.trim() : "",
+  };
+}
+
+if (typeof module !== "undefined") module.exports = { textosEnvio, parseCsv, productosDesdeCsv, resumenPedido, montoSena, normalizar,
   leerPerfil, guardarPerfil, leerPedidos, guardarPedidos, guardarPedido, olvidarCuenta };

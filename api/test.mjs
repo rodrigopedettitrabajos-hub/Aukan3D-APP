@@ -225,6 +225,10 @@ assert.ok((await pedir("/api/admin/datos", { token })).j.clientes.some((c) => c.
 assert.ok((await pedir("/api/admin/lote", { token, body: { set: [{ col: "mensajes", id: "listo", data: { id: "listo", texto: "Listo {nombre}", activo: true } }] } })).j.ok);
 assert.ok((await pedir("/api/admin/datos", { token })).j.mensajes.some((m) => m.id === "listo"));
 assert.strictEqual((await pedir("/api/admin/lote", { token: lf.token, body: { set: [{ col: "mensajes", id: "listo", data: { id: "listo", texto: "x" } }] } })).j.error, "permiso");
+// Datos públicos para la tienda: solo los campos de envío y negocio.
+await pedir("/api/admin/lote", { token, body: { set: [{ col: "mensajes", id: "negocio", data: { id: "negocio", agencias: "DAC", costo: "Lo pagás al retirar", secreto: "no" } }] } });
+const ti = (await pedir("/api/tienda")).j;
+assert.ok(ti.ok && ti.agencias === "DAC" && ti.costo === "Lo pagás al retirar" && !("secreto" in ti), JSON.stringify(ti));
 
 // Avisos push: alta con el WhatsApp del pedido, y al avanzar el estado el servidor llama al servicio de push con VAPID.
 const recibidos = [];

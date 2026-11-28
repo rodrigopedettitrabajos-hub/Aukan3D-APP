@@ -612,3 +612,10 @@ document.addEventListener("click", (e) => {
   e.target.closest?.("button[type=submit], form button:not([type])")?.form?.querySelectorAll("input, select, textarea").forEach((i) => i.setCustomValidity(""));
 }, true);
 cargar();
+// Envíos y datos del negocio que se editan en el panel.
+if (cfg.apiUrl) fetch(cfg.catalogoCsvUrl.replace("/api/productos.csv", "/api/tienda")).then((r) => r.json()).then((d) => {
+  if (!d.ok) return;
+  const t = textosEnvio(d);
+  $("#faq-envios").textContent = t.faq; $("#ayuda-entrega").textContent = t.entrega;
+  $("#envio-info").textContent = t.info; $("#envio-info").hidden = !t.info;
+}).catch(() => { /* quedan los textos de siempre */ });

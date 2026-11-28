@@ -4,7 +4,7 @@ const fs = require("fs");
 // localStorage falso para probar la cuenta (vista previa) sin navegador.
 const almacen = {};
 global.localStorage = { getItem: (k) => almacen[k] ?? null, setItem: (k, v) => { almacen[k] = String(v); }, removeItem: (k) => { delete almacen[k]; } };
-const { parseCsv, productosDesdeCsv, resumenPedido, montoSena, normalizar,
+const { textosEnvio, parseCsv, productosDesdeCsv, resumenPedido, montoSena, normalizar,
   guardarPerfil, leerPedidos, guardarPedido, olvidarCuenta } = require("./catalogo.js");
 
 assert.deepStrictEqual(parseCsv('a,b\r\n"x, ""y""",2\n'), [["a", "b"], ['x, "y"', "2"]]);
@@ -44,3 +44,8 @@ assert.deepStrictEqual([leerPedidos("ana@x.com"), almacen.aukan_perfil], [[], un
 assert.strictEqual(normalizar("Pokémon PIKACHÚ"), "pokemon pikachu");
 assert.ok(resumenPedido([{ nombre: "A", precio: 1, cant: 1 }], { nombre: "Ana", entrega: "Envío por agencia", envio: "Calle 1, Salto" }).includes("Entrega: Envío por agencia (Calle 1, Salto)"));
 console.log("ok");
+// Textos de envío: sin datos, los de siempre; con datos, los que carga Aukan3D.
+assert.ok(textosEnvio().faq.includes("puntos de encuentro") && textosEnvio().info === "");
+const te = textosEnvio({ agencias: "DAC o UES", costo: "Lo pagás al retirar en la agencia", plazo: "1 a 3 días hábiles", retiro: "Tres Cruces" });
+assert.strictEqual(te.info, "Enviamos por DAC o UES. Lo pagás al retirar en la agencia. Llega en 1 a 3 días hábiles.");
+assert.ok(te.faq.startsWith("Sí. En Montevideo coordinamos el retiro: Tres Cruces.") && te.entrega.startsWith("Retiro coordinado: Tres Cruces."));

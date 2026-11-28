@@ -13,8 +13,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <meta name="apple-mobile-web-app-title" content="Aukan3D">
-  <link rel="stylesheet" href="styles.css?v=0.52">
-  <script src="tema.js?v=0.52"></script>
+  <link rel="stylesheet" href="styles.css?v=0.53">
+  <script src="tema.js?v=0.53"></script>
 </head>
 <body>
   <!-- Íconos: Simple Icons (CC0) -->
@@ -146,7 +146,7 @@
       <details><summary>¿Cómo se confirma un pedido?</summary><p>Con una seña del 50 % del valor total.</p></details>
       <details><summary>¿Qué medios de pago aceptan?</summary><p>Transferencia bancaria, depósitos, efectivo y Mercado Pago.</p></details>
       <details><summary>¿Hacen piezas personalizadas?</summary><p>Sí. Hacemos piezas a pedido según tu idea, y en los modelos del catálogo podés elegir colores y tamaños, según disponibilidad.</p></details>
-      <details><summary>¿Realizan envíos?</summary><p>Sí, entregamos en puntos de encuentro en Montevideo y enviamos al interior del país.</p></details>
+      <details><summary>¿Realizan envíos?</summary><p id="faq-envios">Sí, entregamos en puntos de encuentro en Montevideo y enviamos al interior del país.</p></details>
     </div>
   </section>
 
@@ -253,6 +253,7 @@
       </fieldset>
       <div id="envio" class="envio" hidden>
         <label>Departamento *<select name="envio_depto" data-falta="Elegí el departamento."></select></label>
+        <p id="envio-info" class="envio-info" hidden></p>
         <label>Dirección o agencia *<input name="envio_dir" maxlength="140" autocomplete="street-address" placeholder="Calle, número, ciudad" data-falta="Escribí a dónde te lo mandamos."></label>
       </div>
       <fieldset class="modo-pago">
@@ -263,7 +264,7 @@
       <div class="ayudas">
         <details><summary>¿Qué es la seña?</summary><p>Es el 50 % del total. Con la seña confirmamos el pedido y empezamos a imprimir; el resto se paga al entregar.</p></details>
         <details><summary>¿Cuándo está listo?</summary><p>En 3 días hábiles o más, según la cantidad. Los personalizados se coordinan aparte.</p></details>
-        <details><summary>¿Cómo es la entrega?</summary><p>Retiro coordinado: nos encontramos en un punto de Montevideo. Envío por agencia: lo mandamos al interior y coordinamos el costo por WhatsApp.</p></details>
+        <details><summary>¿Cómo es la entrega?</summary><p id="ayuda-entrega">Retiro coordinado: nos encontramos en un punto de Montevideo. Envío por agencia: lo mandamos al interior y coordinamos el costo por WhatsApp.</p></details>
       </div>
       <label>Comentario<textarea name="comentario" rows="2" maxlength="500" placeholder="Colores, tamaño, fecha…"></textarea></label>
       <label class="trampa" aria-hidden="true">No completar<input name="web" tabindex="-1" autocomplete="off"></label>
@@ -341,10 +342,10 @@
 
   <div id="comprobante" class="comprobante" aria-hidden="true"></div>
 
-  <script src="config.js?v=0.52"></script>
-  <script src="catalogo.js?v=0.52"></script>
-  <script src="productos.js?v=0.52"></script>
-  <script src="app.js?v=0.52"></script>
-  <script src="cuenta.js?v=0.52"></script>
+  <script src="config.js?v=0.53"></script>
+  <script src="catalogo.js?v=0.53"></script>
+  <script src="productos.js?v=0.53"></script>
+  <script src="app.js?v=0.53"></script>
+  <script src="cuenta.js?v=0.53"></script>
 </body>
 </html>
