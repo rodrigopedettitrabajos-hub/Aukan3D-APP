@@ -280,7 +280,7 @@ function resumenCaja(db, caja) {
 const cajaAbierta = (db) => db.cajas.find((c) => !c.cerrada) || null;
 
 // --- Sincronización con el servidor (api/) ---
-const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas", "mensajes", "resenas", "cupones"];
+const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas", "mensajes", "resenas", "cupones", "avisos"];
 const idDoc = (col, d) => String(col === "ventas" ? d.numero : d.id);
 const dbVacia = () => ({ version: 1, ultimo: 0, ...Object.fromEntries(COLECCIONES.map((c) => [c, []])) });
 // Lo cambiado desde el último envío. enviado: Map "col id" -> JSON tal como lo tiene el servidor.

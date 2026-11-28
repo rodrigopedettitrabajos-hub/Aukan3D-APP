@@ -176,6 +176,14 @@ html { scroll-padding-top: 120px; }
 .detalle-resenas-cab { margin: 0; color: var(--muted); }
 .detalle-resenas .opinion { padding: 12px 14px; }
 
+/* Entrega inmediata y "Avisame" */
+.card-listo { display: block; width: fit-content; margin: -4px 0 6px; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--ok); border: 1px solid currentColor; }
+.plazo-chip.listo { color: var(--ok); border-color: currentColor; background: none; }
+.avisame { margin: -4px 0 14px; font-size: 14px; }
+.avisame summary { cursor: pointer; color: var(--brand-ink); font-weight: 600; padding: 4px 0; width: fit-content; }
+.avisame-form { display: grid; gap: 8px; margin-top: 6px; }
+.avisame-ayuda { margin: 0; color: var(--muted); }
+.avisame-form .cupon-btn { justify-self: start; }
 /* Código de descuento */
 .cupon { margin: 4px 16px 10px; font-size: 14px; }
 .cupon summary { cursor: pointer; color: var(--brand-ink); font-weight: 600; padding: 6px 0; width: fit-content; }
