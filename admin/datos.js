@@ -58,6 +58,13 @@ function margenes(ventas, productos) {
   return { filas: filas.sort((a, b) => (b.ganancia ?? -Infinity) - (a.ganancia ?? -Infinity)), total };
 }
 
+// Reseñas de los clientes: promedio, cantidad por estrella (5 a 1) y la lista, más nuevas primero.
+function resumenResenas(resenas) {
+  const lista = resenas.filter((r) => !r._borrado && r.estrellas).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const por = [5, 4, 3, 2, 1].map((n) => [n, lista.filter((r) => r.estrellas === n).length]);
+  return { lista, cantidad: lista.length, promedio: lista.length ? Math.round((suma(lista, (r) => r.estrellas) / lista.length) * 10) / 10 : 0, por };
+}
+
 // --- Excel de productos: exportar todo y volver a importarlo ---
 const COLS_EXCEL = [["id", "ID"], ["nombre", "Nombre"], ["categoria", "Categoría"], ["subcategoria", "Subcategoría"], ["costo", "Costo"],
   ["ganancia", "Ganancia %"], ["precio", "Precio"], ["stock", "Stock"], ["tamano", "Tamaño"], ["material", "Material"], ["activo", "Visible"]];
@@ -265,7 +272,7 @@ function resumenCaja(db, caja) {
 const cajaAbierta = (db) => db.cajas.find((c) => !c.cerrada) || null;
 
 // --- Sincronización con el servidor (api/) ---
-const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas", "mensajes"];
+const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas", "mensajes", "resenas"];
 const idDoc = (col, d) => String(col === "ventas" ? d.numero : d.id);
 const dbVacia = () => ({ version: 1, ultimo: 0, ...Object.fromEntries(COLECCIONES.map((c) => [c, []])) });
 // Lo cambiado desde el último envío. enviado: Map "col id" -> JSON tal como lo tiene el servidor.
@@ -303,14 +310,14 @@ function aplicarServidor(db, r, enviado) {
 // Los datos van como {clave} en el texto; en la pantalla se ven como etiquetas con su nombre.
 const DATOS_MENSAJE = [["nombre", "Nombre del cliente"], ["items", "Lo que pidió"], ["entrega", "Entrega"], ["total", "Total"], ["pagado", "Lo que pagó"],
   ["saldo", "Lo que debe"], ["resta", "Aviso de lo que debe"], ["numero", "N° de pedido"], ["negocio", "Nombre del negocio"], ["direccion", "Dirección"],
-  ["horario", "Horario"], ["redes", "Redes"]];
+  ["horario", "Horario"], ["redes", "Redes"], ["resena", "Link para la reseña"]];
 const NEGOCIO_BASE = { id: "negocio", negocio: "Aukan3D", direccion: "", horario: "", redes: "" }; // datos del negocio para los mensajes
 const MENSAJES_BASE = [
   { id: "sena", estado: 1, nombre: "Seña recibida", texto: "¡Hola, {nombre}! Recibimos la seña de tu pedido N° {numero}. ¡Quedó confirmado! {resta}" },
   { id: "pagado", estado: 1, nombre: "Pago total recibido", texto: "¡Hola, {nombre}! Recibimos el pago de tu pedido N° {numero}. ¡Quedó confirmado!" },
   { id: "impresion", estado: 2, nombre: "En impresión", texto: "¡Hola, {nombre}! Tu pedido N° {numero} entró en impresión. Te avisamos cuando esté listo." },
   { id: "listo", estado: 3, nombre: "Listo para entregar", texto: "¡Hola, {nombre}! ¡Tu pedido N° {numero} está listo para entregar! {resta} ¿Coordinamos la entrega?" },
-  { id: "entregado", estado: 4, nombre: "Entregado", texto: "¡Hola, {nombre}! Entregamos tu pedido N° {numero}. ¡Gracias por comprar en {negocio}!" },
+  { id: "entregado", estado: 4, nombre: "Entregado", texto: "¡Hola, {nombre}! Entregamos tu pedido N° {numero}. ¡Gracias por comprar en {negocio}!\nSi querés, contanos qué te pareció con estrellas: {resena}" },
 ];
 const claveMensaje = (v) => (v.estado === 1 ? (!v.sena || !saldo(v) ? "pagado" : "sena") : MENSAJES_BASE.find((m) => m.estado === v.estado && m.estado !== 1)?.id || "");
 // negocio: { negocio, direccion, horario, redes }. Una línea que solo tenía datos vacíos (ej. "Aviso de lo que debe" sin deuda) se saca.
@@ -318,20 +325,20 @@ function armarMensaje(texto, v, nombre, plata, negocio = NEGOCIO_BASE) {
   const resta = saldo(v) ? `Queda un saldo de ${plata(saldo(v), v.moneda)}.` : "";
   const vars = { nombre, numero: v.numero, total: plata(totalVenta(v), v.moneda), saldo: plata(saldo(v), v.moneda), pagado: plata(cobrado(v), v.moneda), resta,
     items: v.items.map((i) => `${i.cant} x ${i.nombre}`).join(", "), entrega: v.entrega || "",
-    negocio: negocio.negocio || "Aukan3D", direccion: negocio.direccion || "", horario: negocio.horario || "", redes: negocio.redes || "" };
+    negocio: negocio.negocio || "Aukan3D", direccion: negocio.direccion || "", horario: negocio.horario || "", redes: negocio.redes || "", resena: negocio.resena || "" };
   return String(texto).split("\n").map((linea) => {
     const r = linea.replace(/\{(\w+)\}/g, (x, k) => (k in vars ? vars[k] : x)).replace(/[ \t]{2,}/g, " ").replace(/ +([.,!?])/g, "$1").trim();
     return /\{\w+\}/.test(linea) && !/[\p{L}\p{N}]/u.test(r) ? null : r; // quedó sin letras ni números: la línea solo tenía datos vacíos
   }).filter((x) => x !== null).join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
-// "" si ese estado no tiene mensaje o está desactivado.
-function mensajeDe(db, v, nombre, plata) {
+// "" si ese estado no tiene mensaje o está desactivado. extra: { resena: link a la tienda }.
+function mensajeDe(db, v, nombre, plata, extra = {}) {
   const id = claveMensaje(v), base = MENSAJES_BASE.find((m) => m.id === id);
   if (!base) return "";
   const m = { ...base, activo: true, ...(db.mensajes || []).find((x) => x.id === id) };
-  return m.activo ? armarMensaje(m.texto, v, nombre, plata, { ...NEGOCIO_BASE, ...(db.mensajes || []).find((x) => x.id === "negocio") }) : "";
+  return m.activo ? armarMensaje(m.texto, v, nombre, plata, { ...NEGOCIO_BASE, ...(db.mensajes || []).find((x) => x.id === "negocio"), ...extra }) : "";
 }
 
-if (typeof module !== "undefined") module.exports = { ESTADOS, totalVenta, cobrado, saldo, porMoneda, catalogoDesdeCsv, precioConGanancia, gananciaPct, inventario, margenes, productosAFilas, inventarioAFilas, numeroCelda, filasAProductos,
+if (typeof module !== "undefined") module.exports = { ESTADOS, totalVenta, cobrado, saldo, porMoneda, catalogoDesdeCsv, precioConGanancia, gananciaPct, inventario, margenes, resumenResenas, productosAFilas, inventarioAFilas, numeroCelda, filasAProductos,
   resumenMes, resumenRango, serieVentas, masVendidos, comisiones, registrarPago, datosEjemplo, nuevoNumero, mesDe, suma, hoy, importarPedidosWeb,
   dbVacia, cambiosDb, marcarEnviado, aplicarServidor, resumenCaja, cajaAbierta, esEfectivo, MENSAJES_BASE, NEGOCIO_BASE, DATOS_MENSAJE, claveMensaje, armarMensaje, mensajeDe };

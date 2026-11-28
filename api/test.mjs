@@ -223,7 +223,7 @@ assert.ok(df.clientes.length > 0 && df.clientes.every((c) => !c.whatsapp && !c.e
 assert.ok((await pedir("/api/admin/datos", { token })).j.clientes.some((c) => c.whatsapp));
 // Costo de productos: la feria no lo ve, y al mover stock no lo borra. La tienda no lo publica.
 const pid = "c" + unico;
-await pedir("/api/admin/lote", { token, body: { set: [{ col: "productos", id: pid, data: { id: pid, nombre: "Costo test", categoria: "X", precio: 300, costo: 120, stock: 1, activo: true } }] } });
+await pedir("/api/admin/lote", { token, body: { set: [{ col: "productos", id: pid, data: { id: pid, nombre: "Costo test", categoria: "X", precio: 300, costo: 120, stock: 1, activo: false } }] } });
 const pf = (await pedir("/api/admin/datos", { token: lf.token })).j.productos.find((p) => p.id === pid);
 assert.ok(pf && !("costo" in pf), JSON.stringify(pf));
 assert.ok((await pedir("/api/admin/lote", { token: lf.token, body: { set: [{ col: "productos", id: pid, data: { ...pf, stock: 0, costo: 1 } }] } })).j.ok);
@@ -263,5 +263,16 @@ const ult = (await pedir("/api/push/ultimo", { body: { endpoint: ep } })).j.avis
 assert.ok(ult && ult.numero === String(ped.j.numero) && /impresión/.test(ult.texto), JSON.stringify(ult));
 assert.strictEqual((await pedir("/api/push/ultimo", { body: { endpoint: ep + "x" } })).j.aviso, null);
 servicioPush.close();
+
+// Reseñas: solo de pedidos entregados, con el WhatsApp del pedido; llegan al panel.
+const resena = (x) => pedir("/api/resenas", { body: { numero: String(ped.j.numero), whatsapp: cliente.whatsapp, estrellas: 5, comentario: "Excelente", ...x }, ip: "10.7.0." + (unico % 250) });
+assert.strictEqual((await resena()).j.error, "sin-entregar");
+assert.ok((await pedir("/api/admin/lote", { token, body: { set: [{ col: "ventas", id: String(vPush.numero), data: { ...vPush, estado: 4 } }] } })).j.ok);
+assert.strictEqual((await resena({ estrellas: 6 })).j.error, "estrellas");
+assert.strictEqual((await resena({ whatsapp: "+598 91111111" })).j.error, "pedido");
+assert.ok((await resena({ estrellas: 4 })).j.ok);
+assert.ok((await resena()).j.ok); // la vuelve a mandar: se reemplaza
+const rs = (await pedir("/api/admin/datos", { token })).j.resenas.filter((r) => r.id === String(ped.j.numero));
+assert.ok(rs.length === 1 && rs[0].estrellas === 5 && rs[0].comentario === "Excelente", JSON.stringify(rs));
 
 console.log("api ok");

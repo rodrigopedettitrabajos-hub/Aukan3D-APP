@@ -50,11 +50,47 @@ function tarjetaPedido(p) {
       ...pasos.map((t, i) => el("li", { textContent: t, className: i < p.estado ? "hecho" : i === p.estado ? "actual" : "",
         ariaCurrent: i === p.estado ? "step" : null }))),
     infoPago(p),
+    entregado ? bloqueResena(p) : "",
     el("div", { className: "pedido-pie" },
       el("span", { textContent: `${entregado ? "Entregado · " : resumenPago(p) ? "" : pasos[p.estado] + " · "}Total ${pesos(p.total)}` }), // el estado ya está en los pasos y el pago arriba
       el("div", { className: "pedido-acciones" },
         el("button", { className: "secundario chico", type: "button", textContent: "Comprobante", ariaLabel: `Descargar comprobante del pedido ${p.numero}`, onclick: () => comprobante(p) }),
         entregado ? el("button", { className: "secundario chico", type: "button", textContent: "Repetir pedido", onclick: () => repetir(p) }) : "")));
+}
+// Reseña de un pedido entregado: estrellas y comentario. Va al servidor con el número y el WhatsApp del pedido.
+function bloqueResena(p) {
+  const estrellas = (n) => "★".repeat(n) + "☆".repeat(5 - n);
+  if (p.resena) return el("div", { className: "resena-hecha" },
+    el("span", { className: "estrellas", role: "img", ariaLabel: `Tu reseña: ${p.resena.estrellas} de 5 estrellas`, textContent: estrellas(p.resena.estrellas) }),
+    p.resena.comentario ? el("p", { textContent: p.resena.comentario }) : "", el("small", { textContent: "¡Gracias por tu reseña!" }));
+  if (!p.ejemplo && !(cfg.pedidosUrl && p.cliente?.whatsapp)) return "";
+  const nombre = `est-${p.numero}`, estado = el("p", { className: "resena-estado", ariaLive: "polite" });
+  const f = el("form", { className: "resena-form", noValidate: true },
+    el("fieldset", { className: "estrellas-elegir" }, el("legend", { textContent: "¿Qué te pareció tu pedido?" }),
+      el("div", { className: "estrellas-fila" }, ...[5, 4, 3, 2, 1].flatMap((n) => [
+        el("input", { type: "radio", name: nombre, id: `${nombre}-${n}`, value: n, className: "sr" }),
+        el("label", { htmlFor: `${nombre}-${n}`, title: `${n} de 5`, textContent: "★" }, el("span", { className: "sr", textContent: `${n} de 5 estrellas` }))]))),
+    el("textarea", { name: "comentario", maxLength: 500, rows: 2, placeholder: "Contanos qué te gustó (opcional)", ariaLabel: "Comentario" }),
+    el("button", { type: "submit", className: "primary-sm", textContent: "Enviar reseña" }), estado);
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const n = Number(f.querySelector(`input[name="${nombre}"]:checked`)?.value);
+    if (!n) { estado.textContent = "Elegí de 1 a 5 estrellas."; return; }
+    const resena = { estrellas: n, comentario: f.comentario.value.trim().slice(0, 500) };
+    if (!p.ejemplo) {
+      f.querySelector("button").disabled = true; estado.textContent = "Enviando…";
+      try {
+        const r = await fetch(cfg.pedidosUrl.replace("/api/pedidos", "/api/resenas"), { method: "POST", headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({ numero: String(p.numero), whatsapp: p.cliente.whatsapp, ...resena }) });
+        if (!(await r.json()).ok) throw new Error();
+      } catch {
+        f.querySelector("button").disabled = false; estado.textContent = "No se pudo enviar. Probá de nuevo en un rato."; return;
+      }
+    }
+    guardarPedidos(leerPedidos().map((x) => (String(x.numero) === String(p.numero) ? { ...x, resena } : x)));
+    pintarPedidos();
+  });
+  return f;
 }
 function infoPago(p) {
   const r = resumenPago(p);
