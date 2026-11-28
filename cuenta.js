@@ -51,7 +51,7 @@ function tarjetaPedido(p) {
         ariaCurrent: i === p.estado ? "step" : null }))),
     infoPago(p),
     el("div", { className: "pedido-pie" },
-      el("span", { textContent: `${entregado ? "Entregado" : pasos[p.estado]} · Total ${pesos(p.total)}` }),
+      el("span", { textContent: `${entregado ? "Entregado · " : resumenPago(p) ? "" : pasos[p.estado] + " · "}Total ${pesos(p.total)}` }), // el estado ya está en los pasos y el pago arriba
       el("div", { className: "pedido-acciones" },
         el("button", { className: "secundario chico", type: "button", textContent: "Comprobante", ariaLabel: `Descargar comprobante del pedido ${p.numero}`, onclick: () => comprobante(p) }),
         entregado ? el("button", { className: "secundario chico", type: "button", textContent: "Repetir pedido", onclick: () => repetir(p) }) : "")));
@@ -60,7 +60,7 @@ function infoPago(p) {
   const r = resumenPago(p);
   if (!r) return "";
   return el("div", { className: "pedido-pago " + r.clase }, el("strong", { textContent: r.texto }),
-    ...p.pagos.map((x) => el("small", { textContent: lineaPago(x).join(" · ") })));
+    ...p.pagos.map((x) => el("small", { textContent: lineaPago(x).slice(0, p.pagos.length > 1 ? 3 : 2).join(" · ") }))); // con un solo pago, el monto ya está arriba
 }
 function repetir(p) {
   for (const i of p.items) if (productos.some((x) => x.id === i.id && x.precio)) cambiar(i.id, i.cant);
@@ -158,7 +158,7 @@ $("#avisos-activar").addEventListener("click", async () => {
   suscribirPush();
 });
 // Push: el navegador (o la app instalada) recibe el aviso aunque la tienda esté cerrada.
-const API_BASE = cfg.pedidosUrl ? cfg.pedidosUrl.replace(/\/api\/pedidos.*$/, "") : "", CON_E = cfg.pedidosUrl.includes("e=pruebas") ? "?e=pruebas" : "";
+const API_BASE = cfg.pedidosUrl ? cfg.pedidosUrl.replace(/\/api\/pedidos.*$/, "") : "", CON_E = (cfg.pedidosUrl || "").includes("e=pruebas") ? "?e=pruebas" : "";
 const PUSH = "aukan_push";
 const leerPush = () => leerJson(PUSH, {});
 if ("serviceWorker" in navigator) navigator.serviceWorker.register(`sw.js?api=${encodeURIComponent(API_BASE)}${CON_E ? "&e=pruebas" : ""}`).catch(() => {});

@@ -12,7 +12,9 @@ Plan gratis: alcanza de sobra para la tienda.
 - `GET /api/admin/estado`: tamaño y registros de las bases (solo usuario dev).
 - `GET /api/admin/mp`, `POST /api/admin/mp`: estado de Mercado Pago (cuenta, modo, últimos 30 cobros) y carga de la credencial. Admin y dev ven la misma: se guarda en la tabla `ajustes` de la base real y nunca vuelve al navegador (solo los últimos 4 caracteres). Si no hay, usa el secreto `MP_ACCESS_TOKEN`.
 - `POST /api/admin/mp/cobro`: link de pago (para el QR del panel) por la seña o el saldo de un pedido.
-- `GET/POST /api/admin/cuentas`, `POST /api/admin/cuentas/clave` (permiso Accesos): cuentas del panel con permisos por sección y base (real, pruebas o ambas). Al crear o reiniciar devuelve una contraseña temporal una sola vez.
+- `GET/POST /api/admin/cuentas`, `POST /api/admin/cuentas/clave` (permiso Accesos): cuentas del panel con permisos por sección y base (real, pruebas o ambas). Al crear o reiniciar devuelve una contraseña temporal una sola vez. `POST /api/admin/cuentas/borrar` borra una cuenta ya desactivada. Nadie maneja una cuenta con permisos que no tiene, ni da la base real si no entra a ella.
+- Colección `mensajes` (permiso Mensajes): textos de WhatsApp por estado. Las cuentas sin Ventas, Pendientes, Clientes ni Reportes reciben los clientes solo con id y nombre; los gastos solo llegan con Reportes.
+- Pagos: la referencia es `AUKAN-<n>` en la base real y `AUKAN-P-<n>` en la de pruebas; cada base acepta solo la suya.
 - `GET /api/push/clave`, `POST /api/push/alta`, `POST /api/push/ultimo`: avisos push al cliente (claves VAPID creadas solas en `ajustes`; suscripciones en la tabla `push` de cada base). El push va vacío y el service worker pide el texto.
 - `POST /api/admin/mi-clave`: la cuenta cambia su contraseña (obligatorio después de una temporal).
 - Permisos: cada pedido relee la cuenta; desactivarla corta la sesión al instante. Escribir una colección pide su permiso (ver `ESCRIBE` en src/index.js); Mercado Pago, Base de datos y Accesos piden el suyo. Las cuentas fijas (ADMIN_USUARIO y dev) siguen con los secretos.
@@ -23,7 +25,7 @@ Plan gratis: alcanza de sobra para la tienda.
 ```
 npm install
 node clave.mjs "clave-de-prueba-123"     # pegar el resultado en .dev.vars como ADMIN_CLAVE_HASH
-# .dev.vars: ADMIN_USUARIO=admin, ADMIN_CLAVE_HASH=..., FIRMA=<texto largo al azar>
+# .dev.vars: ADMIN_USUARIO=admin, ADMIN_CLAVE_HASH=..., FIRMA=<texto largo al azar>, ORIGENES=http://localhost:8090
 node semilla.mjs
 npx wrangler d1 execute aukan3d --local --file=schema.sql
 npx wrangler d1 execute aukan3d --local --file=semilla.sql

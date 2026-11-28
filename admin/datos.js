@@ -180,13 +180,13 @@ function resumenCaja(db, caja) {
 const cajaAbierta = (db) => db.cajas.find((c) => !c.cerrada) || null;
 
 // --- Sincronización con el servidor (api/) ---
-const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas"];
+const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas", "mensajes"];
 const idDoc = (col, d) => String(col === "ventas" ? d.numero : d.id);
 const dbVacia = () => ({ version: 1, ultimo: 0, ...Object.fromEntries(COLECCIONES.map((c) => [c, []])) });
 // Lo cambiado desde el último envío. enviado: Map "col id" -> JSON tal como lo tiene el servidor.
 function cambiosDb(db, enviado) {
   const set = [], del = [], vistos = new Set();
-  for (const col of COLECCIONES) for (const d of db[col]) {
+  for (const col of COLECCIONES) for (const d of db[col] || []) {
     const id = idDoc(col, d), k = col + " " + id, t = JSON.stringify(d);
     vistos.add(k);
     if (enviado.get(k) !== t) set.push({ col, id, data: d, t });
@@ -203,7 +203,7 @@ function marcarEnviado(enviado, { set, del }) {
 function aplicarServidor(db, r, enviado) {
   let web = 0;
   for (const col of COLECCIONES) for (const d of r[col] || []) {
-    const id = idDoc(col, d), k = col + " " + id, lista = db[col];
+    const id = idDoc(col, d), k = col + " " + id, lista = (db[col] ||= []);
     const i = lista.findIndex((x) => idDoc(col, x) === id);
     if (i >= 0 && JSON.stringify(lista[i]) !== enviado.get(k)) continue; // cambio local sin mandar
     if (d._borrado) { if (i >= 0) lista.splice(i, 1); enviado.delete(k); continue; }
@@ -214,6 +214,28 @@ function aplicarServidor(db, r, enviado) {
   return web;
 }
 
+// Mensajes de WhatsApp al cambiar el estado (pantalla Mensajes). Si no se editaron, valen estos.
+const MENSAJES_BASE = [
+  { id: "sena", estado: 1, nombre: "Seña recibida", texto: "¡Hola, {nombre}! Recibimos la seña de tu pedido N° {numero}. ¡Quedó confirmado! {resta}" },
+  { id: "pagado", estado: 1, nombre: "Pago total recibido", texto: "¡Hola, {nombre}! Recibimos el pago de tu pedido N° {numero}. ¡Quedó confirmado!" },
+  { id: "impresion", estado: 2, nombre: "En impresión", texto: "¡Hola, {nombre}! Tu pedido N° {numero} entró en impresión. Te avisamos cuando esté listo." },
+  { id: "listo", estado: 3, nombre: "Listo para entregar", texto: "¡Hola, {nombre}! ¡Tu pedido N° {numero} está listo para entregar! {resta} ¿Coordinamos la entrega?" },
+  { id: "entregado", estado: 4, nombre: "Entregado", texto: "¡Hola, {nombre}! Entregamos tu pedido N° {numero}. ¡Gracias por comprar en Aukan3D!" },
+];
+const claveMensaje = (v) => (v.estado === 1 ? (!v.sena || !saldo(v) ? "pagado" : "sena") : MENSAJES_BASE.find((m) => m.estado === v.estado && m.estado !== 1)?.id || "");
+function armarMensaje(texto, v, nombre, plata) {
+  const resta = saldo(v) ? `Queda un saldo de ${plata(saldo(v), v.moneda)}.` : "";
+  const vars = { nombre, numero: v.numero, total: plata(totalVenta(v), v.moneda), saldo: plata(saldo(v), v.moneda), resta };
+  return String(texto).replace(/\{(\w+)\}/g, (x, k) => (k in vars ? vars[k] : x)).replace(/[ \t]{2,}/g, " ").replace(/ +([.,!?])/g, "$1").trim();
+}
+// "" si ese estado no tiene mensaje o está desactivado.
+function mensajeDe(db, v, nombre, plata) {
+  const id = claveMensaje(v), base = MENSAJES_BASE.find((m) => m.id === id);
+  if (!base) return "";
+  const m = { ...base, activo: true, ...(db.mensajes || []).find((x) => x.id === id) };
+  return m.activo ? armarMensaje(m.texto, v, nombre, plata) : "";
+}
+
 if (typeof module !== "undefined") module.exports = { ESTADOS, totalVenta, cobrado, saldo, porMoneda, catalogoDesdeCsv, catalogoACsv,
   resumenMes, resumenRango, serieVentas, masVendidos, comisiones, registrarPago, datosEjemplo, nuevoNumero, mesDe, suma, hoy, importarPedidosWeb,
-  dbVacia, cambiosDb, marcarEnviado, aplicarServidor, resumenCaja, cajaAbierta, esEfectivo };
+  dbVacia, cambiosDb, marcarEnviado, aplicarServidor, resumenCaja, cajaAbierta, esEfectivo, MENSAJES_BASE, claveMensaje, armarMensaje, mensajeDe };

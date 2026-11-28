@@ -119,10 +119,12 @@ const mock = http.createServer((q, s) => {
     { id: 992, date_created: "2026-11-28T09:00:00Z", status: "rejected", status_detail: "cc_rejected_other_reason", transaction_amount: 500, currency_id: "UYU", external_reference: "AUKAN-1002", payment_method_id: "master" }] });
   if (q.url === "/v1/payments/555") return enviar(200, { id: 555, status: "approved", external_reference: "AUKAN-" + numMp, transaction_amount: montoMp, currency_id: "UYU", date_approved: "2026-11-28T10:00:00Z" });
   if (q.url === "/v1/payments/556") return enviar(200, { id: 556, status: "rejected", external_reference: "AUKAN-" + numMp, transaction_amount: montoMp, currency_id: "UYU" });
-  if (q.url === "/checkout/preferences") return enviar(201, { init_point: "https://www.mercadopago.com.uy/checkout/v1/redirect?pref_id=1", sandbox_init_point: "https://sandbox.mercadopago.com.uy/checkout/v1/redirect?pref_id=1" });
+  if (q.url === "/v1/payments/557") return enviar(200, { id: 557, status: "approved", external_reference: "AUKAN-P-" + numMp, transaction_amount: montoMp, currency_id: "UYU" });
+  if (q.url === "/checkout/preferences") { let t = ""; q.on("data", (c) => { t += c; }); q.on("end", () => { refs.push(JSON.parse(t).external_reference); enviar(201, { init_point: "https://www.mercadopago.com.uy/checkout/v1/redirect?pref_id=1", sandbox_init_point: "https://sandbox.mercadopago.com.uy/checkout/v1/redirect?pref_id=1" }); }); return; }
   enviar(404, {});
 }).listen(8799);
 let numMp = "0", montoMp = 0;
+const refs = [];
 const mp = (body, tok = token, e = "") => pedir("/api/admin/mp" + e, { token: tok, body });
 assert.strictEqual((await pedir("/api/admin/mp")).r.status, 401); // sin sesión
 assert.strictEqual((await mp({ token: "" })).j.configurado, false);
@@ -148,6 +150,9 @@ assert.strictEqual((await pedir("/api/admin/mp/cobro", { body: { numero: numMp, 
 // Aviso de Mercado Pago: se verifica el pago contra Mercado Pago y se anota una sola vez.
 const aviso = (id, ip = "10.9.9." + unico.slice(-2)) => pedir("/api/mp/aviso", { body: { type: "payment", data: { id } }, ip });
 assert.strictEqual((await aviso("556")).j.estado, "rejected");
+assert.ok(!(await aviso("557")).j.registrado); // un pago de la base de pruebas no se anota en la real
+const prefPr = (await pedir("/api/pedidos?e=pruebas", { body: { cliente: { nombre: "Mp Pr", whatsapp: "+598 96" + unico.slice(-6), modo: "sena" }, items: [{ id: idProd, cant: 1 }] }, ip: "10.6.6.6" })).j;
+assert.ok(prefPr.ok && refs.includes("AUKAN-P-" + prefPr.numero) && refs.includes("AUKAN-" + numMp), JSON.stringify(refs));
 assert.strictEqual((await aviso("555")).j.registrado, true);
 assert.strictEqual((await aviso("555")).j.registrado, false); // repetido: no duplica
 assert.ok((await aviso("123")).j.ignorado); // Mercado Pago no lo conoce
@@ -195,6 +200,31 @@ assert.strictEqual((await pedir("/api/login", { body: { usuario: usu, clave: "nu
 await cu({ usuario: usu, nombre: "Probador Uno", entorno: "pruebas", permisos: PROBADOR, activo: false });
 assert.strictEqual((await pedir("/api/admin/datos?e=pruebas", { token: lp2.token })).r.status, 401);
 assert.strictEqual((await pedir("/api/login", { body: { usuario: usu, clave: re.clave }, ip: ipP })).r.status, 401);
+
+// Accesos con límites: una cuenta de pruebas con Accesos no da la base real ni maneja cuentas que la superan.
+const usA = "acc" + unico.slice(-5), altaA = (await cu({ nueva: true, usuario: usA, nombre: "Con accesos", entorno: "pruebas", permisos: ["ventas", "accesos"] })).j;
+const la = (await pedir("/api/login", { body: { usuario: usA, clave: altaA.clave }, ip: ipP })).j;
+assert.strictEqual((await cu({ nueva: true, usuario: "esc" + unico.slice(-5), nombre: "X", entorno: "ambos", permisos: ["ventas"] }, la.token, "/api/admin/cuentas?e=pruebas")).r.status, 403);
+assert.strictEqual((await cu({ nueva: true, usuario: "esc" + unico.slice(-5), nombre: "X", entorno: "real", permisos: ["ventas"] }, la.token, "/api/admin/cuentas?e=pruebas")).r.status, 403);
+const hija = (await cu({ nueva: true, usuario: "hij" + unico.slice(-5), nombre: "Hija", entorno: "pruebas", permisos: ["ventas"] }, la.token, "/api/admin/cuentas?e=pruebas")).j;
+assert.ok(hija.ok, JSON.stringify(hija));
+assert.strictEqual((await cu({ usuario: usu }, la.token, "/api/admin/cuentas/clave?e=pruebas")).r.status, 403); // el probador tiene más permisos
+assert.strictEqual((await cu({ usuario: usA, nombre: "Con accesos", entorno: "ambos", permisos: ["ventas", "accesos"] }, la.token, "/api/admin/cuentas?e=pruebas")).r.status, 403);
+// Borrar: solo desactivadas.
+assert.strictEqual((await cu({ usuario: "hij" + unico.slice(-5) }, token, "/api/admin/cuentas/borrar")).j.error, "activa");
+await cu({ usuario: "hij" + unico.slice(-5), nombre: "Hija", entorno: "pruebas", permisos: ["ventas"], activo: false });
+assert.ok((await cu({ usuario: "hij" + unico.slice(-5) }, token, "/api/admin/cuentas/borrar")).j.ok);
+assert.ok(!(await pedir("/api/admin/cuentas", { token })).j.cuentas.some((c) => c.usuario === "hij" + unico.slice(-5)));
+// Lectura según permisos: sin Ventas/Clientes/Reportes, clientes sin datos de contacto y sin gastos.
+const usF = "fer" + unico.slice(-5), altaF = (await cu({ nueva: true, usuario: usF, nombre: "Feria", entorno: "real", permisos: ["feria"] })).j;
+const lf = (await pedir("/api/login", { body: { usuario: usF, clave: altaF.clave }, ip: ipP })).j;
+const df = (await pedir("/api/admin/datos", { token: lf.token })).j;
+assert.ok(df.clientes.length > 0 && df.clientes.every((c) => !c.whatsapp && !c.email) && df.gastos.length === 0, JSON.stringify(df.clientes[0]));
+assert.ok((await pedir("/api/admin/datos", { token })).j.clientes.some((c) => c.whatsapp));
+// Mensajes de WhatsApp: los guarda quien tiene el permiso.
+assert.ok((await pedir("/api/admin/lote", { token, body: { set: [{ col: "mensajes", id: "listo", data: { id: "listo", texto: "Listo {nombre}", activo: true } }] } })).j.ok);
+assert.ok((await pedir("/api/admin/datos", { token })).j.mensajes.some((m) => m.id === "listo"));
+assert.strictEqual((await pedir("/api/admin/lote", { token: lf.token, body: { set: [{ col: "mensajes", id: "listo", data: { id: "listo", texto: "x" } }] } })).j.error, "permiso");
 
 // Avisos push: alta con el WhatsApp del pedido, y al avanzar el estado el servidor llama al servicio de push con VAPID.
 const recibidos = [];

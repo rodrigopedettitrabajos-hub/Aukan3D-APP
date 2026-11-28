@@ -16,7 +16,7 @@ const pesos = (n) => "$" + n.toLocaleString("es-UY");
 let productos = [];
 const filtro = { cat: "Todo", sub: "", q: "", orden: "", fav: false };
 const carrito = new Map(); // id -> cantidad (se guarda en el dispositivo: no se pierde al recargar)
-const MAX = 99; // mismo tope por producto que apps-script/Code.gs
+const MAX = 99; // mismo tope por producto que el servidor (api: MAX_CANT)
 const guardarCarrito = () => escribir("aukan_carrito", carrito.size ? [...carrito] : null);
 const favs = new Set(leerJson("aukan_favoritos", []));
 let enDetalle = null;
@@ -402,7 +402,7 @@ function comprobante(p) {
   const fila = (...celdas) => el("tr", {}, ...celdas.map((t) => el("td", { textContent: t })));
   const aPagar = p.sena ? montoSena(p.total) : p.total;
   $("#comprobante").replaceChildren(
-    el("header", {}, el("img", { src: "logo.webp", alt: "", width: 64, height: 64 }),
+    el("header", {}, el("img", { src: "logo-comprobante.webp", alt: "", width: 64, height: 64 }),
       el("div", {}, el("h1", { textContent: "Comprobante de pedido" }), el("p", { textContent: `Pedido N° ${p.numero} · ${new Date(p.fecha).toLocaleDateString("es-UY")}` }))),
     el("section", {}, el("h2", { textContent: "Cliente" }),
       ...[c.nombre, c.whatsapp && `WhatsApp: ${c.whatsapp}`, c.email, dir && `Dirección: ${dir}`, p.entrega && `Entrega: ${p.entrega}`]
