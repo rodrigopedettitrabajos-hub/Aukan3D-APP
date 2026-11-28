@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.60 · 2026-11-28
+- Excel separado por pantalla. El Excel de "Productos y precios" ya no trae la columna Stock, y al importarlo nunca cambia el stock. "Importar inventario" (Stock) solo cambia el stock, por ID, con la columna Contado: no toca precios, costos ni nombres y no crea productos.
+
 ## V0.59 · 2026-11-28
 - Stock: los botones se llaman "Planilla de stock a Excel" e "Importar inventario".
 
