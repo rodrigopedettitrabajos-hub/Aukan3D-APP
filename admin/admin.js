@@ -28,7 +28,7 @@ const API = String(window.AUKAN_CONFIG?.apiUrl || "").replace(/\/+$/, "");
 const SESION = API ? "aukan_admin_token" : "aukan_admin_ok";
 // Modo pruebas (solo usuario dev): las llamadas llevan ?e=pruebas y el servidor usa la base de pruebas.
 // Queda guardado en este navegador; la tienda abierta acá también manda sus pedidos a pruebas.
-const ENTORNO = "aukan_entorno", USUARIO = "aukan_admin_usuario";
+const ENTORNO = "aukan_entorno", USUARIO = "aukan_admin_usuario", CUENTA = "aukan_admin_cuenta";
 const leerLocal = (k) => { try { return localStorage.getItem(k) || ""; } catch { return ""; } };
 const PRUEBAS = !!API && leerLocal(ENTORNO) === "pruebas";
 const conEntorno = (ruta) => (PRUEBAS ? ruta + (ruta.includes("?") ? "&" : "?") + "e=pruebas" : ruta);
@@ -37,9 +37,16 @@ function cambiarEntorno(pruebas) {
   location.reload();
 }
 const leerSesion = () => { try { return sessionStorage.getItem(SESION) || ""; } catch { return ""; } };
+// Cuenta que entró (nombre, permisos y en qué bases puede entrar). Sin servidor (demo): todo menos Base de datos.
+const TODOS = ["ventas", "feria", "pendientes", "clientes", "productos", "reportes", "usuarios", "medios", "mp", "accesos", "base"];
+function cuentaActual() {
+  if (!API) return { nombre: "Administrador", permisos: TODOS.filter((x) => !["base", "mp", "accesos"].includes(x)), real: true, pruebas: false };
+  try { return JSON.parse(sessionStorage.getItem(CUENTA)) || { permisos: [] }; } catch { return { permisos: [] }; }
+}
+const puede = (x) => !x || cuentaActual().permisos?.includes(x);
 const conSesion = () => (API ? !!leerSesion() : leerSesion() === "1");
 function cerrarSesion(motivo = "") {
-  try { sessionStorage.removeItem(SESION); sessionStorage.removeItem(USUARIO); } catch { /* sin almacenamiento */ }
+  try { for (const k of [SESION, USUARIO, CUENTA]) sessionStorage.removeItem(k); } catch { /* sin almacenamiento */ }
   if (API) { db = dbVacia(); enviado.clear(); hasta = 0; }
   for (const d of document.querySelectorAll("dialog[open]")) d.close();
   $("#login-error").textContent = motivo;
@@ -47,15 +54,21 @@ function cerrarSesion(motivo = "") {
 }
 function mostrarApp() {
   const ok = conSesion();
-  let dev = false;
-  try { dev = API && sessionStorage.getItem(USUARIO) === "dev"; } catch { /* sin almacenamiento */ }
-  for (const b of document.querySelectorAll("[data-entorno], [data-solo-dev]")) b.hidden = !dev;
+  const c = cuentaActual();
+  for (const b of document.querySelectorAll("[data-entorno]")) b.hidden = !(API && c.real && c.pruebas); // solo quien entra a las dos bases puede cambiar
   for (const b of document.querySelectorAll("[data-solo-servidor]")) b.hidden = !API;
-  $(".user-nombre b").textContent = dev ? "Dev" : "Administrador";
-  $(".user .avatar").textContent = dev ? "D" : "A";
+  for (const a of document.querySelectorAll("[data-permiso]")) a.hidden = !puede(a.dataset.permiso) || (a.hasAttribute("data-solo-servidor") && !API);
+  for (const g of document.querySelectorAll(".nav-grupo")) { // un título sin secciones visibles debajo se oculta
+    let n = g.nextElementSibling, alguna = false;
+    while (n && n.tagName === "A") { alguna ||= !n.hidden; n = n.nextElementSibling; }
+    g.hidden = !alguna;
+  }
+  $(".user-nombre b").textContent = c.nombre || "Administrador";
+  $(".user .avatar").textContent = (c.nombre || "A").trim()[0].toUpperCase();
   $("#login").hidden = ok;
   $(".app").hidden = !ok;
   if (ok) mostrarVista(); else $("#f-login").usuario.focus();
+  if (ok && c.cambiarClave && !$("#d-mi-clave").open) $("#d-mi-clave").showModal(); // clave temporal: hay que cambiarla antes de seguir
 }
 $("#f-login").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -73,8 +86,10 @@ $("#f-login").addEventListener("submit", async (e) => {
         f.clave.select();
         return;
       }
-      try { sessionStorage.setItem(SESION, r.token); sessionStorage.setItem(USUARIO, r.usuario || ""); } catch { /* sin almacenamiento */ }
-      if (PRUEBAS && r.usuario !== "dev") return cambiarEntorno(false); // pruebas es solo para dev
+      const cuenta = { usuario: r.usuario, nombre: r.nombre, permisos: r.permisos || [], real: r.real, pruebas: r.pruebas, cambiarClave: !!r.cambiarClave };
+      try { sessionStorage.setItem(SESION, r.token); sessionStorage.setItem(USUARIO, r.usuario || ""); sessionStorage.setItem(CUENTA, JSON.stringify(cuenta)); } catch { /* sin almacenamiento */ }
+      if (PRUEBAS && !r.pruebas) return cambiarEntorno(false); // cada cuenta entra solo a las bases que tiene
+      if (!PRUEBAS && !r.real) return cambiarEntorno(true);
       f.reset();
       await traerServidor();
       mostrarApp();
@@ -123,8 +138,8 @@ async function llamar(ruta, body) {
   const res = await fetch(API + conEntorno(ruta), { method: body ? "POST" : "GET", body: body && JSON.stringify(body),
     headers: { Authorization: "Bearer " + leerSesion(), ...(body ? { "Content-Type": "application/json" } : {}) } });
   if (res.status === 401) { cerrarSesion("La sesión venció. Volvé a ingresar."); throw new Error("sesion"); }
-  if (res.status === 403) { cambiarEntorno(false); throw new Error("sesion"); }
   const r = await res.json();
+  if (res.status === 403 && r.error === "entorno") { cambiarEntorno(!PRUEBAS); throw new Error("sesion"); }
   if (!r.ok) throw new Error(r.error);
   return r;
 }
@@ -202,12 +217,12 @@ function avisar(t, deshacer) {
 
 // --- Navegación ---
 const VISTAS = { panel: "Panel principal", ventas: "Ventas y pedidos", feria: "Modo feria", pendientes: "Cuentas pendientes", clientes: "Clientes",
-  productos: "Productos y stock", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Reportes y gastos", base: "Base de datos", mp: "Mercado Pago" };
+  productos: "Productos y stock", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Reportes y gastos", base: "Base de datos", mp: "Mercado Pago",
+  accesos: "Accesos al panel" };
 const PINTAR = {};
-function esDev() { try { return !!API && sessionStorage.getItem(USUARIO) === "dev"; } catch { return false; } }
 function mostrarVista() {
   let v = location.hash.slice(1) in VISTAS ? location.hash.slice(1) : "panel";
-  if ((v === "base" && !esDev()) || (v === "mp" && !API)) v = "panel";
+  if (!puede(v === "panel" ? "" : v) || ((v === "mp" || v === "accesos" || v === "base") && !API)) v = "panel";
   for (const s of document.querySelectorAll(".vista")) s.hidden = s.id !== "v-" + v;
   for (const a of document.querySelectorAll(".nav a")) a.ariaCurrent = a.hash === "#" + v ? "page" : null;
   $("#crumb").textContent = VISTAS[v];
@@ -216,7 +231,7 @@ function mostrarVista() {
   pintarCampana();
 }
 addEventListener("hashchange", () => { mostrarVista(); scrollTo(0, 0); });
-const repintar = () => { const v = location.hash.slice(1); if (v !== "base" && v !== "mp") PINTAR[v in VISTAS ? v : "panel"](); pintarCampana(); };
+const repintar = () => { const v = location.hash.slice(1); if (!["base", "mp", "accesos"].includes(v)) PINTAR[v in VISTAS ? v : "panel"](); pintarCampana(); };
 
 // --- Campana: pedidos de la tienda en "Recibido" que todavía no se abrieron en este navegador ---
 const VISTOS = PRUEBAS ? "aukan_vistos_pruebas" : "aukan_vistos"; // los números se repiten entre la base real y la de pruebas
@@ -368,6 +383,19 @@ const botonesImp = (numero, extra) => el("span", { className: "imp-formatos" },
   el("button", { type: "button", className: "btn sec chico", textContent: "Imprimir A4", onclick: () => imprimirPedido(numero, "a4", extra) }),
   el("button", { type: "button", className: "btn sec chico", textContent: "Ticket 80 mm", onclick: () => imprimirPedido(numero, "80", extra) }));
 
+// Mensaje de WhatsApp para avisar al cliente que su pedido cambió de estado (sale desde el WhatsApp de quien toca).
+function mensajeEstado(v, nombre) {
+  const hola = `¡Hola, ${nombre}! `, n = `N° ${v.numero}`, resta = saldo(v) ? ` Queda un saldo de ${plata(saldo(v), v.moneda)}.` : "";
+  return [
+    "",
+    hola + (pagadoTodo(v) ? `Recibimos el pago de tu pedido ${n}. ¡Quedó confirmado!` : `Recibimos la seña de tu pedido ${n}. ¡Quedó confirmado!${resta}`),
+    hola + `Tu pedido ${n} entró en impresión. Te avisamos cuando esté listo.`,
+    hola + `¡Tu pedido ${n} está listo para entregar!${resta} ¿Coordinamos la entrega?`,
+    hola + `Entregamos tu pedido ${n}. ¡Gracias por comprar en Aukan3D!`,
+  ][v.estado] || "";
+}
+const i18nEstado = (v) => (v.estado === 1 && pagadoTodo(v) ? "Pagado" : ESTADOS[v.estado]);
+let recienCambiado = null; // { numero, estado }: muestra "Avisarle por WhatsApp" después de cambiar el estado
 // Detalle de una venta: estado, pagos, WhatsApp.
 function abrirDetalle(numero) {
   const v = venta(numero), c = cliente(v.cliente), d = $("#d-detalle");
@@ -379,7 +407,12 @@ function abrirDetalle(numero) {
       textContent: i === 1 && pagadoTodo(v) ? "Pagado" : e, onclick: () => cambiarEstado(v, i) }))));
   const msg = `¡Hola, ${c.nombre.split(" ")[0]}! Te escribimos de Aukan3D por tu pedido N° ${v.numero}: ${ESTADOS[v.estado].toLowerCase()}.`
     + (saldo(v) ? ` Saldo a pagar: ${plata(saldo(v), v.moneda)}.` : "");
+  const avisoEstado = recienCambiado?.numero === v.numero && recienCambiado.estado === v.estado ? mensajeEstado(v, c.nombre.split(" ")[0]) : "";
   $("#detalle-cuerpo").replaceChildren(
+    avisoEstado && c.whatsapp ? el("div", { className: "aviso-wa" },
+      el("p", {}, el("b", { textContent: `Pasó a ${i18nEstado(v)}. ` }), "Avisale al cliente:"), el("p", { className: "sub chico", textContent: avisoEstado }),
+      el("a", { className: "btn chico", href: `https://wa.me/${waDe(c.whatsapp)}?text=${encodeURIComponent(avisoEstado)}`, target: "_blank", rel: "noopener",
+        textContent: "Avisarle por WhatsApp", onclick: () => { recienCambiado = null; setTimeout(() => abrirDetalle(v.numero), 300); } })) : "",
     el("p", { className: "sub", textContent: `${fecha(v.fecha)} · ${ORIGEN[v.origen] || "En persona"}${usuario(v.vendedor) ? ` · Vendió ${usuario(v.vendedor).nombre}` : ""} · ${v.entrega}` }),
     el("h3", { textContent: "Estado" }), el("p", { className: "sub chico", textContent: "Tocá un paso para cambiarlo." }), pasos,
     el("div", { className: "detalle-grid" },
@@ -402,7 +435,7 @@ function abrirDetalle(numero) {
 function cambiarEstado(v, i) {
   const antes = v.estado;
   if (i === antes) return;
-  v.estado = i; guardar(); repintar(); abrirDetalle(v.numero);
+  v.estado = i; recienCambiado = { numero: v.numero, estado: i }; guardar(); repintar(); abrirDetalle(v.numero);
   avisar(`Pedido N° ${v.numero}: pasó a ${ESTADOS[i]}.`, () => { v.estado = antes; if ($("#d-detalle").open) abrirDetalle(v.numero); });
 }
 
@@ -1166,6 +1199,92 @@ $("#reiniciar").addEventListener("click", () => {
   avisar("Volvimos a los datos de ejemplo.");
 });
 
+// --- Accesos: cuentas para entrar al panel (las crea quien tiene el permiso "accesos") ---
+const NOMBRE_PERMISO = { ventas: "Ventas y pedidos", feria: "Modo feria", pendientes: "Cuentas pendientes", clientes: "Clientes", productos: "Productos y stock",
+  reportes: "Reportes y gastos", usuarios: "Usuarios y comisiones", medios: "Medios de pago", mp: "Mercado Pago", accesos: "Accesos al panel", base: "Base de datos" };
+// Plantilla para quienes prueban la app y dan feedback: todo el día a día, sin Mercado Pago, Base de datos ni Accesos, y solo en la base de pruebas.
+const PROBADOR = ["ventas", "feria", "pendientes", "clientes", "productos", "reportes", "usuarios", "medios"];
+const ENTORNO_TXT = { pruebas: "Solo pruebas", real: "Solo real", ambos: "Real y pruebas" };
+const ERROR_CUENTA = { usuario: "El usuario va en minúsculas, sin espacios, de 3 a 30 letras o números.", reservado: "Ese usuario está reservado.",
+  existe: "Ya hay una cuenta con ese usuario.", nombre: "Falta el nombre.", email: "Revisá el correo.", permiso: "No tenés permiso para esto." };
+let cuentas = [], cuentaEdit = null;
+PINTAR.accesos = async () => {
+  try { cuentas = (await llamar("/api/admin/cuentas")).cuentas; } catch (e) { if (e.message !== "sesion") $("#accesos-lista").replaceChildren(el("p", { className: "vacio", textContent: "No pudimos traer las cuentas." })); return; }
+  $("#accesos-lista").replaceChildren(tabla(["Usuario", "Nombre", "Base", "Permisos", "Estado", ""], cuentas.map((c) => el("tr", {},
+    td(el("b", { textContent: c.usuario })), td(el("span", {}, c.nombre, c.email ? el("small", { textContent: c.email }) : "")), td(ENTORNO_TXT[c.entorno] || c.entorno),
+    td(c.permisos.length === PROBADOR.length && PROBADOR.every((x) => c.permisos.includes(x)) ? "Probador" : `${c.permisos.length} secciones`),
+    td(el("span", { className: "pill " + (c.activo ? "e1" : "e4"), textContent: !c.activo ? "Desactivada" : c.cambiarClave ? "Clave temporal" : "Activa" })),
+    td(el("span", { className: "acciones" },
+      el("button", { type: "button", className: "btn sec chico", textContent: "Editar", onclick: () => abrirCuenta(c) }),
+      el("button", { type: "button", className: "btn sec chico", textContent: "Reiniciar clave", onclick: (e) => reiniciarClave(c, e.currentTarget) })), "num"))),
+  "Todavía no hay cuentas. Las fijas (administrador y dev) no aparecen acá.", "t-accesos"));
+};
+function abrirCuenta(c = null, plantilla = false) {
+  cuentaEdit = c;
+  const f = $("#f-cuenta"), mias = cuentaActual().permisos;
+  f.reset();
+  $("#d-cuenta-t").textContent = c ? `Cuenta ${c.usuario}` : plantilla ? "Nuevo probador" : "Nueva cuenta";
+  f.usuario.value = c?.usuario || ""; f.usuario.readOnly = !!c;
+  f.nombre.value = c?.nombre || ""; f.email.value = c?.email || "";
+  f.entorno.value = c?.entorno || (plantilla ? "pruebas" : "real");
+  f.activo.checked = c ? c.activo : true;
+  const marcados = c ? c.permisos : plantilla ? PROBADOR : PROBADOR;
+  $("#cuenta-permisos").replaceChildren(...TODOS.map((x) => el("label", { className: "check" },
+    el("input", { type: "checkbox", name: "permisos", value: x, checked: marcados.includes(x), disabled: !mias.includes(x) }), NOMBRE_PERMISO[x])));
+  $("#cuenta-error").textContent = "";
+  $("#d-cuenta").showModal();
+}
+$("#nueva-cuenta").addEventListener("click", () => abrirCuenta());
+$("#nuevo-probador").addEventListener("click", () => abrirCuenta(null, true));
+$("#f-cuenta").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "ok") return;
+  e.preventDefault();
+  const f = e.target, boton = e.submitter;
+  const body = { nueva: !cuentaEdit, usuario: f.usuario.value.trim().toLowerCase(), nombre: f.nombre.value.trim(), email: f.email.value.trim(), entorno: f.entorno.value,
+    activo: f.activo.checked, permisos: [...f.querySelectorAll("[name=permisos]:checked")].map((x) => x.value) };
+  boton.disabled = true;
+  try {
+    const r = await llamar("/api/admin/cuentas", body);
+    $("#d-cuenta").close();
+    if (r.clave) mostrarClave(r.cuenta.usuario, r.clave);
+    else avisar("Cuenta guardada.");
+    PINTAR.accesos();
+  } catch (err) { if (err.message !== "sesion") $("#cuenta-error").textContent = ERROR_CUENTA[err.message] || "No pudimos guardar. Probá de nuevo."; }
+  finally { boton.disabled = false; }
+});
+async function reiniciarClave(c, boton) {
+  if (boton.dataset.confirmar !== "1") { boton.dataset.confirmar = "1"; boton.textContent = "¿Seguro? Tocá de nuevo"; setTimeout(() => { boton.dataset.confirmar = ""; boton.textContent = "Reiniciar clave"; }, 4000); return; }
+  boton.disabled = true;
+  try { const r = await llamar("/api/admin/cuentas/clave", { usuario: c.usuario }); mostrarClave(c.usuario, r.clave); PINTAR.accesos(); }
+  catch (err) { if (err.message !== "sesion") avisar("No pudimos reiniciar la clave."); boton.disabled = false; }
+}
+// La contraseña temporal se ve una sola vez: el servidor guarda solo su hash.
+function mostrarClave(usuario, clave) {
+  $("#clave-usuario").textContent = usuario;
+  $("#clave-temporal").textContent = clave;
+  $("#clave-copiar").textContent = "Copiar usuario y contraseña";
+  $("#d-clave").showModal();
+}
+$("#clave-copiar").addEventListener("click", async (e) => {
+  const t = `Panel Aukan3D: ${location.origin}${location.pathname}\nUsuario: ${$("#clave-usuario").textContent}\nContraseña temporal: ${$("#clave-temporal").textContent}\n(al entrar te pide cambiarla)`;
+  try { await navigator.clipboard.writeText(t); e.currentTarget.textContent = "Copiado"; } catch { e.currentTarget.textContent = "Copialo a mano"; }
+});
+$("#d-clave").addEventListener("close", () => { $("#clave-temporal").textContent = ""; });
+// Cambio de la clave propia (obligatorio después de una clave temporal).
+$("#f-mi-clave").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.nueva.value !== f.nueva2.value) { $("#mi-clave-error").textContent = "Las dos contraseñas nuevas no coinciden."; return; }
+  if (f.nueva.value.length < 10) { $("#mi-clave-error").textContent = "La contraseña nueva tiene que tener al menos 10 caracteres."; return; }
+  try {
+    await llamar("/api/admin/mi-clave", { actual: f.actual.value, nueva: f.nueva.value });
+    const c = cuentaActual(); c.cambiarClave = false;
+    try { sessionStorage.setItem(CUENTA, JSON.stringify(c)); } catch { /* sin almacenamiento */ }
+    f.reset(); $("#d-mi-clave").close(); avisar("Listo, cambiaste tu contraseña.");
+  } catch (err) { if (err.message !== "sesion") $("#mi-clave-error").textContent = err.message === "actual" ? "La contraseña actual no es correcta." : "No pudimos cambiarla. Probá de nuevo."; }
+});
+$("#d-mi-clave").addEventListener("cancel", (e) => { if (cuentaActual().cambiarClave) e.preventDefault(); }); // no se puede saltear
+
 // Misma versión que la tienda (config.js), para saber qué está publicado.
 for (const e of document.querySelectorAll("[data-version]")) e.textContent = window.AUKAN_CONFIG?.version || "";
 if (API) {
@@ -1183,3 +1302,4 @@ if (API) {
   if (traerPedidosWeb()) guardar();
   mostrarApp();
 }
+$("#d-detalle").addEventListener("close", () => { recienCambiado = null; });
