@@ -252,6 +252,11 @@ for (const g of document.querySelectorAll(".nav-grupo")) g.addEventListener("cli
   g.setAttribute("aria-expanded", abrir);
   for (const a of linksDe(g)) a.classList.toggle("plegado", !abrir);
 });
+// Celular: el botón "Menú" abre y cierra la lista de secciones; elegir una la cierra.
+const menuMovil = (abrir) => { $(".side").classList.toggle("menu-abierto", abrir); $("#menu-movil").setAttribute("aria-expanded", abrir); };
+$("#menu-movil").addEventListener("click", () => menuMovil(!$(".side").classList.contains("menu-abierto")));
+$("#nav").addEventListener("click", (e) => { if (e.target.closest("a")) menuMovil(false); });
+addEventListener("keydown", (e) => { if (e.key === "Escape" && $(".side").classList.contains("menu-abierto")) { menuMovil(false); $("#menu-movil").focus(); } });
 function mostrarVista() {
   let v = location.hash.slice(1) in VISTAS ? location.hash.slice(1) : "panel";
   if (!puede(v === "panel" ? "" : v === "envios" ? "mensajes" : v === "stock" ? "productos" : v) || ((v === "mp" || v === "accesos" || v === "base") && !API)) v = "panel";

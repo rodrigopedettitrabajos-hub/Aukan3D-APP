@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.70 · 2026-11-28
+- Panel en el celular: botón "Menú" arriba a la derecha que abre las secciones con los mismos grupos plegables de la PC (antes era una tira de 17 secciones que se deslizaba de costado). Elegir una sección lo cierra. El encabezado queda en una sola fila (logo, tema, campana, Salir y Menú).
+
 ## V0.69 · 2026-11-28
 - Arreglos de las auditorías V0.68 (ponytail, seguridad e impeccable; informes en la carpeta auditorias).
 - Modo feria con QR: el QR espera a que la venta llegue al servidor (antes, si coincidía con un guardado en curso, podía decir "La venta no llegó al servidor"). Una venta cobrada por Mercado Pago ya no ofrece "Deshacer".
