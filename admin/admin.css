@@ -607,3 +607,4 @@ legend { padding: 0 6px; font-weight: 600; }
 .tabla input.minimo { width: 64px; min-height: 36px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); padding: 4px 8px; font: inherit; text-align: right; }
 .cierre-texto { margin: 0; padding: 14px 16px; border-radius: 12px; background: var(--soft); white-space: pre-wrap; font: 14px/1.55 "Open Sans", system-ui, sans-serif; max-height: 55dvh; overflow: auto; }
 #imprimir .cierre-imp { white-space: pre-wrap; font: 14px/1.6 system-ui, sans-serif; margin: 12px 0 0; }
+.avisos-stock .sub, .alerta span { text-wrap: pretty; }

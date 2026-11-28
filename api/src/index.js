@@ -588,16 +588,16 @@ async function cambiarMiClave(req, env, quien) {
 // ---------- respaldos de la base real ----------
 // Una copia por día (la del lunes la hace el cron; también se puede pedir desde el panel). Se guardan las últimas 8.
 // Sin las fotos subidas (pesan mucho y no cambian): el producto queda con "(foto subida)". Sin cuentas ni ajustes (claves).
+// El JSON se arma como texto (sin parsear cada registro): el plan gratis da poco tiempo de CPU por pedido.
 const RESPALDOS = 8, PARTE = 1_500_000; // D1 acepta filas de hasta 2 MB
 async function respaldar(env) {
   const db = await tabla(env.DB, "respaldos"), fecha = hoyUy(), filas = [];
   for (const col of COLECCIONES) {
-    const { results } = await db.prepare("SELECT data FROM docs WHERE col = ?").bind(col).all();
-    const docs = results.map((x) => JSON.parse(x.data)).filter((d) => !d._borrado)
-      .map((d) => (col === "productos" && String(d.foto || "").startsWith("data:") ? { ...d, foto: "(foto subida)" } : d));
-    let parte = [], tam = 0;
-    const cerrar = () => { if (parte.length) filas.push([col, filas.filter((f) => f[0] === col).length, parte.length, JSON.stringify(parte)]); parte = []; tam = 0; };
-    for (const d of docs) { const t = JSON.stringify(d).length; if (tam + t > PARTE) cerrar(); parte.push(d); tam += t; }
+    const { results } = await db.prepare(`SELECT CASE WHEN col = 'productos' AND json_extract(data, '$.foto') LIKE 'data:%'
+      THEN json_set(data, '$.foto', '(foto subida)') ELSE data END AS data FROM docs WHERE col = ? AND json_extract(data, '$._borrado') IS NULL`).bind(col).all();
+    let parte = [], tam = 0, n = 0;
+    const cerrar = () => { if (parte.length) filas.push([col, n++, parte.length, "[" + parte.join(",") + "]"]); parte = []; tam = 0; };
+    for (const { data } of results) { if (tam + data.length > PARTE) cerrar(); parte.push(data); tam += data.length; }
     cerrar();
   }
   await db.batch([db.prepare("DELETE FROM respaldos WHERE fecha = ?").bind(fecha),
@@ -613,9 +613,10 @@ async function listaRespaldos(env) {
 async function respaldo(env, fecha) {
   const { results } = await (await tabla(env.DB, "respaldos")).prepare("SELECT col, data FROM respaldos WHERE fecha = ? ORDER BY col, parte").bind(fecha).all();
   if (!results.length) return json({ ok: false, error: "no-existe" }, 404);
-  const datos = {};
-  for (const r of results) (datos[r.col] ||= []).push(...JSON.parse(r.data));
-  return json({ ok: true, fecha, datos });
+  const porCol = new Map();
+  for (const r of results) porCol.set(r.col, [...(porCol.get(r.col) || []), r.data.slice(1, -1)].filter(Boolean)); // "[a,b]" -> "a,b"
+  const cuerpo = [...porCol].map(([col, partes]) => `${JSON.stringify(col)}:[${partes.join(",")}]`).join(",");
+  return new Response(`{"ok":true,"fecha":${JSON.stringify(fecha)},"datos":{${cuerpo}}}`, { headers: { "Content-Type": "application/json; charset=utf-8" } });
 }
 
 // ---------- datos del panel ----------
