@@ -50,6 +50,7 @@ function mostrarApp() {
   let dev = false;
   try { dev = API && sessionStorage.getItem(USUARIO) === "dev"; } catch { /* sin almacenamiento */ }
   for (const b of document.querySelectorAll("[data-entorno], [data-solo-dev]")) b.hidden = !dev;
+  for (const b of document.querySelectorAll("[data-solo-servidor]")) b.hidden = !API;
   $(".user-nombre b").textContent = dev ? "Dev" : "Administrador";
   $(".user .avatar").textContent = dev ? "D" : "A";
   $("#login").hidden = ok;
@@ -100,11 +101,18 @@ let db = API ? dbVacia() : leerJson(CLAVE_DB, null);
 if (!db?.version) db = datosEjemplo(catalogoDesdeCsv(window.PRODUCTOS_CSV));
 db.cajas ||= []; // datos guardados antes del modo feria
 function avisoPedidos(n) {
-  if (!n) return;
-  const t = n === 1 ? "Llegó 1 pedido nuevo de la tienda." : `Llegaron ${n} pedidos nuevos de la tienda.`;
+  if (n) notificar(n === 1 ? "Llegó 1 pedido nuevo de la tienda." : `Llegaron ${n} pedidos nuevos de la tienda.`);
+}
+function notificar(t, tag = "pedidos") {
   avisar(t);
   // En otra pestaña o ventana: aviso del navegador, si se dio permiso desde la campana.
-  try { if (document.hidden && Notification.permission === "granted") new Notification("Aukan3D", { body: t, icon: "../logo.webp", tag: "pedidos" }); } catch { /* sin notificaciones */ }
+  try { if (document.hidden && Notification.permission === "granted") new Notification("Aukan3D", { body: t, icon: "../logo.webp", tag }); } catch { /* sin notificaciones */ }
+}
+// Pagos que anotó el servidor cuando Mercado Pago avisó (los que anota este panel ya estaban antes de traer).
+const pagosMp = () => new Set(db.ventas.flatMap((v) => v.pagos.filter((p) => p.mp).map((p) => p.mp)));
+function avisoPagosMp(antes) {
+  for (const v of db.ventas) for (const p of v.pagos) if (p.mp && !antes.has(p.mp))
+    notificar(`Pedido N° ${v.numero}: Mercado Pago confirmó el pago de ${plata(p.monto, v.moneda)}.`, "pago-" + p.mp);
 }
 
 // Servidor: cada guardar() manda solo lo cambiado; cada 20 s se trae lo nuevo (pedidos web, otros dispositivos).
@@ -122,9 +130,10 @@ async function llamar(ruta, body) {
 }
 async function traerServidor() {
   const r = await llamar("/api/admin/datos?desde=" + hasta);
-  const primera = !hasta;
+  const primera = !hasta, antes = pagosMp();
   const n = aplicarServidor(db, r, enviado);
   hasta = r.hasta;
+  if (!primera) { avisoPedidos(n); avisoPagosMp(antes); } // el pago va último: si llegan juntos, es el aviso que queda a la vista
   return primera ? 0 : n;
 }
 function sincronizar() {
@@ -141,7 +150,7 @@ async function actualizar() {
   if (!API || !conSesion()) return; // también en segundo plano, para avisar pedidos nuevos
   await sincronizar();
   if (document.querySelector("dialog[open]")) return; // no cambiar datos debajo de un formulario abierto
-  try { const n = await traerServidor(); avisoPedidos(n); repintar(); } catch { /* reintenta en la próxima vuelta */ }
+  try { await traerServidor(); repintar(); } catch { /* reintenta en la próxima vuelta */ }
 }
 setInterval(actualizar, 20000);
 addEventListener("visibilitychange", actualizar); // al volver a la pestaña, sin esperar los 20 s
@@ -193,12 +202,12 @@ function avisar(t, deshacer) {
 
 // --- Navegación ---
 const VISTAS = { panel: "Panel principal", ventas: "Ventas y pedidos", feria: "Modo feria", pendientes: "Cuentas pendientes", clientes: "Clientes",
-  productos: "Productos y stock", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Reportes y gastos", base: "Base de datos" };
+  productos: "Productos y stock", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Reportes y gastos", base: "Base de datos", mp: "Mercado Pago" };
 const PINTAR = {};
 function esDev() { try { return !!API && sessionStorage.getItem(USUARIO) === "dev"; } catch { return false; } }
 function mostrarVista() {
   let v = location.hash.slice(1) in VISTAS ? location.hash.slice(1) : "panel";
-  if (v === "base" && !esDev()) v = "panel";
+  if ((v === "base" && !esDev()) || (v === "mp" && !API)) v = "panel";
   for (const s of document.querySelectorAll(".vista")) s.hidden = s.id !== "v-" + v;
   for (const a of document.querySelectorAll(".nav a")) a.ariaCurrent = a.hash === "#" + v ? "page" : null;
   $("#crumb").textContent = VISTAS[v];
@@ -207,7 +216,7 @@ function mostrarVista() {
   pintarCampana();
 }
 addEventListener("hashchange", () => { mostrarVista(); scrollTo(0, 0); });
-const repintar = () => { const v = location.hash.slice(1); if (v !== "base") PINTAR[v in VISTAS ? v : "panel"](); pintarCampana(); };
+const repintar = () => { const v = location.hash.slice(1); if (v !== "base" && v !== "mp") PINTAR[v in VISTAS ? v : "panel"](); pintarCampana(); };
 
 // --- Campana: pedidos de la tienda en "Recibido" que todavía no se abrieron en este navegador ---
 const VISTOS = PRUEBAS ? "aukan_vistos_pruebas" : "aukan_vistos"; // los números se repiten entre la base real y la de pruebas
@@ -372,7 +381,8 @@ function abrirDetalle(numero) {
         ...(v.pagos.length ? v.pagos.map((p) => el("p", { className: "linea", textContent: `${fecha(p.fecha)} · ${medio(p.medio)}` }, el("b", { textContent: plata(p.monto, v.moneda) })))
           : [el("p", { className: "sub", textContent: "Todavía no pagó nada." })]),
         el("p", { className: "linea total-linea", textContent: "Saldo" }, el("b", { className: saldo(v) ? "ambar" : "verde", textContent: saldo(v) ? plata(saldo(v), v.moneda) : "Pagado" })),
-        saldo(v) ? el("button", { type: "button", className: "btn chico", textContent: "Registrar pago", onclick: () => abrirPago(numero) }) : "")),
+        saldo(v) ? el("div", { className: "acciones-pago" }, el("button", { type: "button", className: "btn chico", textContent: "Registrar pago", onclick: () => abrirPago(numero) }),
+          API ? el("button", { type: "button", className: "btn sec chico", textContent: "Cobrar con QR", onclick: () => abrirQr(numero) }) : "") : "")),
     el("h3", { textContent: "Productos" }),
     el("table", { className: "tabla" }, el("tbody", {}, ...v.items.map((i) => el("tr", {}, td(`${i.cant} x ${i.nombre}`), td(plata(i.precio * i.cant, v.moneda), "num")))),
       el("tfoot", {}, el("tr", {}, td("Total"), td(plata(totalVenta(v), v.moneda), "num")))),
@@ -411,6 +421,60 @@ $("#f-pago").addEventListener("submit", (e) => {
   if ($("#d-detalle").open) abrirDetalle(pagoDe.numero);
   avisar("Pago registrado.");
 });
+
+// Cobrar con QR de Mercado Pago: seña (50 %) o saldo. El cliente escanea y paga; cuando Mercado Pago avisa al servidor,
+// el pago queda anotado en el pedido y esta ventana lo muestra (consulta cada 5 s mientras está abierta).
+let qrDe = null, qrEspera = 0;
+const cargarQr = () => window.qrcode ? Promise.resolve()
+  : new Promise((ok, mal) => document.head.append(el("script", { src: "../qrcode.js?v=" + (window.AUKAN_CONFIG?.version || "").slice(1), onload: ok, onerror: mal })));
+function abrirQr(numero) {
+  qrDe = venta(numero);
+  const s = saldo(qrDe), sena = qrDe.sena && !qrDe.pagos.length ? Math.ceil(totalVenta(qrDe) / 2) : 0;
+  const opciones = [...(sena && sena < s ? [["Seña 50 %", sena, true]] : []), [qrDe.pagos.length ? "Saldo" : "Total", s, false]];
+  $("#qr-sub").textContent = `Pedido N° ${numero} · ${cliente(qrDe.cliente).nombre}`;
+  $("#qr-montos").replaceChildren(...opciones.map(([t, m, esSena]) => el("button", { type: "button", className: "btn sec", ariaPressed: "false",
+    textContent: `${t} · ${plata(m, qrDe.moneda)}`, onclick: (e) => generarQr(m, esSena, e.currentTarget) })));
+  $("#qr-img").hidden = $("#qr-link").hidden = true;
+  $("#qr-estado").className = ""; $("#qr-estado").textContent = "";
+  $("#d-qr").showModal();
+  $("#qr-montos button").click(); // la seña si corresponde; si no, el total
+}
+async function generarQr(monto, sena, boton) {
+  for (const b of $("#qr-montos").children) b.ariaPressed = String(b === boton);
+  clearInterval(qrEspera);
+  $("#qr-img").hidden = $("#qr-link").hidden = true;
+  $("#qr-estado").className = ""; $("#qr-estado").textContent = "Generando el QR…";
+  try {
+    const r = await llamar("/api/admin/mp/cobro", { numero: qrDe.numero, monto, sena });
+    await cargarQr();
+    const qr = qrcode(0, "M"); qr.addData(r.link); qr.make();
+    $("#qr-img").src = qr.createDataURL(6, 2);
+    $("#qr-link").href = r.link;
+    $("#qr-img").hidden = $("#qr-link").hidden = false;
+    $("#qr-estado").textContent = `Esperando el pago de ${plata(monto, qrDe.moneda)}. Cuando Mercado Pago lo confirme aparece acá y en el pedido.`;
+    esperarPagoQr();
+  } catch (e) {
+    $("#qr-estado").className = "error";
+    $("#qr-estado").textContent = { mp: "Mercado Pago no respondió. Revisá la credencial en Administración → Mercado Pago.",
+      monto: "El saldo cambió. Cerrá y volvé a abrir el pedido." }[e.message] || "No se pudo generar el QR. Probá de nuevo.";
+  }
+}
+function esperarPagoQr() {
+  const antes = qrDe.pagos.length;
+  qrEspera = setInterval(async () => {
+    if (!$("#d-qr").open) return clearInterval(qrEspera);
+    try { await traerServidor(); } catch { return; }
+    const v = venta(qrDe.numero);
+    if (!v || v.pagos.length <= antes) return;
+    clearInterval(qrEspera);
+    qrDe = v;
+    $("#qr-img").hidden = $("#qr-link").hidden = true;
+    $("#qr-estado").className = "pago-ok";
+    $("#qr-estado").textContent = `¡Pago recibido! ${plata(v.pagos.at(-1).monto, v.moneda)} por Mercado Pago. El pedido quedó en ${v.estado === 1 && !v.sena ? "Pagado" : ESTADOS[v.estado]}.`;
+    repintar();
+  }, 5000);
+}
+$("#d-qr").addEventListener("close", () => { clearInterval(qrEspera); if (qrDe && $("#d-detalle").open) abrirDetalle(qrDe.numero); });
 
 // Nueva venta (en persona o en una feria).
 const fv = $("#f-venta");
@@ -933,6 +997,64 @@ PINTAR.base = async () => {
   } catch (e) { caja.replaceChildren(el("p", { className: "error", textContent: "No pudimos traer el uso de la base. Revisá la conexión." })); }
 };
 $("#base-actualizar").addEventListener("click", () => PINTAR.base());
+
+// --- Mercado Pago (admin y dev ven lo mismo: la credencial vive en el servidor, en la base real) ---
+const ESTADO_MP = { approved: ["Aprobado", "e3"], pending: ["Pendiente", "e0"], in_process: ["En revisión", "e0"], authorized: ["Autorizado", "e1"],
+  rejected: ["Rechazado", "mal"], cancelled: ["Cancelado", "e4"], refunded: ["Devuelto", "e4"], charged_back: ["Contracargo", "mal"] };
+const MEDIO_MP = { account_money: "Dinero en cuenta", visa: "Visa", master: "Mastercard", oca: "OCA", debvisa: "Visa débito", debmaster: "Mastercard débito", abitab: "Abitab", redpagos: "Redpagos" };
+function pintarMp(r) {
+  $("#mp-quitar").hidden = r.origen !== "panel";
+  const estado = !r.configurado ? kpi("Estado", "Sin configurar", "Cargá la credencial abajo", "ambar")
+    : kpi("Estado", r.conectado ? "Conectado" : "Sin conexión", r.conectado ? "Mercado Pago acepta la credencial" : "Mercado Pago no la acepta: cargala de nuevo", r.conectado ? "verde" : "rojo");
+  $("#mp-estado").replaceChildren(el("div", { className: "kpis" }, estado, ...(r.configurado ? [
+    kpi("Modo", r.modo === "prueba" ? "Prueba" : "Producción", r.modo === "prueba" ? "Cobros de mentira, para probar" : "Cobros reales", r.modo === "prueba" ? "ambar" : "verde"),
+    kpi("Cuenta", r.cuenta ? r.cuenta.nombre || String(r.cuenta.id) : "—", r.cuenta ? `N° ${r.cuenta.id}${r.cuenta.pais ? " · " + r.cuenta.pais : ""}` : ""),
+    kpi("Credencial", "…" + r.final, r.origen === "panel" ? `Cargada desde el panel${r.actualizado ? " el " + fecha(new Date(r.actualizado).toISOString()) : ""}` : "Cargada en el servidor")] : [])));
+  pintarPagosMp(r.pagos || []);
+}
+// Cada cobro se cruza con su pedido (referencia AUKAN-N°); "Registrar" lo anota como pago con el id de Mercado Pago, una sola vez.
+function pintarPagosMp(pagos) {
+  const medioMp = db.medios.find((m) => /mercado ?pago/i.test(m.nombre))?.id || "m3";
+  const filas = pagos.map((x) => {
+    const numero = (x.referencia.match(/^AUKAN-(\w+)$/) || [])[1], v = numero && venta(numero);
+    const [txt, tono] = ESTADO_MP[x.estado] || [x.estado, "e4"];
+    let accion = "—";
+    if (v && v.pagos.some((p) => p.mp === x.id)) accion = el("span", { className: "sub chico", textContent: "Registrado" });
+    else if (v && x.estado === "approved" && x.moneda === v.moneda && saldo(v) > 0)
+      accion = el("button", { type: "button", className: "btn sec chico", textContent: `Registrar en N° ${numero}`, onclick: () => {
+        registrarPago(v, Math.min(Math.round(x.monto), saldo(v)), medioMp, x.fecha);
+        v.pagos.at(-1).mp = x.id;
+        guardar(); pintarPagosMp(pagos); avisar(`Pago de Mercado Pago registrado en el pedido N° ${numero}.`);
+      } });
+    else if (v && x.estado === "approved") accion = el("span", { className: "sub chico", textContent: "El pedido no tiene saldo" });
+    return el("tr", {}, td(fecha(x.fecha)), td(numero ? `N° ${numero}${v ? "" : " (no está en esta base)"}` : x.referencia || "Sin pedido"),
+      td(plata(x.monto, x.moneda), "num"), td(MEDIO_MP[x.medio] || x.medio || "—"), td(el("span", { className: `pill ${tono}`, textContent: txt, title: x.detalle })), td(accion, "num"));
+  });
+  $("#mp-pagos").replaceChildren(tabla(["Fecha", "Pedido", "#Monto", "Medio", "Estado", ""], filas, "Todavía no hay cobros en esta cuenta.", "t-mp"));
+}
+PINTAR.mp = async () => {
+  try { pintarMp(await llamar("/api/admin/mp")); }
+  catch (e) { if (e.message !== "sesion") $("#mp-estado").replaceChildren(el("p", { className: "error", textContent: "No pudimos consultar Mercado Pago. Revisá la conexión y tocá Actualizar." })); }
+};
+$("#mp-actualizar").addEventListener("click", () => PINTAR.mp());
+const ERROR_MP = { formato: "Eso no parece un Access Token: empieza con TEST- o APP_USR-.", rechazado: "Mercado Pago no aceptó esa credencial. Revisá que sea el Access Token y no la Public Key." };
+$("#f-mp").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target, token = f.token.value.trim(), boton = f.querySelector("[type=submit]");
+  if (!token) { $("#mp-error").textContent = "Pegá el Access Token."; return; }
+  boton.disabled = true; $("#mp-error").textContent = "Probando con Mercado Pago…";
+  try { pintarMp(await llamar("/api/admin/mp", { token })); f.reset(); $("#mp-error").textContent = ""; avisar("Credencial guardada: Mercado Pago la aceptó."); }
+  catch (err) { $("#mp-error").textContent = ERROR_MP[err.message] || "No se pudo guardar. Probá de nuevo."; }
+  finally { boton.disabled = false; }
+});
+// Quitar pide un segundo toque: sin credencial la tienda deja de ofrecer el pago con Mercado Pago.
+let quitarMpT = 0;
+$("#mp-quitar").addEventListener("click", async (e) => {
+  const b = e.currentTarget;
+  if (!quitarMpT) { b.textContent = "Tocá de nuevo para quitarla"; quitarMpT = setTimeout(() => { quitarMpT = 0; b.textContent = "Quitar credencial"; }, 4000); return; }
+  clearTimeout(quitarMpT); quitarMpT = 0; b.textContent = "Quitar credencial";
+  try { pintarMp(await llamar("/api/admin/mp", { token: "" })); avisar("Credencial quitada."); } catch { avisar("No se pudo quitar. Probá de nuevo."); }
+});
 
 // --- Reportes y gastos ---
 // Período del reporte: día, mes, trimestre, semestre, año o entre fechas; las flechas viajan de a un período.

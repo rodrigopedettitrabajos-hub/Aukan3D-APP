@@ -377,7 +377,7 @@ async function enviar(ev) {
       body: JSON.stringify({ cliente, items: items.map((i) => ({ id: i.id, cant: i.cant })) }) });
     r = await res.json();
   } catch { /* sin respuesta: queda el WhatsApp */ }
-  $("#enviar-txt").textContent = "Enviar pedido por WhatsApp";
+  $("#enviar-txt").textContent = TEXTO_ENVIAR;
   $("#enviar").disabled = false;
   // Los montos del servidor mandan; si falló, los calculamos acá y el pedido sale por WhatsApp.
   registro(r.ok ? r.numero : undefined, r.ok ? r.total : suma);
@@ -388,6 +388,13 @@ async function enviar(ev) {
 }
 
 let ultimoPedido = null;
+// Con servidor el pedido llega solo al panel: el botón no pasa por WhatsApp y después se paga con Mercado Pago.
+const TEXTO_ENVIAR = cfg.pedidosUrl ? "Hacer pedido" : "Enviar pedido por WhatsApp";
+if (cfg.pedidosUrl) {
+  $("#enviar-txt").textContent = TEXTO_ENVIAR;
+  $("#enviar svg").remove();
+  $("#checkout .fine").firstChild.textContent = "Al hacer el pedido te mostramos el pago con Mercado Pago (QR o botón). Cuando se acredita, el pedido queda confirmado.";
+}
 
 // Comprobante del pedido: se arma en #comprobante y se imprime (el navegador ofrece "Guardar como PDF").
 function comprobante(p) {
@@ -430,11 +437,12 @@ function mostrarPago({ pago = "", texto, sena, recibido, bloqueado, total, aPaga
   $("#pago-titulo").textContent = recibido ? "¡Pedido recibido!" : "Falta un paso: mandanos el mensaje";
   $("#pago-numero").textContent = `Pedido N° ${ultimoPedido.numero} · ${n === 1 ? "1 producto" : `${n} productos`}`;
   $("#pago-total").textContent = sena ? `Seña ${pesos(aPagar)} · total ${pesos(total)}` : `Total ${pesos(total)}`;
-  $("#pago-texto").textContent = pago ? `${sena ? "Pagá la seña" : "Pagalo"} con Mercado Pago: escaneá el QR con el celular o tocá el botón.`
-    : recibido ? "Ya lo tenemos. Avisanos por WhatsApp y coordinamos el pago."
+  $("#pago-texto").textContent = pago ? `${sena ? "Pagá la seña" : "Pagalo"} con Mercado Pago: escaneá el QR o tocá el botón. Cuando se acredita queda confirmado y lo ves en "Mis pedidos".`
+    : recibido ? "Ya lo tenemos. Te escribimos por WhatsApp para coordinar el pago."
     : bloqueado ? "Tu navegador no abrió WhatsApp. Tocá el botón para mandarnos el pedido."
     : "Te abrimos WhatsApp con el pedido escrito. Hasta que nos llegue ese mensaje no lo tenemos: si no lo mandaste, tocá el botón.";
   $("#pago-wa").href = waLink(texto);
+  $("#pago-wa").hidden = recibido; // si llegó al servidor no hace falta avisar por WhatsApp
   $("#pago-wa-txt").textContent = recibido ? "Avisar por WhatsApp" : "Mandar el pedido por WhatsApp";
   $("#pago-listo").hidden = recibido;
   $("#pago-link").textContent = sena ? "Pagar la seña con Mercado Pago" : "Pagar con Mercado Pago";

@@ -39,18 +39,17 @@ button { font: inherit; cursor: pointer; }
 
 .hero { background: #000; color: #fff; padding: 8px 0 28px; border-bottom: 3px solid var(--brand); }
 .hero h2 { margin: 0 0 6px; font-size: clamp(28px, 6vw, 44px); line-height: 1.1; font-weight: 600; text-transform: uppercase; }
-.hero p { margin: 0; max-width: 56ch; color: #c8cacd; }
-.hero-row { display: flex; align-items: center; gap: 16px; }
-.hero-row > div:first-child { flex: 1; }
+.hero p { margin: 0 auto; max-width: 56ch; color: #c8cacd; }
+.hero-row { display: flex; align-items: center; justify-content: center; gap: 16px; }
+.hero-texto { flex: 1; min-width: 0; text-align: center; }
 .hero .hero-sub { color: #fff; font-size: 17px; margin-bottom: 6px; }
 .hero .hero-tags { font: 500 13px/1.6 Oswald, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--brand); margin-bottom: 8px; }
-.mascotas { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: none; }
-.mascotas img { width: 76px; height: auto; transition: transform .35s cubic-bezier(.22,1,.36,1); transform-origin: 50% 85%; }
-.mascotas.miran img { transform: translateY(-6px) perspective(300px) rotateX(18deg) rotate(6deg); }
-.mascotas.miran img + img { transform: translateY(-6px) perspective(300px) rotateX(18deg) rotate(10deg); transition-delay: .06s; }
+.mascotas > img { flex: none; width: 76px; height: auto; transition: transform .35s cubic-bezier(.22,1,.36,1); transform-origin: 50% 85%; }
+.mascotas.miran > img { transform: translateY(-6px) perspective(300px) rotateX(18deg) rotate(6deg); }
+.mascotas.miran > img:last-child { transform: translateY(-6px) perspective(300px) rotateX(18deg) rotate(10deg); transition-delay: .06s; }
 .volando { position: fixed; z-index: 50; object-fit: cover; pointer-events: none; box-shadow: 0 10px 30px rgb(0 0 0 / .35); }
-@media (min-width: 720px) { .mascotas img { width: 120px; } .hero .hero-sub { font-size: 19px; } }
-@media (max-width: 380px) { .mascotas img { width: 60px; } }
+@media (min-width: 720px) { .mascotas > img { width: 120px; } .hero .hero-sub { font-size: 19px; } }
+@media (max-width: 380px) { .mascotas > img { width: 44px; } }
 
 
 /* Menú de categorías */
@@ -342,7 +341,7 @@ legend { font-size: 14px; color: var(--muted); padding: 0 4px; }
   .hero { padding: 4px 0 16px; }
   .hero .hero-tags, .hero p:last-child { display: none; }
   .hero .hero-sub { font-size: 15px; margin: 0; }
-  .mascotas img { width: 54px; }
+  .mascotas > img { width: 50px; }
   .proximo { padding-top: 12px; }
   .proximo-card { grid-template-columns: 1fr auto; padding: 10px 14px; }
   .proximo-card img, .proximo-card .evento-datos > p:not(.evento-cuando) { display: none; }

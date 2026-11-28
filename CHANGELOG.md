@@ -2,6 +2,13 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.40 · 2026-11-28
+- Mercado Pago en el panel (Administración → Mercado Pago, igual para admin y dev): estado de la cuenta, modo prueba o producción, carga de la credencial (queda solo en el servidor) y últimos 30 cobros cruzados con su pedido.
+- "Cobrar con QR" en el detalle del pedido: QR de Mercado Pago por la seña (50 %) o el total/saldo. Cuando Mercado Pago confirma, el pago se anota solo y la ventana muestra "¡Pago recibido!".
+- Aviso automático de Mercado Pago (webhook `/api/mp/aviso`): cada pago aprobado se anota en su pedido una sola vez y el panel avisa "Mercado Pago confirmó el pago".
+- Tienda: el botón es "Hacer pedido" (ya no abre WhatsApp: el pedido llega solo al panel) y después se paga con Mercado Pago. Al terminar de pagar vuelve a "Mis pedidos".
+- Portada: texto al medio y un perrito a cada lado.
+
 ## V0.39 · 2026-11-27
 - Ventas: cada fila tiene los botones "A4" y "80 mm" para elegir el formato al imprimir, sin abrir el pedido.
 
