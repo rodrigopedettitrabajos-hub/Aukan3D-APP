@@ -986,7 +986,7 @@ const bajarArchivo = (blob, nombre) => { const url = URL.createObjectURL(blob); 
 $("#inv-subir").addEventListener("click", () => $("#excel-input").click());
 $("#inv-excel").addEventListener("click", () => {
   bajarArchivo(crearXlsx(inventarioAFilas(productosStock()), { hoja: "Inventario", anchos: [8, 40, 18, 18, 10, 10, 16, 12] }), `inventario-aukan3d-${hoy()}.xlsx`);
-  avisar("Planilla descargada. Completá Contado y subila con \"Subir conteo\".");
+  avisar("Planilla descargada. Completá Contado y subila con \"Importar inventario\".");
 });
 $("#inv-imprimir").addEventListener("click", () => {
   const lista = productosStock(), cat = $("#stock-cat").value, f = $("#stock-filtro").value;
