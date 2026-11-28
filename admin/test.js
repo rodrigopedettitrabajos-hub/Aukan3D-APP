@@ -161,6 +161,13 @@ const x = require("./excel.js");
       assert.ok(t.includes(x), x + "\n" + t);
     assert.ok(!t.includes("Descuento X"));
   }
+  // Respaldo a Excel: una hoja por colección con datos, listas en texto.
+  {
+    const h = d.respaldoAHojas({ medios: [{ id: "ef", nombre: "Efectivo" }], clientes: [],
+      ventas: [{ numero: "1", items: [{ cant: 2, nombre: "Pika", precio: 400 }], pagos: [{ medio: "ef", monto: 800, fecha: "2026-11-28T10:00" }], sena: true }] });
+    assert.deepStrictEqual(h.map((x) => x.hoja), ["Ventas", "Medios de pago"]);
+    assert.deepStrictEqual(h[0].filas, [["numero", "items", "pagos", "sena"], ["1", "2 x Pika ($400)", "Efectivo $800 2026-11-28", "SI"]]);
+  }
   // Stock bajo: solo con mínimo cargado y menos stock que el mínimo.
   assert.deepStrictEqual([{ minimo: 3, stock: 1 }, { minimo: 3, stock: 3 }, { minimo: 0, stock: 0 }, { minimo: 2 }, { minimo: 2, _borrado: true }].map(d.bajoMinimo), [true, false, false, true, false]);
   console.log("admin: ok");
