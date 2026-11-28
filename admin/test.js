@@ -149,6 +149,18 @@ const x = require("./excel.js");
   const filas = [["ID", "Nombre", "Precio"], ["1", 'Gato <"XL"> & ñ', 300], ["2", "", 0]];
   const leido = await x.leerXlsx(await x.crearXlsx(filas, { hoja: "Productos" }).arrayBuffer());
   assert.deepStrictEqual(leido, [["ID", "Nombre", "Precio"], ["1", 'Gato <"XL"> & ñ', 300], ["2", "", 0]]);
+  // Cierre de caja para compartir: medios, lo más vendido, efectivo y diferencia.
+  {
+    const dbC = { medios: [{ id: "ef", nombre: "Efectivo" }, { id: "mp", nombre: "Mercado Pago" }], cajas: [], ventas: [
+      { caja: "k1", moneda: "UYU", items: [{ id: "1", nombre: "Pikachu", precio: 400, cant: 2 }], pagos: [{ medio: "ef", monto: 800 }] },
+      { caja: "k1", moneda: "UYU", items: [{ id: "2", nombre: "Llavero", precio: 100, cant: 3 }, { id: "descuento", nombre: "Descuento X", precio: -30, cant: 1 }], pagos: [{ medio: "mp", monto: 270 }] },
+      { caja: "otra", moneda: "UYU", items: [{ id: "1", nombre: "Pikachu", precio: 400, cant: 9 }], pagos: [] }] };
+    const caja = { id: "k1", abierta: "2026-11-28T17:00:00Z", cerrada: "2026-11-28T23:00:00Z", fondo: 1000, movimientos: [{ tipo: "retiro", monto: 300 }], contado: 1450 };
+    const t = d.textoCierre(dbC, caja, (n) => "$ " + n, "Rodrigo");
+    for (const x of ["*Ventas:* 2 · $ 1070", "• Efectivo: $ 800", "• Mercado Pago: $ 270", "• 3 × Llavero", "• 2 × Pikachu", "• Retiros: − $ 300", "• Tendría que haber: $ 1500", "*Diferencia:* faltan $ 50", "Vendió: Rodrigo"])
+      assert.ok(t.includes(x), x + "\n" + t);
+    assert.ok(!t.includes("Descuento X"));
+  }
   // Stock bajo: solo con mínimo cargado y menos stock que el mínimo.
   assert.deepStrictEqual([{ minimo: 3, stock: 1 }, { minimo: 3, stock: 3 }, { minimo: 0, stock: 0 }, { minimo: 2 }, { minimo: 2, _borrado: true }].map(d.bajoMinimo), [true, false, false, true, false]);
   console.log("admin: ok");
