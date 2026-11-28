@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.72">
-  <script src="../tema.js?v=0.72"></script>
+  <link rel="stylesheet" href="admin.css?v=0.73">
+  <script src="../tema.js?v=0.73"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -153,7 +153,7 @@
 
       <section id="v-productos" class="vista" hidden>
         <div class="cabeza"><div><p class="eyebrow">Catálogo</p><h1>Productos y precios</h1><p class="sub">El catálogo de la tienda con costo, precio y ganancia. Marcá productos para cambiarles el precio juntos.</p></div>
-          <div class="botones"><button class="btn sec" type="button" id="bajar-excel">Exportar Excel</button><button class="btn sec" type="button" id="subir-excel">Importar Excel</button><input id="excel-input" type="file" accept=".xlsx,.csv" class="sr" tabindex="-1" aria-hidden="true"><button class="btn sec" type="button" id="lote-productos">Tamaño y material</button><button class="btn" type="button" id="nuevo-producto">+ Producto</button></div></div>
+          <div class="botones"><button class="btn sec" type="button" id="bajar-excel">Exportar Excel</button><button class="btn sec" type="button" id="subir-excel">Importar Excel</button><input id="excel-input" type="file" accept=".xlsx,.csv" class="sr" tabindex="-1" aria-hidden="true"><button class="btn sec" type="button" id="lote-productos">Tamaño y material</button><button class="btn sec" type="button" id="carga-rapida">Carga rápida</button><button class="btn" type="button" id="nuevo-producto">+ Producto</button></div></div>
         <div class="filtros">
           <input id="prod-q" type="search" placeholder="Buscar producto" aria-label="Buscar productos">
           <select id="prod-cat" aria-label="Categoría"><option value="">Todas las categorías</option></select>
@@ -450,6 +450,35 @@
   </form>
 </dialog>
 
+<dialog id="d-carga" class="ventana carga" aria-labelledby="d-carga-t">
+  <form method="dialog" id="f-carga" novalidate>
+    <header><div><h2 id="d-carga-t">Carga rápida de productos</h2><p class="sub chico" id="carga-paso">Paso 1 de 2</p></div><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
+    <div id="carga-1" class="carga-paso">
+      <label class="carga-zona" for="carga-fotos"><strong>Elegí o arrastrá las fotos</strong><span>Una foto = un producto. El nombre sale del archivo (pikachu-gorra.jpg queda PIKACHU GORRA).</span><span class="btn sec">Elegir fotos</span></label>
+      <input id="carga-fotos" type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr">
+      <p class="sub chico" id="carga-fotos-n" aria-live="polite"></p>
+      <div id="carga-minis" class="carga-minis"></div>
+      <label>O pegá una lista, un producto por renglón: nombre; costo; stock <textarea name="lista" rows="4" placeholder="Pikachu gorra; 300; 2&#10;Llavero Eevee; 80"></textarea></label>
+      <div class="campos dos">
+        <label>Categoría para todos <input name="categoria" list="lista-cats" maxlength="40" required></label>
+        <label>Subcategoría <input name="subcategoria" maxlength="40" placeholder="Opcional"></label>
+      </div>
+    </div>
+    <div id="carga-2" class="carga-paso" hidden>
+      <div class="carga-todos">
+        <label>Ganancia para todos (%) <input name="ganancia" type="number" step="1" inputmode="numeric" value="150"></label>
+        <label>Redondear a <select name="redondeo"><option value="1">Sin redondear</option><option value="10">$ 10</option><option value="50" selected>$ 50</option><option value="100">$ 100</option></select></label>
+        <label>Material <input name="material" maxlength="40" list="lista-materiales" placeholder="Ej.: PLA"></label>
+        <button class="btn sec" type="button" id="carga-aplicar">Aplicar a todos</button>
+      </div>
+      <p class="carga-resumen" id="carga-resumen" aria-live="polite"></p>
+      <div class="carga-tabla"><table class="tabla"><thead><tr><th><span class="sr">Foto</span></th><th>Nombre</th><th class="num">Costo</th><th class="num">Ganancia %</th><th class="num">Precio</th><th class="num">Stock</th><th><span class="sr">Quitar</span></th></tr></thead><tbody id="carga-filas"></tbody></table></div>
+    </div>
+    <p class="error" id="carga-error" aria-live="polite"></p>
+    <footer><button class="btn sec" type="button" id="carga-volver">Cancelar</button><button class="btn" value="ok" id="carga-ok">Siguiente: precios y stock</button></footer>
+  </form>
+</dialog>
+
 <dialog id="d-producto" class="ventana ancha" aria-labelledby="d-producto-t">
   <form method="dialog" id="f-producto" novalidate>
     <header><h2 id="d-producto-t">Producto</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
@@ -594,11 +623,11 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.72"></script>
-<script src="../productos.js?v=0.72"></script>
-<script src="../catalogo.js?v=0.72"></script>
-<script src="datos.js?v=0.72"></script>
-<script src="excel.js?v=0.72"></script>
-<script src="admin.js?v=0.72"></script>
+<script src="../config.js?v=0.73"></script>
+<script src="../productos.js?v=0.73"></script>
+<script src="../catalogo.js?v=0.73"></script>
+<script src="datos.js?v=0.73"></script>
+<script src="excel.js?v=0.73"></script>
+<script src="admin.js?v=0.73"></script>
 </body>
 </html>
