@@ -535,8 +535,7 @@ async function lote(req, env, quien) {
   // Quien no ve el costo (feria, ventas) igual guarda productos al mover stock: se conserva el costo guardado.
   const sinCosto = algunoDe(quien, VE_COSTO) ? [] : set.filter((x) => x.col === "productos");
   if (sinCosto.length) {
-    const { results } = await env.DB.prepare(`SELECT id, data FROM docs WHERE col = 'productos' AND id IN (${sinCosto.map(() => "?").join(",")})`)
-      .bind(...sinCosto.map((x) => String(x.id))).all();
+    const results = await docsPorId(env, "productos", sinCosto.map((x) => String(x.id)));
     const costo = new Map(results.map((r) => [r.id, JSON.parse(r.data).costo]));
     for (const x of sinCosto) { const { costo: _, ...resto } = x.data; x.data = costo.get(String(x.id)) ? { ...resto, costo: costo.get(String(x.id)) } : resto; }
   }
@@ -607,8 +606,16 @@ async function ultimoPush(req, env) {
   return json({ ok: true, aviso: r ? JSON.parse(r.ultimo) : null });
 }
 async function estadosDe(env, ids) {
-  const { results } = await env.DB.prepare(`SELECT id, data FROM docs WHERE col = 'ventas' AND id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all();
-  return new Map(results.map((r) => [r.id, JSON.parse(r.data).estado]));
+  return new Map((await docsPorId(env, "ventas", ids)).map((r) => [r.id, JSON.parse(r.data).estado]));
+}
+// D1 acepta hasta 100 valores por consulta: un lote grande (hasta 500) se busca de a 90.
+async function docsPorId(env, col, ids) {
+  const filas = [];
+  for (let i = 0; i < ids.length; i += 90) {
+    const parte = ids.slice(i, i + 90);
+    filas.push(...(await env.DB.prepare(`SELECT id, data FROM docs WHERE col = ? AND id IN (${parte.map(() => "?").join(",")})`).bind(col, ...parte).all()).results);
+  }
+  return filas;
 }
 function textoAviso(v) {
   const n = `N° ${v.numero}`;

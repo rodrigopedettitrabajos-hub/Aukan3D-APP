@@ -80,6 +80,11 @@ const cambios = (await pedir("/api/admin/datos?desde=" + desde, { token })).j;
 assert.deepStrictEqual(cambios.gastos.map((g) => g.id).sort(), ["gt" + unico, "gviejo"]);
 assert.strictEqual(cambios.gastos.find((g) => g.id === "gviejo")._borrado, true);
 assert.strictEqual(cambios.productos.length, 0);
+// Lote grande (más de 100 ventas): las consultas por id van de a partes (D1 acepta hasta 100 valores).
+const muchas = Array.from({ length: 150 }, (_, i) => ({ col: "ventas", id: `tz${unico}-${i}`, data: { numero: `tz${unico}-${i}`, estado: 4, items: [], pagos: [], fecha: "2026-01-01" } }));
+assert.ok((await pedir("/api/admin/lote", { token, body: { set: muchas } })).j.ok);
+assert.ok((await pedir("/api/admin/lote", { token, body: { set: muchas.map((x) => ({ ...x, data: { ...x.data, estado: 3 } })) } })).j.ok);
+assert.ok((await pedir("/api/admin/lote", { token, body: { del: muchas.map(({ col, id }) => ({ col, id })) } })).j.ok);
 assert.strictEqual((await pedir("/api/admin/lote", { token, body: { set: [{ col: "secreta", id: "1", data: {} }] } })).r.status, 400);
 assert.strictEqual((await pedir("/api/admin/lote", { token, body: { set: [{ col: "gastos", id: "../x", data: {} }] } })).r.status, 400);
 
