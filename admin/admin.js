@@ -280,7 +280,7 @@ function tabla(cabeza, filas, vacio, clase = "") {
 }
 const td = (t, cls = "") => el("td", { className: cls }, t);
 // N° de operación de Mercado Pago de un pago: se toca para copiarlo y buscarlo en Mercado Pago (Actividad).
-const opMp = (id, texto = `Op. MP ${id}`) => el("button", { type: "button", className: "op-mp", textContent: texto, title: "Copiar el número de operación de Mercado Pago",
+const opMp = (id, texto = `MP ${id}`) => el("button", { type: "button", className: "op-mp", textContent: texto, title: "Copiar el número de operación de Mercado Pago",
   onclick: async (e) => { e.stopPropagation(); const b = e.currentTarget; try { await navigator.clipboard.writeText(String(id)); b.textContent = "Copiado"; } catch { b.textContent = String(id); } setTimeout(() => { b.textContent = texto; }, 1500); } });
 const opsMp = (v) => v.pagos.filter((p) => p.mp).map((p) => opMp(p.mp));
 function filaVenta(v, extra = []) {

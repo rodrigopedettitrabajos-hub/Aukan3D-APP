@@ -124,7 +124,7 @@ button { cursor: pointer; }
 .tabla th { text-align: left; font-weight: 600; font-size: 12px; color: var(--muted); padding: 12px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .tabla td { padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .tabla tbody tr:last-child td { border-bottom: 0; }
-.tabla td > span:not(.pill, .acciones, .stock) { display: grid; }
+.tabla td > span:not(.pill, .acciones, .stock, .estado-mp) { display: grid; }
 .tabla small { color: var(--muted); font-size: 12px; }
 .tabla .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tabla tfoot td { font-weight: 700; border-top: 1px solid var(--line); border-bottom: 0; }
@@ -418,7 +418,7 @@ legend { padding: 0 6px; font-weight: 600; }
 .qr-caja #qr-estado.pago-ok { color: var(--ok); font-weight: 700; font-size: 16px; }
 .qr-caja a { color: var(--brand-ink); font-size: 14px; }
 /* N° de operación de Mercado Pago (se toca para copiar) */
-.estado-mp { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 4px; }
-.op-mp { font: inherit; font-size: 11px; color: var(--muted, #9aa0a6); background: none; border: 1px dashed currentColor; border-radius: 6px; padding: 1px 6px; cursor: copy; white-space: nowrap; }
-.op-mp:hover, .op-mp:focus-visible { color: inherit; }
+.estado-mp { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.op-mp { font: inherit; font-size: 11px; color: var(--muted); background: none; border: 0; padding: 0 2px; cursor: copy; white-space: nowrap; text-decoration: underline dotted; text-underline-offset: 2px; }
+.op-mp:hover, .op-mp:focus-visible { color: var(--ink); }
 .linea .op-mp { margin-left: auto; align-self: center; }
