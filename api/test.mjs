@@ -303,4 +303,14 @@ assert.ok(vCupon.cupon === cod && vCupon.items.at(-1).id === "descuento" && vCup
 const otra = await pedir("/api/pedidos", { body: { cliente: cliCupon, items: [{ id: idProd, cant: 1 }], cupon: cod }, ip: "10.5.0." + (unico % 250) });
 assert.ok(otra.r.status === 400 && otra.j.error === "cupon" && otra.j.motivo === "agotado", otra.t);
 
+// "Avisame cuando esté listo": se guarda para el panel (con WhatsApp) y la tienda solo ve qué productos tienen stock.
+const avisame = (x) => pedir("/api/avisos", { body: { id: idProd, nombre: "Ana", whatsapp: "+598 7" + unico, ...x }, ip: "10.4.0." + (unico % 250) });
+assert.strictEqual((await avisame({ whatsapp: "abc" })).j.error, "datos");
+assert.strictEqual((await avisame({ id: "no-existe" })).j.error, "producto");
+assert.ok((await avisame()).j.ok);
+const avisos = (await pedir("/api/admin/datos", { token })).j.avisos.filter((a) => a.producto === idProd && a.whatsapp === "+598 7" + unico);
+assert.ok(avisos.length === 1 && avisos[0].nombre === "Ana" && !avisos[0].avisado, JSON.stringify(avisos));
+const tienda = (await pedir("/api/tienda")).j;
+assert.ok(Array.isArray(tienda.listos) && !JSON.stringify(tienda).includes("+598 7" + unico));
+
 console.log("api ok");

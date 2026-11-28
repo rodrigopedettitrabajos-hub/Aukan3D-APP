@@ -15,6 +15,7 @@ const pesos = (n) => (n < 0 ? "−$" : "$") + Math.abs(n).toLocaleString("es-UY"
 
 let productos = [];
 let resenas = []; // reseñas públicas (llegan con /api/tienda)
+let listos = new Set(); // ids con stock hecho: entrega inmediata (llegan con /api/tienda)
 const filtro = { cat: "Todo", sub: "", q: "", orden: "", fav: false };
 const carrito = new Map(); // id -> cantidad (se guarda en el dispositivo: no se pierde al recargar)
 const MAX = 99; // mismo tope por producto que el servidor (api: MAX_CANT)
@@ -51,6 +52,9 @@ async function cargar() {
   $("#n-modelos").textContent = productos.length;
   pintar();
   if (location.hash) mostrarVista();
+  // Enlace directo a un producto (?p=ID), por ejemplo el que manda el panel al avisar que hay stock.
+  const directo = productos.find((p) => p.id === new URLSearchParams(location.search).get("p"));
+  if (directo) abrirDetalle(directo);
 }
 
 function opcion(texto, activo, elegir) {
@@ -216,6 +220,7 @@ function tarjeta(p) {
     el("div", { className: "info" },
       el("span", { className: "sub", textContent: p.subcategoria || p.categoria }),
       el("h3", { textContent: p.nombre }),
+      listos.has(p.id) ? el("span", { className: "card-listo", textContent: "Listo para entregar" }) : "",
       (() => { const t = resumenResenas(resenasDe(p)); return t ? el("span", { className: "card-estrellas", ariaLabel: `${coma(t.prom)} de 5 estrellas, ${t.n} ${t.n === 1 ? "reseña" : "reseñas"}`, textContent: `★ ${coma(t.prom)} (${t.n})` }) : ""; })(),
       el("div", { className: "row" },
         el("strong", { className: "precio", textContent: precioTexto(p) }),
@@ -223,6 +228,14 @@ function tarjeta(p) {
           : el("a", { className: "add", href: waConsulta(p), target: "_blank", rel: "noopener", textContent: "Consultar" }))));
 }
 
+// Entrega inmediata (hay stock hecho) o a pedido con "Avisame".
+function pintarPlazo(p) {
+  const listo = listos.has(p.id);
+  $("#detalle-plazo").hidden = !p.precio;
+  $("#detalle-plazo").textContent = listo ? "Listo para entregar · ya lo tenemos hecho" : "Se imprime a pedido · listo en 3 o más días hábiles";
+  $("#detalle-plazo").classList.toggle("listo", listo);
+  $("#avisame").hidden = listo || !cfg.pedidosUrl;
+}
 function abrirDetalle(p) {
   enDetalle = p;
   $("#detalle-foto").replaceChildren(...carrusel(p));
@@ -230,7 +243,10 @@ function abrirDetalle(p) {
   $("#detalle-nombre").textContent = p.nombre;
   $("#detalle-precio").textContent = precioTexto(p);
   $("#detalle-datos").textContent = [p.tamano, p.material].filter(Boolean).join(" · ");
-  $("#detalle-plazo").hidden = !p.precio;
+  pintarPlazo(p);
+  $("#avisame").open = false; $("#avisame-msj").textContent = "";
+  const yo = sesion(), fa = $("#f-avisame");
+  fa.hidden = false; fa.nombre.value = yo?.nombre || ""; fa.whatsapp.value = yo?.whatsapp || "";
   pintarResenasDetalle(p);
   pintarDetalle();
   $("#detalle").showModal();
@@ -677,6 +693,18 @@ document.addEventListener("input", (e) => e.target.setCustomValidity?.(""), true
 document.addEventListener("click", (e) => {
   e.target.closest?.("button[type=submit], form button:not([type])")?.form?.querySelectorAll("input, select, textarea").forEach((i) => i.setCustomValidity(""));
 }, true);
+$("#f-avisame").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target, msj = $("#avisame-msj"), datos = Object.fromEntries(new FormData(f));
+  if (!f.reportValidity() || !enDetalle) return;
+  f.querySelector("button").disabled = true;
+  msj.className = "cupon-msj"; msj.textContent = "Enviando…";
+  let r = {};
+  try { r = await (await fetch(cfg.pedidosUrl.replace("/api/pedidos", "/api/avisos"), { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ ...datos, id: enDetalle.id }) })).json(); } catch { /* sin conexión */ }
+  f.querySelector("button").disabled = false;
+  if (!r.ok) { msj.className = "cupon-msj mal"; msj.textContent = r.error === "limite" ? "Probaste muchas veces. Esperá unos minutos." : r.error === "datos" ? "Revisá el nombre y el WhatsApp." : "No pudimos guardarlo. Probá de nuevo."; return; }
+  f.hidden = true; msj.textContent = `¡Listo! Te escribimos al ${datos.whatsapp} cuando tengamos ${enDetalle.nombre} hecho.`;
+});
 $("#cupon-ok").addEventListener("click", aplicarCupon);
 $("#cupon-c").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); aplicarCupon(); } });
 $("#cupon-quitar").addEventListener("click", () => quitarCupon());
@@ -684,7 +712,9 @@ cargar();
 // Envíos y datos del negocio que se editan en el panel.
 if (cfg.apiUrl) fetch(cfg.catalogoCsvUrl.replace("/api/productos.csv", "/api/tienda")).then((r) => r.json()).then((d) => {
   if (!d.ok) return;
-  if (Array.isArray(d.resenas) && d.resenas.length) { resenas = d.resenas; pintarOpiniones(); if (productos.length) pintar(); }
+  if (Array.isArray(d.listos)) { listos = new Set(d.listos.map(String)); if ($("#detalle").open && enDetalle) pintarPlazo(enDetalle); }
+  if (Array.isArray(d.resenas) && d.resenas.length) { resenas = d.resenas; pintarOpiniones(); }
+  if (productos.length && (resenas.length || listos.size)) pintar();
   const t = textosEnvio(d);
   $("#faq-envios").textContent = t.faq; $("#ayuda-entrega").textContent = t.entrega;
   $("#envio-info").textContent = t.info; $("#envio-info").hidden = !t.info;
