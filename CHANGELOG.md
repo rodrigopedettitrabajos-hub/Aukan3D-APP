@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.45 · 2026-11-28
+- Panel: los pagos de Mercado Pago muestran su número de operación (en la lista de ventas, en el detalle del pedido y en la hoja impresa). Se toca para copiarlo y buscarlo en Mercado Pago, en Actividad.
+
 ## V0.44 · 2026-11-28
 - Tienda: el botón de Mercado Pago abre el pago en la misma pestaña, y al terminar vuelve ahí (a Mis pedidos) en vez de dejar una pestaña nueva.
 

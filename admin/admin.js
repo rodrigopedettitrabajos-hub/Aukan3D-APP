@@ -279,12 +279,16 @@ function tabla(cabeza, filas, vacio, clase = "") {
     el("tbody", {}, ...filas)));
 }
 const td = (t, cls = "") => el("td", { className: cls }, t);
+// N° de operación de Mercado Pago de un pago: se toca para copiarlo y buscarlo en Mercado Pago (Actividad).
+const opMp = (id, texto = `Op. MP ${id}`) => el("button", { type: "button", className: "op-mp", textContent: texto, title: "Copiar el número de operación de Mercado Pago",
+  onclick: async (e) => { e.stopPropagation(); const b = e.currentTarget; try { await navigator.clipboard.writeText(String(id)); b.textContent = "Copiado"; } catch { b.textContent = String(id); } setTimeout(() => { b.textContent = texto; }, 1500); } });
+const opsMp = (v) => v.pagos.filter((p) => p.mp).map((p) => opMp(p.mp));
 function filaVenta(v, extra = []) {
   const tr = el("tr", { className: "clic", tabIndex: 0, ariaLabel: `Abrir pedido ${v.numero}` },
     td(el("span", {}, el("b", { textContent: `N° ${v.numero}` }), el("small", { textContent: ORIGEN[v.origen] || "En persona" }))),
     td(fecha(v.fecha)), td(cliente(v.cliente).nombre),
     td(el("span", {}, plata(totalVenta(v), v.moneda), saldo(v) ? el("small", { className: "saldo-mini ambar", textContent: `Saldo ${plata(saldo(v), v.moneda)}` }) : ""), "num"),
-    td(saldo(v) ? plata(saldo(v), v.moneda) : "—", "num" + (saldo(v) ? " ambar" : "")), td(pastilla(v)), ...extra);
+    td(saldo(v) ? plata(saldo(v), v.moneda) : "—", "num" + (saldo(v) ? " ambar" : "")), td(opsMp(v).length ? el("span", { className: "estado-mp" }, pastilla(v), ...opsMp(v)) : pastilla(v)), ...extra);
   tr.addEventListener("click", (e) => { if (!e.target.closest("button, a")) abrirDetalle(v.numero); });
   tr.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target === tr) abrirDetalle(v.numero); });
   return tr;
@@ -340,7 +344,7 @@ function imprimirPedido(numero, formato = leerLocal(FORMATO) || "a4", extra = {}
     el("table", {}, el("tbody", {}, ...v.items.map((i) => el("tr", {},
       td(`${i.cant} x ${i.nombre}`), td(plata(i.precio * i.cant, v.moneda), "num"))))),
     linea("Total", plata(totalVenta(v), v.moneda)),
-    ...v.pagos.map((p) => linea(`Pago ${medio(p.medio)}`, plata(p.monto, v.moneda))),
+    ...v.pagos.map((p) => linea(`Pago ${medio(p.medio)}${p.mp ? ` · Op. ${p.mp}` : ""}`, plata(p.monto, v.moneda))),
     extra.recibido ? linea("Recibido", plata(extra.recibido, v.moneda)) : "", extra.recibido > totalVenta(v) ? linea("Vuelto", plata(extra.recibido - totalVenta(v), v.moneda)) : "",
     linea("Saldo", saldo(v) ? plata(saldo(v), v.moneda) : "Pagado"),
     v.nota ? el("p", { className: "nota", textContent: `Nota: ${v.nota}` }) : "",
@@ -383,7 +387,7 @@ function abrirDetalle(numero) {
         c.whatsapp ? el("p", { className: "sub", textContent: `WhatsApp ${c.whatsapp}` }) : "", c.zona ? el("p", { className: "sub", textContent: c.zona }) : "",
         c.whatsapp ? el("a", { className: "btn sec chico", href: `https://wa.me/${waDe(c.whatsapp)}?text=${encodeURIComponent(msg)}`, target: "_blank", rel: "noopener", textContent: "Escribirle por WhatsApp" }) : ""),
       el("div", {}, el("h3", { textContent: "Pagos" }),
-        ...(v.pagos.length ? v.pagos.map((p) => el("p", { className: "linea", textContent: `${fecha(p.fecha)} · ${medio(p.medio)}` }, el("b", { textContent: plata(p.monto, v.moneda) })))
+        ...(v.pagos.length ? v.pagos.map((p) => el("p", { className: "linea", textContent: `${fecha(p.fecha)} · ${medio(p.medio)}` }, p.mp ? opMp(p.mp) : "", el("b", { textContent: plata(p.monto, v.moneda) })))
           : [el("p", { className: "sub", textContent: "Todavía no pagó nada." })]),
         el("p", { className: "linea total-linea", textContent: "Saldo" }, el("b", { className: saldo(v) ? "ambar" : "verde", textContent: saldo(v) ? plata(saldo(v), v.moneda) : "Pagado" })),
         saldo(v) ? el("div", { className: "acciones-pago" }, el("button", { type: "button", className: "btn chico", textContent: "Registrar pago", onclick: () => abrirPago(numero) }),
