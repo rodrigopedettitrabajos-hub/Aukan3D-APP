@@ -2,6 +2,11 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.41 · 2026-11-28
+- El pedido de la tienda se paga antes de entrar: con link de Mercado Pago queda en espera y no aparece en el panel. Cuando Mercado Pago confirma el pago entra como pedido nuevo (campana y aviso), ya en Seña pagada o Pagado. Si no hay credencial de Mercado Pago, el pedido entra igual para no perderlo.
+- Tienda: botón "Hacer pedido y pagar" y pantalla "Último paso: pagá con Mercado Pago".
+- Panel: un pedido con seña que ya no tiene saldo se muestra "Pagado" (antes seguía en "Seña pagada").
+
 ## V0.40 · 2026-11-28
 - Mercado Pago en el panel (Administración → Mercado Pago, igual para admin y dev): estado de la cuenta, modo prueba o producción, carga de la credencial (queda solo en el servidor) y últimos 30 cobros cruzados con su pedido.
 - "Cobrar con QR" en el detalle del pedido: QR de Mercado Pago por la seña (50 %) o el total/saldo. Cuando Mercado Pago confirma, el pago se anota solo y la ventana muestra "¡Pago recibido!".

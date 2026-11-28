@@ -178,6 +178,9 @@ async function nuevoPedido(req, env) {
   const entrega = limpio(c.entrega, 40) + (c.envio ? " · " + limpio(c.envio, 160) : "");
   const venta = { numero: String(numero), fecha: new Date(ahora).toISOString(), origen: "web", cliente: cli.id, vendedor: "", moneda: "UYU", items, pagos: [],
     estado: 0, sena, entrega, nota: limpio(c.comentario, 500), pago };
+  // Con link de Mercado Pago el pedido espera el pago: no aparece en el panel hasta que Mercado Pago avisa que se acreditó.
+  // Sin link (no hay credencial o Mercado Pago no respondió) entra igual, para no perderlo, y el pago se coordina.
+  if (pago) venta.espera = true;
   await guardarDoc(env, "ventas", numero, venta, ahora).run();
   return json({ ok: true, total, aPagar, sena, numero, pago });
 }
@@ -275,6 +278,7 @@ async function anotarPagoMp(env, numero, x) {
   const medio = (medios.find((m) => /mercado ?pago/i.test(m.nombre)) || { id: "m3" }).id;
   v.pagos.push({ fecha: x.date_approved || x.date_created || new Date().toISOString(), medio, monto, mp: String(x.id) });
   if (v.estado === 0) v.estado = 1;
+  delete v.espera; // pagado: ahora sí entra al panel (llega como pedido nuevo)
   await guardarDoc(env, "ventas", String(v.numero), v).run();
   return true;
 }
@@ -347,7 +351,11 @@ async function datos(env, desde) {
   const { results } = await env.DB.prepare("SELECT col, data, actualizado FROM docs WHERE actualizado >= ?").bind(desde).all();
   const r = Object.fromEntries(COLECCIONES.map((c) => [c, []]));
   let hasta = desde;
-  for (const x of results) { if (r[x.col]) r[x.col].push(JSON.parse(x.data)); hasta = Math.max(hasta, x.actualizado); }
+  for (const x of results) {
+    const d = JSON.parse(x.data);
+    if (r[x.col] && !d.espera) r[x.col].push(d); // pedidos de la tienda sin pagar: el panel no los ve hasta que se pagan
+    hasta = Math.max(hasta, x.actualizado);
+  }
   return json({ ok: true, hasta, ...r }); // >= desde: puede repetir algo ya visto; el panel lo reemplaza por id
 }
 // Cambios del panel en un solo envío: { set: [{col, id, data}], del: [{col, id}] }.
