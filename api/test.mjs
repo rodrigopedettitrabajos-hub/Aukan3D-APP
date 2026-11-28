@@ -159,4 +159,40 @@ assert.ok(estMp.estados[numMp] === 1 && estMp.pagos[numMp].length === 1 && estMp
 assert.strictEqual((await mp({ token: "" })).j.configurado, false);
 mock.close();
 
+// Accesos: cuentas creadas desde el panel, con permisos y base.
+const cu = (body, tok = token, ruta = "/api/admin/cuentas") => pedir(ruta, { token: tok, body });
+const usu = "probador" + unico.slice(-5);
+const PROBADOR = ["ventas", "feria", "pendientes", "clientes", "productos", "reportes", "usuarios", "medios"];
+assert.strictEqual((await cu({ nueva: true, usuario: "dev", nombre: "x" })).j.error, "reservado");
+assert.strictEqual((await cu({ nueva: true, usuario: "a b", nombre: "x" })).j.error, "usuario");
+const alta = (await cu({ nueva: true, usuario: usu, nombre: "Probador Uno", email: "uno@correo.uy", entorno: "pruebas", permisos: [...PROBADOR, "base"] })).j;
+assert.ok(alta.ok && alta.clave.length === 12 && !alta.cuenta.hash, JSON.stringify(alta));
+assert.ok(!alta.cuenta.permisos.includes("base")); // el admin no tiene "base": no puede darlo
+assert.strictEqual((await cu({ nueva: true, usuario: usu, nombre: "Otra" })).j.error, "existe");
+const lista = (await pedir("/api/admin/cuentas", { token })).j;
+assert.ok(lista.cuentas.some((c) => c.usuario === usu) && !lista.t?.includes("pbkdf2") && !JSON.stringify(lista).includes("pbkdf2"));
+const ipP = "10.7." + (unico % 250) + ".1";
+const lp = (await pedir("/api/login", { body: { usuario: usu, clave: alta.clave }, ip: ipP })).j;
+assert.ok(lp.ok && lp.cambiarClave && lp.pruebas && !lp.real && lp.permisos.length === PROBADOR.length, JSON.stringify(lp));
+// Solo pruebas: la base real le dice que no; en pruebas entra, sin Mercado Pago, base ni accesos.
+assert.strictEqual((await pedir("/api/admin/datos", { token: lp.token })).j.error, "entorno");
+assert.strictEqual((await pedir("/api/admin/datos?e=pruebas", { token: lp.token })).r.status, 200);
+for (const r of ["/api/admin/mp?e=pruebas", "/api/admin/estado?e=pruebas", "/api/admin/cuentas?e=pruebas"]) assert.strictEqual((await pedir(r, { token: lp.token })).j.error, "permiso", r);
+// Cambio de clave propio.
+assert.strictEqual((await cu({ actual: "mala", nueva: "nueva-clave-123" }, lp.token, "/api/admin/mi-clave?e=pruebas")).j.error, "actual");
+assert.strictEqual((await cu({ actual: alta.clave, nueva: "corta" }, lp.token, "/api/admin/mi-clave?e=pruebas")).j.error, "corta");
+assert.ok((await cu({ actual: alta.clave, nueva: "nueva-clave-123" }, lp.token, "/api/admin/mi-clave?e=pruebas")).j.ok);
+const lp2 = (await pedir("/api/login", { body: { usuario: usu, clave: "nueva-clave-123" }, ip: ipP })).j;
+assert.ok(lp2.ok && !lp2.cambiarClave);
+// Sin permiso de Medios no escribe medios; con Ventas sí escribe ventas.
+await cu({ usuario: usu, nombre: "Probador Uno", entorno: "pruebas", permisos: ["ventas"] });
+assert.strictEqual((await pedir("/api/admin/lote?e=pruebas", { token: lp2.token, body: { set: [{ col: "medios", id: "zz", data: { id: "zz" } }] } })).j.error, "permiso");
+// Reinicio de clave y desactivar: la sesión abierta deja de valer al instante.
+const re = (await cu({ usuario: usu }, token, "/api/admin/cuentas/clave")).j;
+assert.ok(re.ok && re.clave.length === 12);
+assert.strictEqual((await pedir("/api/login", { body: { usuario: usu, clave: "nueva-clave-123" }, ip: ipP })).r.status, 401);
+await cu({ usuario: usu, nombre: "Probador Uno", entorno: "pruebas", permisos: PROBADOR, activo: false });
+assert.strictEqual((await pedir("/api/admin/datos?e=pruebas", { token: lp2.token })).r.status, 401);
+assert.strictEqual((await pedir("/api/login", { body: { usuario: usu, clave: re.clave }, ip: ipP })).r.status, 401);
+
 console.log("api ok");

@@ -423,3 +423,16 @@ legend { padding: 0 6px; font-weight: 600; }
 .op-mp { font: inherit; font-size: 11px; color: var(--muted); background: none; border: 0; padding: 0 2px; cursor: copy; white-space: nowrap; text-decoration: underline dotted; text-underline-offset: 2px; }
 .op-mp:hover, .op-mp:focus-visible { color: var(--ink); }
 .linea .op-mp { margin-left: auto; align-self: center; }
+/* Accesos */
+.permisos { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 12px 0; }
+.permisos legend { padding: 0 6px; font-weight: 600; font-size: 14px; }
+.permisos-grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 12px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.check input { width: 18px; height: 18px; margin: 0; }
+.check input:disabled + * , .check:has(input:disabled) { color: var(--muted); }
+.clave-temporal { font: 600 24px/1.2 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .08em; text-align: center; padding: 14px; border: 1px dashed var(--line); border-radius: 12px; user-select: all; }
+.t-accesos td small { display: block; color: var(--muted); font-size: 12px; }
+.cabeza .acciones-form { margin-top: 0; }
+.aviso-wa { border: 1px solid #25d366; background: rgb(37 211 102 / .08); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; display: grid; gap: 6px; justify-items: start; }
+.aviso-wa p { margin: 0; }
+.aviso-wa .btn { background: #1a9e50; border-color: #1a9e50; color: #fff; }

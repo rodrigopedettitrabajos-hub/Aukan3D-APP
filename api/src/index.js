@@ -41,16 +41,24 @@ async function rutear(req, env, url) {
   if (m === "POST" && p === "/api/login") return login(req, env);
   if (m === "POST" && p === "/api/mp/aviso") return avisoMp(req, env, url);
   if (p.startsWith("/api/admin/")) {
-    const quien = await tokenValido(req, env);
+    const quien = await sesionDe(req, env);
     if (!quien) return json({ ok: false, error: "sesion" }, 401);
-    if (env.PRUEBAS && quien !== "dev") return json({ ok: false, error: "entorno" }, 403); // solo el usuario dev entra a pruebas
+    if (!(env.PRUEBAS ? quien.pruebas : quien.real)) return json({ ok: false, error: "entorno" }, 403);
+    const no = () => json({ ok: false, error: "permiso" }, 403);
+    if (m === "POST" && p === "/api/admin/mi-clave") return cambiarMiClave(req, env, quien);
     if (m === "GET" && p === "/api/admin/datos") return datos(env, Number(url.searchParams.get("desde")) || 0);
-    if (m === "POST" && p === "/api/admin/lote") return lote(req, env);
+    if (m === "POST" && p === "/api/admin/lote") return lote(req, env, quien);
     if (m === "POST" && p === "/api/admin/numero") return json({ ok: true, numero: await contador(env) });
-    if (m === "GET" && p === "/api/admin/estado") return quien === "dev" ? estadoBases(env) : json({ ok: false, error: "solo dev" }, 403);
+    if (m === "GET" && p === "/api/admin/estado") return quien.permisos.includes("base") ? estadoBases(env) : no();
+    if (p.startsWith("/api/admin/mp/cobro")) { if (!puedeCobrar(quien)) return no(); }
+    else if (p.startsWith("/api/admin/mp") && !quien.permisos.includes("mp")) return no();
     if (m === "GET" && p === "/api/admin/mp") return estadoMp(env);
     if (m === "POST" && p === "/api/admin/mp") return guardarMp(req, env);
     if (m === "POST" && p === "/api/admin/mp/cobro") return cobroMp(req, env);
+    if (p.startsWith("/api/admin/cuentas") && !quien.permisos.includes("accesos")) return no();
+    if (m === "GET" && p === "/api/admin/cuentas") return listarCuentas(env);
+    if (m === "POST" && p === "/api/admin/cuentas") return guardarCuenta(req, env, quien);
+    if (m === "POST" && p === "/api/admin/cuentas/clave") return reiniciarClave(req, env);
   }
   return json({ ok: false, error: "no existe" }, 404);
 }
@@ -328,26 +336,122 @@ function mismo(a, b) { // comparación de tiempo constante
   for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return d === 0;
 }
-// Cuentas: la del negocio (ADMIN_USUARIO / ADMIN_CLAVE_HASH) y "dev" (DEV_CLAVE_HASH), que además puede usar la base de pruebas.
+// Cuentas del panel:
+// - Fijas (secretos del Worker): la del negocio (ADMIN_USUARIO / ADMIN_CLAVE_HASH) y "dev" (DEV_CLAVE_HASH, entra también a pruebas).
+// - Creadas desde el panel (pantalla Accesos): tabla `cuentas` de la base REAL, con permisos por sección y en qué base pueden entrar.
+// Permisos: secciones del panel. "base", "mp" y "accesos" son de administración; el resto, del día a día.
+export const PERMISOS = ["ventas", "feria", "pendientes", "clientes", "productos", "reportes", "usuarios", "medios", "mp", "accesos", "base"];
+// Qué permiso hace falta para escribir cada colección (alcanza con uno de la lista).
+const ESCRIBE = { ventas: ["ventas", "feria", "pendientes"], clientes: ["clientes", "ventas", "feria"], productos: ["productos", "ventas", "feria"],
+  gastos: ["reportes"], medios: ["medios"], usuarios: ["usuarios"], cajas: ["feria"] };
+const puedeEscribir = (q, col) => (ESCRIBE[col] || []).some((x) => q.permisos.includes(x));
+const puedeCobrar = (q) => ["ventas", "pendientes"].some((x) => q.permisos.includes(x));
+const FIJAS = (env) => [
+  { usuario: String(env.ADMIN_USUARIO || "").toLowerCase(), hash: env.ADMIN_CLAVE_HASH, nombre: "Administrador", permisos: PERMISOS.filter((x) => x !== "base"), real: true, pruebas: false },
+  { usuario: "dev", hash: env.DEV_CLAVE_HASH, nombre: "Dev", permisos: PERMISOS, real: true, pruebas: true },
+].filter((c) => c.usuario && c.hash);
+async function tablaCuentas(env) {
+  const db = baseAjustes(env);
+  await db.prepare("CREATE TABLE IF NOT EXISTS cuentas (usuario TEXT PRIMARY KEY, data TEXT NOT NULL, actualizado INTEGER NOT NULL)").run();
+  return db;
+}
+async function cuentaGuardada(env, usuario) {
+  const r = await (await tablaCuentas(env)).prepare("SELECT data FROM cuentas WHERE usuario = ?").bind(usuario).first();
+  return r ? { usuario, ...JSON.parse(r.data) } : null;
+}
+const entornos = (c) => ({ real: c.entorno !== "pruebas", pruebas: c.entorno !== "real" });
+async function buscarCuenta(env, usuario) {
+  const fija = FIJAS(env).find((c) => mismo(usuario, c.usuario));
+  if (fija) return { ...fija, fija: true };
+  const c = await cuentaGuardada(env, usuario);
+  return c && c.activo ? { ...c, ...entornos(c) } : null;
+}
 async function login(req, env) {
   const ip = req.headers.get("CF-Connecting-IP") || "local";
   if (!(await pasaLimite(env, "login:" + ip, 10, 900_000))) return json({ ok: false, error: "limite" }, 429);
   let b;
   try { b = await leerJson(req, 2000); } catch { return json({ ok: false, error: "invalido" }, 400); }
   const usuario = limpio(b.usuario, 60).toLowerCase();
-  const cuentas = [[String(env.ADMIN_USUARIO || "").toLowerCase(), env.ADMIN_CLAVE_HASH], ["dev", env.DEV_CLAVE_HASH]];
-  const cuenta = cuentas.find(([u, hash]) => u && hash && mismo(usuario, u));
+  const cuenta = usuario ? await buscarCuenta(env, usuario) : null;
   // Sin cuenta igual se calcula un hash, para que la respuesta tarde lo mismo.
-  const claveOk = await claveCorrecta(String(b.clave || ""), cuenta ? cuenta[1] : env.ADMIN_CLAVE_HASH);
+  const claveOk = await claveCorrecta(String(b.clave || ""), cuenta ? cuenta.hash : env.ADMIN_CLAVE_HASH);
   if (!cuenta || !claveOk) return json({ ok: false, error: "credenciales" }, 401);
-  const datos = b64url(texto(JSON.stringify({ u: cuenta[0], exp: Date.now() + 12 * 3600_000 })));
-  return json({ ok: true, usuario: cuenta[0], token: `${datos}.${await hmac(env.FIRMA, datos)}` });
+  const datos = b64url(texto(JSON.stringify({ u: cuenta.usuario, exp: Date.now() + 12 * 3600_000 })));
+  return json({ ok: true, usuario: cuenta.usuario, nombre: cuenta.nombre, permisos: cuenta.permisos, real: cuenta.real, pruebas: cuenta.pruebas,
+    cambiarClave: !!cuenta.cambiarClave, token: `${datos}.${await hmac(env.FIRMA, datos)}` });
 }
 // Devuelve el usuario del token, o "" si no es válido o venció.
 async function tokenValido(req, env) {
   const [datos, firma] = (req.headers.get("Authorization") || "").replace(/^Bearer /, "").split(".");
   if (!datos || !firma || !env.FIRMA || !mismo(await hmac(env.FIRMA, datos), firma)) return "";
   try { const t = JSON.parse(new TextDecoder().decode(deB64(datos))); return t.exp > Date.now() ? String(t.u) : ""; } catch { return ""; }
+}
+// La cuenta se relee en cada pedido: si la desactivan o le cambian permisos, vale al instante.
+async function sesionDe(req, env) {
+  const u = await tokenValido(req, env);
+  return u ? buscarCuenta(env, u) : null;
+}
+const sinClave = ({ hash, ...c }) => c;
+async function listarCuentas(env) {
+  const { results } = await (await tablaCuentas(env)).prepare("SELECT usuario, data FROM cuentas ORDER BY usuario").all();
+  return json({ ok: true, permisos: PERMISOS, cuentas: results.map((r) => sinClave({ usuario: r.usuario, ...JSON.parse(r.data) })) });
+}
+// Contraseña temporal: se muestra una sola vez y al entrar pide cambiarla.
+function claveTemporal() {
+  const letras = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789", b = crypto.getRandomValues(new Uint8Array(12));
+  return Array.from(b, (x) => letras[x % letras.length]).join("");
+}
+async function hashClave(clave) {
+  const sal = crypto.getRandomValues(new Uint8Array(16)), iter = 100000; // 100 000: el máximo que permite Workers
+  const k = await crypto.subtle.importKey("raw", texto(clave), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: sal, iterations: iter }, k, 256);
+  return `pbkdf2$${iter}$${b64url(sal)}$${b64url(bits)}`;
+}
+async function escribirCuenta(env, c) {
+  const { usuario, ...data } = c;
+  await (await tablaCuentas(env)).prepare("INSERT INTO cuentas (usuario, data, actualizado) VALUES (?, ?, ?) ON CONFLICT (usuario) DO UPDATE SET data = excluded.data, actualizado = excluded.actualizado")
+    .bind(usuario, JSON.stringify(data), Date.now()).run();
+}
+async function guardarCuenta(req, env, quien) {
+  let b;
+  try { b = await leerJson(req, 5000); } catch { return json({ ok: false, error: "invalido" }, 400); }
+  const usuario = limpio(b.usuario, 30).toLowerCase();
+  if (!/^[a-z0-9._-]{3,30}$/.test(usuario)) return json({ ok: false, error: "usuario" }, 400);
+  if (FIJAS(env).some((c) => c.usuario === usuario) || usuario === "dev" || usuario === "admin") return json({ ok: false, error: "reservado" }, 400);
+  const nombre = limpio(b.nombre, 60), email = limpio(b.email, 120).toLowerCase();
+  if (!nombre) return json({ ok: false, error: "nombre" }, 400);
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ ok: false, error: "email" }, 400);
+  const entorno = ["pruebas", "real", "ambos"].includes(b.entorno) ? b.entorno : "pruebas";
+  // Nadie da permisos que no tiene (una cuenta con Accesos no puede crear otra con Base de datos si ella no lo tiene).
+  const permisos = PERMISOS.filter((x) => Array.isArray(b.permisos) && b.permisos.includes(x) && quien.permisos.includes(x));
+  const antes = await cuentaGuardada(env, usuario);
+  if (b.nueva && antes) return json({ ok: false, error: "existe" }, 409);
+  if (!b.nueva && !antes) return json({ ok: false, error: "no existe" }, 404);
+  const c = { ...(antes || { creado: Date.now() }), usuario, nombre, email, entorno, permisos, activo: b.activo !== false };
+  let clave = "";
+  if (!antes) { clave = claveTemporal(); c.hash = await hashClave(clave); c.cambiarClave = true; }
+  await escribirCuenta(env, c);
+  return json({ ok: true, cuenta: sinClave(c), ...(clave ? { clave } : {}) });
+}
+async function reiniciarClave(req, env) {
+  let b;
+  try { b = await leerJson(req, 2000); } catch { return json({ ok: false, error: "invalido" }, 400); }
+  const c = await cuentaGuardada(env, limpio(b.usuario, 30).toLowerCase());
+  if (!c) return json({ ok: false, error: "no existe" }, 404);
+  const clave = claveTemporal();
+  await escribirCuenta(env, { ...c, hash: await hashClave(clave), cambiarClave: true });
+  return json({ ok: true, clave });
+}
+async function cambiarMiClave(req, env, quien) {
+  if (quien.fija) return json({ ok: false, error: "fija" }, 400); // las fijas se cambian con wrangler secret
+  let b;
+  try { b = await leerJson(req, 2000); } catch { return json({ ok: false, error: "invalido" }, 400); }
+  const nueva = String(b.nueva || "");
+  if (nueva.length < 10 || nueva.length > 200) return json({ ok: false, error: "corta" }, 400);
+  if (!(await claveCorrecta(String(b.actual || ""), quien.hash))) return json({ ok: false, error: "actual" }, 400);
+  const c = await cuentaGuardada(env, quien.usuario);
+  await escribirCuenta(env, { ...c, hash: await hashClave(nueva), cambiarClave: false });
+  return json({ ok: true });
 }
 
 // ---------- datos del panel ----------
@@ -364,13 +468,14 @@ async function datos(env, desde) {
 }
 // Cambios del panel en un solo envío: { set: [{col, id, data}], del: [{col, id}] }.
 // Borrar deja una marca { _borrado: true, id } para que los otros dispositivos también lo quiten.
-async function lote(req, env) {
+async function lote(req, env, quien) {
   let b;
   try { b = await leerJson(req); } catch { return json({ ok: false, error: "invalido" }, 400); }
   const set = Array.isArray(b.set) ? b.set : [], del = Array.isArray(b.del) ? b.del : [];
   if (set.length + del.length > 500) return json({ ok: false, error: "muchos" }, 400);
   const valido = (x) => x && COLECCIONES.includes(x.col) && /^[\w.-]{1,60}$/.test(String(x.id));
   if (![...set, ...del].every(valido) || !set.every((x) => x.data && typeof x.data === "object")) return json({ ok: false, error: "datos" }, 400);
+  if (![...set, ...del].every((x) => puedeEscribir(quien, x.col))) return json({ ok: false, error: "permiso" }, 403);
   const ahora = Date.now();
   const sentencias = [...set.map((x) => guardarDoc(env, x.col, x.id, x.data, ahora)),
     ...del.map((x) => guardarDoc(env, x.col, x.id, { _borrado: true, id: String(x.id), numero: x.col === "ventas" ? x.id : undefined }, ahora))];

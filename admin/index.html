@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.48">
-  <script src="../tema.js?v=0.48"></script>
+  <link rel="stylesheet" href="admin.css?v=0.49">
+  <script src="../tema.js?v=0.49"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -35,19 +35,20 @@
     <nav class="nav" aria-label="Secciones">
       <a href="#panel">Panel principal</a>
       <p class="nav-grupo">Ventas</p>
-      <a href="#ventas">Ventas y pedidos</a>
-      <a href="#pendientes">Cuentas pendientes</a>
-      <a href="#clientes">Clientes</a>
+      <a href="#ventas" data-permiso="ventas">Ventas y pedidos</a>
+      <a href="#pendientes" data-permiso="pendientes">Cuentas pendientes</a>
+      <a href="#clientes" data-permiso="clientes">Clientes</a>
       <p class="nav-grupo">Catálogo</p>
-      <a href="#productos">Productos y stock</a>
+      <a href="#productos" data-permiso="productos">Productos y stock</a>
       <p class="nav-grupo">Administración</p>
-      <a href="#reportes">Reportes y gastos</a>
-      <a href="#usuarios">Usuarios y comisiones</a>
-      <a href="#medios">Medios de pago</a>
-      <a href="#mp" data-solo-servidor hidden>Mercado Pago</a>
-      <a href="#base" data-solo-dev hidden>Base de datos</a>
+      <a href="#reportes" data-permiso="reportes">Reportes y gastos</a>
+      <a href="#usuarios" data-permiso="usuarios">Usuarios y comisiones</a>
+      <a href="#medios" data-permiso="medios">Medios de pago</a>
+      <a href="#mp" data-permiso="mp" data-solo-servidor hidden>Mercado Pago</a>
+      <a href="#accesos" data-permiso="accesos" data-solo-servidor hidden>Accesos al panel</a>
+      <a href="#base" data-permiso="base" data-solo-servidor hidden>Base de datos</a>
       <hr class="nav-sep">
-      <a href="#feria" class="nav-feria">Modo feria</a>
+      <a href="#feria" class="nav-feria" data-permiso="feria">Modo feria</a>
     </nav>
     <div class="side-pie">
       <button id="tema" class="tema-btn" type="button"></button>
@@ -194,6 +195,13 @@
           <button class="btn" type="button" id="nuevo-usuario">+ Nuevo usuario</button></div>
         <div class="filtros"><input id="usuarios-mes" type="month" aria-label="Mes"></div>
         <div id="usuarios-lista"></div>
+      </section>
+
+      <section id="v-accesos" class="vista" hidden>
+        <div class="cabeza"><div><p class="eyebrow">Seguridad</p><h1>Accesos al panel</h1><p class="sub">Quién entra al panel, a qué secciones y a qué base. Las contraseñas no se ven: se reinician.</p></div>
+          <div class="acciones-form"><button class="btn sec" type="button" id="nuevo-probador">+ Probador</button><button class="btn" type="button" id="nueva-cuenta">+ Nueva cuenta</button></div></div>
+        <div id="accesos-lista"><p class="vacio">Cargando…</p></div>
+        <p class="sub chico">"Probador" crea una cuenta solo para la base de pruebas, con todo el día a día y sin Mercado Pago, Base de datos ni Accesos. Al entrar por primera vez, cada cuenta cambia su contraseña temporal.</p>
       </section>
 
       <section id="v-base" class="vista" hidden>
@@ -370,6 +378,46 @@
   </form>
 </dialog>
 
+<dialog id="d-cuenta" class="ventana" aria-labelledby="d-cuenta-t">
+  <form method="dialog" id="f-cuenta" novalidate>
+    <header><h2 id="d-cuenta-t">Cuenta</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
+    <div class="campos">
+      <label>Usuario <input name="usuario" required maxlength="30" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="ej. lucia"></label>
+      <label>Nombre <input name="nombre" required maxlength="60"></label>
+      <label>Correo (opcional) <input name="email" type="email" maxlength="120"></label>
+      <label>Base <select name="entorno"><option value="pruebas">Solo pruebas</option><option value="real">Solo real</option><option value="ambos">Real y pruebas</option></select></label>
+    </div>
+    <fieldset class="permisos"><legend>Secciones que puede usar</legend><div id="cuenta-permisos" class="permisos-grilla"></div></fieldset>
+    <label class="check"><input type="checkbox" name="activo" checked> Cuenta activa (si la desactivás, se cierra su sesión al instante)</label>
+    <p class="error" id="cuenta-error" aria-live="polite"></p>
+    <footer><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok">Guardar</button></footer>
+  </form>
+</dialog>
+
+<dialog id="d-clave" class="ventana" aria-labelledby="d-clave-t">
+  <form method="dialog">
+    <header><h2 id="d-clave-t">Contraseña temporal</h2><button class="x" value="cancel" aria-label="Cerrar">×</button></header>
+    <p>Usuario <b id="clave-usuario"></b></p>
+    <p class="clave-temporal" id="clave-temporal"></p>
+    <p class="sub chico">Se muestra una sola vez. Pasásela a la persona por un canal privado: al entrar le pide cambiarla.</p>
+    <footer><button class="btn sec" type="button" id="clave-copiar">Copiar usuario y contraseña</button><button class="btn" value="ok">Listo</button></footer>
+  </form>
+</dialog>
+
+<dialog id="d-mi-clave" class="ventana" aria-labelledby="d-mi-clave-t">
+  <form id="f-mi-clave" novalidate>
+    <header><h2 id="d-mi-clave-t">Elegí tu contraseña</h2></header>
+    <p class="sub">Entraste con una contraseña temporal. Elegí una nueva para seguir (al menos 10 caracteres).</p>
+    <div class="campos">
+      <label>Contraseña temporal <input name="actual" type="password" required autocomplete="current-password"></label>
+      <label>Contraseña nueva <input name="nueva" type="password" required minlength="10" autocomplete="new-password"></label>
+      <label>Repetila <input name="nueva2" type="password" required minlength="10" autocomplete="new-password"></label>
+    </div>
+    <p class="error" id="mi-clave-error" aria-live="polite"></p>
+    <footer><button class="btn" type="submit">Guardar contraseña</button></footer>
+  </form>
+</dialog>
+
 <dialog id="d-gasto" class="ventana" aria-labelledby="d-gasto-t">
   <form method="dialog" id="f-gasto" novalidate>
     <header><h2 id="d-gasto-t">Registrar gasto</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
@@ -418,10 +466,10 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.48"></script>
-<script src="../productos.js?v=0.48"></script>
-<script src="../catalogo.js?v=0.48"></script>
-<script src="datos.js?v=0.48"></script>
-<script src="admin.js?v=0.48"></script>
+<script src="../config.js?v=0.49"></script>
+<script src="../productos.js?v=0.49"></script>
+<script src="../catalogo.js?v=0.49"></script>
+<script src="datos.js?v=0.49"></script>
+<script src="admin.js?v=0.49"></script>
 </body>
 </html>
