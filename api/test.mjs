@@ -221,6 +221,15 @@ const lf = (await pedir("/api/login", { body: { usuario: usF, clave: altaF.clave
 const df = (await pedir("/api/admin/datos", { token: lf.token })).j;
 assert.ok(df.clientes.length > 0 && df.clientes.every((c) => !c.whatsapp && !c.email) && df.gastos.length === 0, JSON.stringify(df.clientes[0]));
 assert.ok((await pedir("/api/admin/datos", { token })).j.clientes.some((c) => c.whatsapp));
+// Costo de productos: la feria no lo ve, y al mover stock no lo borra. La tienda no lo publica.
+const pid = "c" + unico;
+await pedir("/api/admin/lote", { token, body: { set: [{ col: "productos", id: pid, data: { id: pid, nombre: "Costo test", categoria: "X", precio: 300, costo: 120, stock: 1, activo: true } }] } });
+const pf = (await pedir("/api/admin/datos", { token: lf.token })).j.productos.find((p) => p.id === pid);
+assert.ok(pf && !("costo" in pf), JSON.stringify(pf));
+assert.ok((await pedir("/api/admin/lote", { token: lf.token, body: { set: [{ col: "productos", id: pid, data: { ...pf, stock: 0, costo: 1 } }] } })).j.ok);
+const pa = (await pedir("/api/admin/datos", { token })).j.productos.find((p) => p.id === pid);
+assert.ok(pa.costo === 120 && pa.stock === 0, JSON.stringify(pa));
+assert.ok(!(await (await fetch(API + "/api/productos.csv")).text()).split("\n")[0].includes("costo"));
 // Mensajes de WhatsApp: los guarda quien tiene el permiso.
 assert.ok((await pedir("/api/admin/lote", { token, body: { set: [{ col: "mensajes", id: "listo", data: { id: "listo", texto: "Listo {nombre}", activo: true } }] } })).j.ok);
 assert.ok((await pedir("/api/admin/datos", { token })).j.mensajes.some((m) => m.id === "listo"));

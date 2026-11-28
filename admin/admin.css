@@ -467,3 +467,32 @@ legend { padding: 0 6px; font-weight: 600; }
 .envios-grilla h2 { margin: 0 0 8px; font-size: 18px; }
 .previa-tienda { margin: 2px 0 12px; padding: 10px 12px; border-radius: 10px; background: var(--soft); font-size: 14px; }
 @media (max-width: 800px) { .envios-grilla { grid-template-columns: 1fr; } }
+
+/* V0.54: selección de productos, pestañas de reportes, inventario e importación */
+.tabla th input[type="checkbox"], .tabla td.marca input { width: 20px; height: 20px; margin: 0; accent-color: var(--brand-ink); cursor: pointer; }
+.tabla td.marca, .tabla th:first-child:has(input) { width: 36px; padding-right: 0; }
+.tabla tr.marcado td { background: var(--brand-soft); }
+.barra-sel { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; padding: 12px 16px; border-color: var(--brand); position: sticky; top: 8px; z-index: 2; }
+.barra-sel .acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+.pestanas { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; overflow-x: auto; scrollbar-width: none; }
+.pestanas [role="tab"] { background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 14px; min-height: 44px; color: var(--muted); font-weight: 600; white-space: nowrap; margin-bottom: -1px; }
+.pestanas [role="tab"]:hover { color: var(--ink); }
+.pestanas [role="tab"][aria-selected="true"] { color: var(--ink); border-bottom-color: var(--brand); }
+[role="tabpanel"] > .caja, [role="tabpanel"] > .grilla { margin-bottom: 16px; }
+.ventana .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 4px; }
+.ventana .kpi { padding: 12px 14px; }
+.ventana .kpi strong { font-size: 22px; }
+.ventana .filtros { margin-bottom: 0; align-items: center; }
+.error-lista { border-color: var(--error); }
+.error-lista h3 { margin: 0 0 6px; font-size: 15px; color: var(--error); }
+.error-lista ul { margin: 0; padding-left: 18px; font-size: 14px; }
+#producto-ganancia { grid-column: 1 / -1; margin: -4px 0 0; }
+@media (max-width: 700px) {
+  .ventana .kpis { grid-template-columns: 1fr 1fr; }
+  .t-productos th:nth-child(4), .t-productos td:nth-child(4), .t-productos th:nth-child(5), .t-productos td:nth-child(5), .t-productos th:nth-child(7), .t-productos td:nth-child(7) { display: none; }
+}
+@media print {
+  #imprimir table.conteo th { text-align: left; font-size: 11px; text-transform: uppercase; border-bottom: 2px solid #000; padding: 4px; }
+  #imprimir table.conteo td { padding: 6px 4px; }
+  #imprimir table.conteo td:last-child { width: 22mm; border: 1px solid #999; }
+}

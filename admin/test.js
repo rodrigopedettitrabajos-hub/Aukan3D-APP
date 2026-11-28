@@ -8,11 +8,33 @@ const d = require("./datos.js");
 
 const cat = d.catalogoDesdeCsv(fs.readFileSync(__dirname + "/../productos.csv", "utf8"));
 assert.ok(cat.length >= 170);
-// Ida y vuelta al CSV sin perder nada (comas y comillas incluidas).
-const raro = [{ ...cat[0], nombre: 'Figura "XL", grande', activo: false, stock: 3 }];
-const vuelta = d.catalogoDesdeCsv(d.catalogoACsv(raro))[0];
-assert.strictEqual(vuelta.nombre, 'Figura "XL", grande');
-assert.strictEqual(vuelta.activo, false);
+// Costo, ganancia y Excel de productos.
+assert.strictEqual(d.precioConGanancia(100, 50), 150);
+assert.strictEqual(d.precioConGanancia(333, 50, 50), 500); // 499.5 -> 500 hacia arriba
+assert.strictEqual(d.gananciaPct({ costo: 200, precio: 300 }), 50);
+assert.strictEqual(d.gananciaPct({ costo: 0, precio: 300 }), null);
+assert.strictEqual(d.numeroCelda("$ 1.200"), 1200);
+assert.strictEqual(d.numeroCelda("1.200,50"), 1200.5);
+assert.strictEqual(d.numeroCelda(""), null);
+assert.ok(Number.isNaN(d.numeroCelda("mucho")));
+const prods = [{ id: "1", nombre: "Gato", categoria: "Figuras", subcategoria: "", tamano: "", material: "PLA", costo: 100, precio: 300, stock: 2, activo: true, foto: "a.webp" },
+  { id: "2", nombre: "Perro", categoria: "Figuras", precio: 0, stock: 0, activo: false }];
+const hoja = d.productosAFilas(prods);
+assert.deepStrictEqual(hoja[1].slice(4, 8), [100, 200, 300, 2]); // costo, ganancia %, precio, stock
+assert.strictEqual(hoja[2][10], "NO");
+assert.deepStrictEqual(d.filasAProductos(hoja, prods), { cambios: [], nuevos: [], errores: [], iguales: 2 }); // ida y vuelta sin cambios
+const imp = d.filasAProductos([["id", "COSTO", "ganancia %", "Precio", "Contado"], ["2", "50", "100", "", "4"], ["", "", "", "", ""], ["1", "x"], ["9z!", "1"]], prods);
+assert.deepStrictEqual(imp.cambios, [{ producto: prods[1], datos: { costo: 50, precio: 100, stock: 4 } }]);
+assert.strictEqual(imp.errores.length, 2);
+const alta = d.filasAProductos([["Nombre", "Categoría", "Precio"], ["Dragón", "Figuras", "1.500"], ["Sin cat", "", ""]], prods);
+assert.deepStrictEqual(alta.nuevos.map((p) => [p.id, p.precio, p.activo]), [["3", 1500, true]]);
+assert.strictEqual(alta.errores.length, 1);
+assert.deepStrictEqual(d.inventario(prods), { unidades: 2, costo: 200, venta: 600, sinCosto: 0 });
+const mg = d.margenes([{ moneda: "UYU", items: [{ id: "1", nombre: "Gato", precio: 300, cant: 2 }, { id: "2", nombre: "Perro", precio: 90, cant: 1 }] },
+  { moneda: "USD", items: [{ id: "1", precio: 10, cant: 1 }] }], prods);
+assert.deepStrictEqual(mg.total, { vendido: 600, costo: 200, sinCosto: 90, ganancia: 400 });
+assert.strictEqual(mg.filas[0].ganancia, 400);
+assert.strictEqual(mg.filas[1].ganancia, null);
 
 const v = { moneda: "UYU", estado: 0, items: [{ precio: 500, cant: 2 }, { precio: 301, cant: 1 }], pagos: [] };
 assert.strictEqual(d.totalVenta(v), 1301);
@@ -111,4 +133,11 @@ const vi = { ...vm3, entrega: "", items: [{ nombre: "Kirby", precio: 600, cant: 
 assert.strictEqual(d.armarMensaje("¡Hola {nombre}! Gracias por comprar en {negocio}:\n🗒 {items}\n💲 Total: {total} · Pagaste: {pagado}\n{resta}\n📅 {entrega}\n{direccion}", vi, "Ana", pl, { negocio: "Aukan3D", direccion: "Av. Italia 1" }),
   "¡Hola Ana! Gracias por comprar en Aukan3D:\n🗒 2 x Kirby\n💲 Total: $ 1200 · Pagaste: $ 1000\nQueda un saldo de $ 200.\nAv. Italia 1");
 
-console.log("admin: ok");
+// Excel: lo que se escribe se vuelve a leer igual.
+const x = require("./excel.js");
+(async () => {
+  const filas = [["ID", "Nombre", "Precio"], ["1", 'Gato <"XL"> & ñ', 300], ["2", "", 0]];
+  const leido = await x.leerXlsx(await x.crearXlsx(filas, { hoja: "Productos" }).arrayBuffer());
+  assert.deepStrictEqual(leido, [["ID", "Nombre", "Precio"], ["1", 'Gato <"XL"> & ñ', 300], ["2", "", 0]]);
+  console.log("admin: ok");
+})();
