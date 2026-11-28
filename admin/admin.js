@@ -342,7 +342,7 @@ const CAB_VENTAS = ["Pedido", "Fecha", "Cliente", "#Total", "#Saldo", "Estado"];
 // Comprobante del pedido: abre la impresión, donde también se guarda como PDF ("Guardar como PDF").
 const botonImp = (v, formato, texto, nombre) => el("button", { type: "button", className: "btn sec chico", textContent: texto, title: `Comprobante ${nombre}: imprimir o guardar como PDF`,
   ariaLabel: `Comprobante del pedido ${v.numero} en ${nombre}`, onclick: () => imprimirPedido(v.numero, formato) });
-const celdaComprobante = (v) => td(el("span", { className: "imp-formatos" }, botonImp(v, "a4", "A4", "A4"), botonImp(v, "80", "80 mm", "ticket de 80 mm")), "num");
+const celdaComprobante = (v) => td(el("span", { className: "imp-formatos" }, botonImp(v, "a4", "A4", "A4"), botonImp(v, "80", "80 mm", "ticket para impresora térmica de 80 mm")), "num");
 
 // --- Panel principal ---
 PINTAR.panel = () => {
@@ -408,12 +408,12 @@ function altoTicket() {
   const caja = $("#imprimir"); caja.classList.add("midiendo", "ticket80");
   const mm = Math.ceil(caja.getBoundingClientRect().height * 25.4 / 96) + 10;
   caja.classList.remove("midiendo");
-  hojaTicket.replaceSync(`@page ticket { size: 80mm ${Math.max(mm, 60)}mm; margin: 3mm; }`);
+  hojaTicket.replaceSync(`@page ticket { size: 80mm ${Math.max(mm, 60)}mm; margin: 2mm 4mm; }`);
 }
 // Botones "A4" y "80 mm" (detalle del pedido y última venta de feria).
 const botonesImp = (numero, extra) => el("span", { className: "imp-formatos" },
   el("button", { type: "button", className: "btn sec chico", textContent: "Imprimir A4", onclick: () => imprimirPedido(numero, "a4", extra) }),
-  el("button", { type: "button", className: "btn sec chico", textContent: "Ticket 80 mm", onclick: () => imprimirPedido(numero, "80", extra) }));
+  el("button", { type: "button", className: "btn sec chico", textContent: "Ticket 80 mm", title: "Ticket para impresora térmica de 80 mm", onclick: () => imprimirPedido(numero, "80", extra) }));
 
 // Mensaje de WhatsApp para avisar al cliente que su pedido cambió de estado (sale desde el WhatsApp de quien toca).
 // Link a "Historial de compras" de la tienda, donde el cliente deja la reseña de un pedido entregado.

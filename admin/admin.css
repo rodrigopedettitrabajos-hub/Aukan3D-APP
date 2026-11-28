@@ -390,7 +390,7 @@ legend { padding: 0 6px; font-weight: 600; }
 .pos-ultima { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--muted); }
 .pos-ultima:empty { display: none; }
 @page { size: A4; margin: 15mm; }
-@page ticket { size: 80mm 297mm; margin: 3mm; } /* el alto lo ajusta admin.js al contenido */
+@page ticket { size: 80mm 297mm; margin: 2mm 4mm; } /* rollo de 80 mm (72 mm imprimibles); el alto lo ajusta admin.js al contenido para no gastar papel */
 /* hoja impresa (oculta en pantalla salvo al medir el ticket) */
 #imprimir header { display: flex; gap: 14px; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 8px; }
 #imprimir header img { width: 56px; height: 56px; }
@@ -410,6 +410,10 @@ legend { padding: 0 6px; font-weight: 600; }
   #imprimir.ticket80 td { padding: 2px 0; border-bottom: 0; vertical-align: top; }
   #imprimir.ticket80 table { border-top: 1px dashed #000; border-bottom: 1px dashed #000; }
   #imprimir.ticket80 .pie-imp { text-align: center; }
+  /* Impresora térmica: solo negro puro (el gris sale cortado o muy claro), letra un poco más grande y gruesa. */
+  #imprimir.ticket80, #imprimir.ticket80 * { color: #000 !important; }
+  #imprimir.ticket80 { font-size: 12px; font-weight: 500; }
+  #imprimir.ticket80 header img { filter: grayscale(1) contrast(1.6); }
 
 .tabla.t-ventas td > span.imp-formatos { display: inline-flex; flex-wrap: nowrap; }
 
