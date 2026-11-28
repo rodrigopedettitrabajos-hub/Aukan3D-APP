@@ -135,7 +135,20 @@ const PUBLICOS = ["negocio", "direccion", "horario", "redes", "agencias", "costo
 async function datosTienda(env) {
   const r = await env.DB.prepare("SELECT data FROM docs WHERE col = 'mensajes' AND id = 'negocio'").first();
   const d = r ? JSON.parse(r.data) : {};
-  return json({ ok: true, ...Object.fromEntries(PUBLICOS.map((k) => [k, limpio(d[k], 300)])) }, 200, { "Cache-Control": "public, max-age=60" });
+  return json({ ok: true, ...Object.fromEntries(PUBLICOS.map((k) => [k, limpio(d[k], 300)])), resenas: await resenasPublicas(env) },
+    200, { "Cache-Control": "public, max-age=60" });
+}
+// Reseñas para la tienda: solo estrellas, comentario, nombre de pila, fecha y qué productos eran. Las ocultas en el panel no salen.
+async function resenasPublicas(env) {
+  const { results } = await env.DB.prepare("SELECT data FROM docs WHERE col = 'resenas'").all();
+  const lista = results.map((x) => JSON.parse(x.data)).filter((x) => !x._borrado && !x.oculta && x.estrellas >= 1)
+    .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))).slice(0, 200);
+  if (!lista.length) return [];
+  const ventas = new Map((await docsPorId(env, "ventas", lista.map((x) => String(x.numero)))).map((x) => [x.id, JSON.parse(x.data)]));
+  const ids = [...new Set(lista.map((x) => String(x.cliente)))];
+  const nombres = new Map((await docsPorId(env, "clientes", ids)).map((x) => [x.id, String(JSON.parse(x.data).nombre || "").trim().split(/\s+/)[0]]));
+  return lista.map((x) => ({ estrellas: x.estrellas, comentario: limpio(x.comentario, 500), fecha: String(x.fecha).slice(0, 10),
+    nombre: limpio(nombres.get(String(x.cliente)), 30), productos: (ventas.get(String(x.numero))?.items || []).map((i) => String(i.id)).slice(0, 20) }));
 }
 
 // ---------- estado de pedidos para "Mis pedidos" de la tienda ----------

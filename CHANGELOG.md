@@ -2,6 +2,11 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.72 · 2026-11-28
+- Reseñas en la tienda: cada producto muestra sus estrellas en la tarjeta y las opiniones en el detalle, y el inicio tiene la sección "Lo que dicen nuestros clientes". Solo se publica el primer nombre del cliente (nunca el número de pedido ni el WhatsApp).
+- Panel, Reportes > Reseñas: botón "Ocultar en la tienda" / "Mostrar en la tienda" por reseña.
+- Arreglo: el aviso de abajo de la tienda ("Quitaste…", "¡Gracias!…") quedaba pisado por el aviso de estado de Mis pedidos desde V0.48.
+
 ## V0.71 · 2026-11-28
 - Panel en el celular: el botón "Volver a producción / Pasar a pruebas" y la versión pasaron al pie del Menú. Así el encabezado queda en una sola fila también en modo pruebas (antes el logo quedaba solo arriba) y la versión se ve.
 

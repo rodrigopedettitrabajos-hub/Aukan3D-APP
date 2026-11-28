@@ -13,8 +13,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <meta name="apple-mobile-web-app-title" content="Aukan3D">
-  <link rel="stylesheet" href="styles.css?v=0.71">
-  <script src="tema.js?v=0.71"></script>
+  <link rel="stylesheet" href="styles.css?v=0.72">
+  <script src="tema.js?v=0.72"></script>
 </head>
 <body>
   <!-- Íconos: Simple Icons (CC0) -->
@@ -99,6 +99,12 @@
     <section id="grilla" class="grid"></section>
     <nav id="paginas" class="paginas" aria-label="Páginas" hidden></nav>
   </main>
+
+  <section id="opiniones" class="wrap opiniones" hidden aria-labelledby="opiniones-titulo">
+    <h2 id="opiniones-titulo">Lo que dicen nuestros clientes</h2>
+    <p id="opiniones-resumen" class="opiniones-resumen"></p>
+    <div id="opiniones-lista" class="opiniones-lista"></div>
+  </section>
 
   <section id="eventos" class="seccion wrap" hidden aria-labelledby="eventos-titulo">
     <h2 id="eventos-titulo">Próximos eventos</h2>
@@ -225,6 +231,7 @@
       <h2 id="detalle-nombre"></h2>
       <p id="detalle-datos" class="detalle-datos"></p>
       <p id="detalle-plazo" class="plazo-chip">Se imprime a pedido · listo en 3 o más días hábiles</p>
+      <div id="detalle-resenas" class="detalle-resenas" hidden></div>
       <div class="row">
         <strong id="detalle-precio" class="precio"></strong>
         <span id="detalle-control"></span>
@@ -342,10 +349,10 @@
 
   <div id="comprobante" class="comprobante" aria-hidden="true"></div>
 
-  <script src="config.js?v=0.71"></script>
-  <script src="catalogo.js?v=0.71"></script>
-  <script src="productos.js?v=0.71"></script>
-  <script src="app.js?v=0.71"></script>
-  <script src="cuenta.js?v=0.71"></script>
+  <script src="config.js?v=0.72"></script>
+  <script src="catalogo.js?v=0.72"></script>
+  <script src="productos.js?v=0.72"></script>
+  <script src="app.js?v=0.72"></script>
+  <script src="cuenta.js?v=0.72"></script>
 </body>
 </html>
