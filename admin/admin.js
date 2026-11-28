@@ -1001,41 +1001,85 @@ $("#f-medio").addEventListener("submit", async (e) => {
 // --- Usuarios y comisiones ---
 $("#usuarios-mes").value = mesActual();
 $("#usuarios-mes").addEventListener("input", () => PINTAR.usuarios());
-// Mensajes de WhatsApp al cambiar el estado: un texto por paso, con etiquetas que se reemplazan por los datos del pedido.
-const ETIQUETAS = [["{nombre}", "Nombre"], ["{numero}", "N° de pedido"], ["{total}", "Total"], ["{saldo}", "Saldo"], ["{resta}", "Frase del saldo (solo si debe)"]];
-const EJEMPLO_MSJ = (id) => ({ numero: "1297", estado: MENSAJES_BASE.find((m) => m.id === id).estado, sena: id !== "pagado", moneda: "UYU",
-  items: [{ precio: 1800, cant: 1 }], pagos: id === "pagado" || id === "entregado" ? [{ monto: 1800 }] : id === "impresion" ? [{ monto: 900 }] : [{ monto: 900 }] });
+// Mensajes de WhatsApp al cambiar el estado: un texto por paso. Los datos del pedido se ven como etiquetas dentro del texto
+// y se guardan como {clave} (ver DATOS_MENSAJE en datos.js).
+const NOMBRE_DATO = Object.fromEntries(DATOS_MENSAJE);
+const EJEMPLO_MSJ = (id) => ({ numero: "1297", estado: MENSAJES_BASE.find((m) => m.id === id).estado, sena: id !== "pagado", moneda: "UYU", entrega: "Retiro · Montevideo",
+  items: [{ nombre: "CHARIZARD", precio: 1200, cant: 1 }, { nombre: "PIKACHU", precio: 600, cant: 1 }],
+  pagos: id === "pagado" || id === "entregado" ? [{ monto: 1800 }] : [{ monto: 900 }] });
 const mensajeGuardado = (id) => ({ ...MENSAJES_BASE.find((m) => m.id === id), activo: true, ...db.mensajes.find((x) => x.id === id) });
+const negocioGuardado = () => ({ ...NEGOCIO_BASE, ...db.mensajes.find((x) => x.id === "negocio") });
+const etiquetaDato = (k) => el("span", { className: "dato", contentEditable: "false", dataset: { k }, textContent: NOMBRE_DATO[k] });
+// Texto con {clave} -> contenido del editor (texto y etiquetas). Lo que no es un dato conocido queda como texto.
+const aEditor = (texto) => String(texto).split(/(\{\w+\}|\n)/).filter(Boolean).map((t) => {
+  const k = t.match(/^\{(\w+)\}$/)?.[1];
+  return t === "\n" ? el("br") : k && NOMBRE_DATO[k] ? etiquetaDato(k) : document.createTextNode(t);
+});
+// Editor -> texto con {clave}. Chrome puede meter <div> o <br> al pegar o con Enter: cuentan como salto de línea.
+function deEditor(nodo) {
+  let t = "";
+  for (const n of nodo.childNodes) {
+    if (n.nodeType === 3) t += n.data.replace(/ /g, " ");
+    else if (n.dataset?.k) t += `{${n.dataset.k}}`;
+    else if (n.nodeName === "BR") t += "\n";
+    else t += (/^(DIV|P)$/.test(n.nodeName) && t && !t.endsWith("\n") ? "\n" : "") + deEditor(n);
+  }
+  return t;
+}
+function insertarEnEditor(editor, nodo) {
+  const sel = getSelection();
+  let r = sel.rangeCount && editor.contains(sel.getRangeAt(0).startContainer) ? sel.getRangeAt(0) : null;
+  if (!r) { r = document.createRange(); r.selectNodeContents(editor); r.collapse(false); } // sin cursor en el editor: al final
+  r.deleteContents(); r.insertNode(nodo); r.setStartAfter(nodo); r.collapse(true);
+  sel.removeAllRanges(); sel.addRange(r); editor.focus();
+}
 PINTAR.mensajes = () => {
   const sinServidor = API && !servidorMensajes;
   $("#mensajes-aviso").hidden = !sinServidor;
   $("#f-mensajes button[type=submit]").disabled = sinServidor;
-  $("#mensajes-lista").replaceChildren(...MENSAJES_BASE.map((b) => {
+  const neg = negocioGuardado(), previas = [];
+  const campo = (k, etiqueta, ayuda) => el("label", {}, etiqueta, el("input", { name: "negocio-" + k, value: neg[k] || "", maxLength: 120, placeholder: ayuda,
+    oninput: () => previas.forEach((f) => f()) }));
+  const negocio = el("article", { className: "caja mensaje negocio" },
+    el("h2", { textContent: "Datos del negocio" }), el("p", { className: "sub chico", textContent: "Se usan en los mensajes con los datos Nombre del negocio, Dirección, Horario y Redes." }),
+    el("div", { className: "negocio-campos" }, campo("negocio", "Nombre del negocio", "Aukan3D"), campo("direccion", "Dirección", "Ej.: Av. Italia 1234, Montevideo"),
+      campo("horario", "Horario", "Ej.: lunes a viernes de 10 a 18 h"), campo("redes", "Redes", "Ej.: Instagram @aukan3d")));
+  const negocioActual = () => Object.fromEntries(["negocio", "direccion", "horario", "redes"].map((k) => [k, $(`#f-mensajes [name=negocio-${k}]`)?.value.trim() || ""]));
+  $("#mensajes-lista").replaceChildren(negocio, ...MENSAJES_BASE.map((b) => {
     const m = mensajeGuardado(b.id), previa = el("p", { className: "previa" });
-    const texto = el("textarea", { name: "texto-" + b.id, rows: 3, maxLength: 600, value: m.texto, ariaLabel: "Mensaje: " + b.nombre });
+    const editor = el("div", { className: "editor-msj", contentEditable: "true", role: "textbox", ariaMultiLine: "true", ariaLabel: "Mensaje: " + b.nombre, dataset: { id: b.id } }, ...aEditor(m.texto));
     const activo = el("input", { type: "checkbox", name: "activo-" + b.id, checked: m.activo });
     const pintarPrevia = () => {
-      previa.textContent = activo.checked ? armarMensaje(texto.value, EJEMPLO_MSJ(b.id), "Lucía", plata) : "Desactivado: al cambiar a este paso no se propone mensaje.";
-      previa.classList.toggle("apagado", !activo.checked); texto.disabled = !activo.checked;
+      previa.textContent = activo.checked ? armarMensaje(deEditor(editor), EJEMPLO_MSJ(b.id), "Lucía", plata, { ...NEGOCIO_BASE, ...negocioActual() })
+        : "Desactivado: al cambiar a este paso no se propone mensaje.";
+      previa.classList.toggle("apagado", !activo.checked); editor.contentEditable = String(activo.checked);
     };
-    texto.addEventListener("input", pintarPrevia); activo.addEventListener("change", pintarPrevia); pintarPrevia();
-    const insertar = (t) => { const i = texto.selectionStart ?? texto.value.length; texto.setRangeText(t, i, texto.selectionEnd ?? i, "end"); texto.focus(); pintarPrevia(); };
+    previas.push(pintarPrevia);
+    editor.addEventListener("input", pintarPrevia); activo.addEventListener("change", pintarPrevia);
+    editor.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); document.execCommand("insertLineBreak"); pintarPrevia(); } }); // <br>, no <div>
+    editor.addEventListener("paste", (e) => { e.preventDefault(); const t = e.clipboardData.getData("text/plain"); const f = document.createDocumentFragment(); f.append(...aEditor(t)); insertarEnEditor(editor, f); pintarPrevia(); });
+    const boton = ([k, n]) => el("button", { type: "button", className: "chip-dato", textContent: "+ " + n,
+      onmousedown: (e) => e.preventDefault(), // no sacar el cursor del editor
+      onclick: () => { if (!activo.checked) return; insertarEnEditor(editor, etiquetaDato(k)); insertarEnEditor(editor, document.createTextNode(" ")); pintarPrevia(); } });
     return el("article", { className: "caja mensaje" },
       el("div", { className: "mensaje-cabeza" }, el("h2", { textContent: b.nombre }), el("label", { className: "check" }, activo, el("span", { textContent: "Activo" }))),
-      texto,
-      el("div", { className: "etiquetas" }, ...ETIQUETAS.map(([t, n]) => el("button", { type: "button", className: "chip chico", title: n, textContent: t, onclick: () => insertar(t) }))),
-      el("p", { className: "sub chico", textContent: "Vista previa (pedido de ejemplo):" }), previa,
-      el("button", { type: "button", className: "btn sec chico", textContent: "Volver al texto original", onclick: () => { texto.value = b.texto; activo.checked = true; pintarPrevia(); } }));
+      editor,
+      el("p", { className: "sub chico", textContent: "Tocá un dato para ponerlo donde está el cursor:" }),
+      el("div", { className: "etiquetas" }, ...DATOS_MENSAJE.map(boton)),
+      el("p", { className: "sub chico", textContent: "Así le llega (pedido de ejemplo):" }), previa,
+      el("button", { type: "button", className: "btn sec chico", textContent: "Volver al texto original",
+        onclick: () => { editor.replaceChildren(...aEditor(b.texto)); activo.checked = true; pintarPrevia(); } }));
   }));
+  previas.forEach((f) => f());
 };
 $("#f-mensajes").addEventListener("submit", (e) => {
   e.preventDefault();
-  const f = e.target, vacio = MENSAJES_BASE.find((b) => f["activo-" + b.id].checked && !f["texto-" + b.id].value.trim());
+  const f = e.target, texto = (id) => deEditor($(`#f-mensajes .editor-msj[data-id="${id}"]`)).trim();
+  const vacio = MENSAJES_BASE.find((b) => f["activo-" + b.id].checked && !texto(b.id));
   if (vacio) return avisar(`Escribí el mensaje de "${vacio.nombre}" o desactivalo.`);
-  for (const b of MENSAJES_BASE) {
-    const nuevo = { id: b.id, texto: f["texto-" + b.id].value.trim(), activo: f["activo-" + b.id].checked }, i = db.mensajes.findIndex((x) => x.id === b.id);
-    if (i < 0) db.mensajes.push(nuevo); else db.mensajes[i] = nuevo;
-  }
+  const poner = (doc) => { const i = db.mensajes.findIndex((x) => x.id === doc.id); if (i < 0) db.mensajes.push(doc); else db.mensajes[i] = doc; };
+  for (const b of MENSAJES_BASE) poner({ id: b.id, texto: texto(b.id).slice(0, 1000), activo: f["activo-" + b.id].checked });
+  poner({ id: "negocio", ...Object.fromEntries(["negocio", "direccion", "horario", "redes"].map((k) => [k, f["negocio-" + k].value.trim()])) });
   guardar(); avisar("Mensajes guardados. Se usan desde el próximo cambio de estado.");
 });
 

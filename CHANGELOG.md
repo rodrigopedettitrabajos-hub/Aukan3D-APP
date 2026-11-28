@@ -2,6 +2,10 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.52 · 2026-11-28
+- Mensajes de WhatsApp: los datos se ven como etiquetas con su nombre dentro del texto ("Nombre del cliente", "Lo que pidió"…) y se agregan tocando "+ dato" donde está el cursor. Datos nuevos: lo que pidió, entrega, lo que pagó, lo que debe, nombre del negocio, dirección, horario y redes (estos cuatro se cargan en "Datos del negocio"). Mensajes de varias líneas; una línea que solo tenía datos vacíos no se manda.
+- Script `subir-servidor.bat` (en la carpeta de Rodrigo) y acción de GitHub "Subir servidor": con los secretos CLOUDFLARE_API_TOKEN y CLOUDFLARE_ACCOUNT_ID, el servidor se sube solo al mergear cambios de api/.
+
 ## V0.51 · 2026-11-28
 - Panel: nueva pantalla "Mensajes de WhatsApp" (Administración). Un texto por paso (seña, pago total, impresión, listo, entregado), con etiquetas {nombre}, {numero}, {total}, {saldo} y {resta}, vista previa, activar/desactivar y volver al original. "Avisarle por WhatsApp" usa esos textos. Permiso nuevo "Mensajes".
 - Panel: el cobro con QR suma "Enviar por WhatsApp" (abre el chat del cliente con el link de pago) y "Copiar link".
