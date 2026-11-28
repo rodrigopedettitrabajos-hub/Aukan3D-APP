@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.44 · 2026-11-28
+- Tienda: el botón de Mercado Pago abre el pago en la misma pestaña, y al terminar vuelve ahí (a Mis pedidos) en vez de dejar una pestaña nueva.
+
 ## V0.43 · 2026-11-28
 - Mercado Pago: el link de pago ya no lleva el mail del cliente. Con una cuenta de prueba, un mail real hacía fallar el pago con "Una de las partes con la que intentas hacer el pago es de prueba".
 
