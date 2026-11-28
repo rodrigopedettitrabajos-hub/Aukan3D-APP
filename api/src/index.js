@@ -7,7 +7,7 @@ const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usu
 const MAX_ITEMS = 50, MAX_CANT = 99;
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const url = new URL(req.url);
     const origen = req.headers.get("Origin") || "";
     // "https://*.algo.dev" acepta cualquier subdominio (las vistas previas de Cloudflare Pages).
@@ -22,7 +22,7 @@ export default {
       // ?e=pruebas usa la base de pruebas (DB_PRUEBAS): datos de mentira para probar sin tocar los reales.
       const pruebas = url.searchParams.get("e") === "pruebas";
       if (pruebas && !env.DB_PRUEBAS) return json({ ok: false, error: "entorno" }, 503, cors);
-      const r = await rutear(req, { ...(pruebas ? { ...env, DB: env.DB_PRUEBAS, DB_REAL: env.DB, PRUEBAS: true } : env), AQUI: url.origin, TIENDA: permitido ? origen : "" }, url);
+      const r = await rutear(req, { ...(pruebas ? { ...env, DB: env.DB_PRUEBAS, DB_REAL: env.DB, PRUEBAS: true } : env), AQUI: url.origin, TIENDA: permitido ? origen : "", CTX: ctx }, url);
       for (const [k, v] of Object.entries(cors)) r.headers.set(k, v);
       return r;
     } catch (err) {
@@ -40,6 +40,9 @@ async function rutear(req, env, url) {
   if (m === "POST" && p === "/api/pedidos/estado") return estadoPedidos(req, env);
   if (m === "POST" && p === "/api/login") return login(req, env);
   if (m === "POST" && p === "/api/mp/aviso") return avisoMp(req, env, url);
+  if (m === "GET" && p === "/api/push/clave") return json({ ok: true, clave: (await clavesPush(env)).publica });
+  if (m === "POST" && p === "/api/push/alta") return altaPush(req, env);
+  if (m === "POST" && p === "/api/push/ultimo") return ultimoPush(req, env);
   if (p.startsWith("/api/admin/")) {
     const quien = await sesionDe(req, env);
     if (!quien) return json({ ok: false, error: "sesion" }, 401);
@@ -289,9 +292,11 @@ async function anotarPagoMp(env, numero, x) {
   const medios = (await docs(env, "medios")).filter((m) => !m._borrado);
   const medio = (medios.find((m) => /mercado ?pago/i.test(m.nombre)) || { id: "m3" }).id;
   v.pagos.push({ fecha: x.date_approved || x.date_created || new Date().toISOString(), medio, monto, mp: String(x.id) });
-  if (v.estado === 0) v.estado = 1;
+  const avanza = v.estado === 0;
+  if (avanza) v.estado = 1;
   delete v.espera; // pagado: ahora sí entra al panel (llega como pedido nuevo)
   await guardarDoc(env, "ventas", String(v.numero), v).run();
+  if (avanza) enSegundoPlano(env, avisarPush(env, v));
   return true;
 }
 
@@ -477,8 +482,105 @@ async function lote(req, env, quien) {
   if (![...set, ...del].every(valido) || !set.every((x) => x.data && typeof x.data === "object")) return json({ ok: false, error: "datos" }, 400);
   if (![...set, ...del].every((x) => puedeEscribir(quien, x.col))) return json({ ok: false, error: "permiso" }, 403);
   const ahora = Date.now();
+  const ventasSet = set.filter((x) => x.col === "ventas" && Number.isInteger(x.data.estado));
+  const antes = ventasSet.length ? await estadosDe(env, ventasSet.map((x) => String(x.id))) : new Map();
   const sentencias = [...set.map((x) => guardarDoc(env, x.col, x.id, x.data, ahora)),
     ...del.map((x) => guardarDoc(env, x.col, x.id, { _borrado: true, id: String(x.id), numero: x.col === "ventas" ? x.id : undefined }, ahora))];
   if (sentencias.length) await env.DB.batch(sentencias); // todo o nada
+  // Avisos push al cliente por cada pedido que avanzó de estado (sin demorar la respuesta).
+  const avanzaron = ventasSet.filter((x) => antes.has(String(x.id)) && x.data.estado > antes.get(String(x.id)));
+  if (avanzaron.length) enSegundoPlano(env, Promise.all(avanzaron.map((x) => avisarPush(env, x.data))));
   return json({ ok: true, hasta: ahora });
+}
+
+// ---------- avisos push al cliente (tienda instalada o abierta en el navegador) ----------
+// Sin datos cifrados: el push llega vacío y el service worker de la tienda pide el texto a /api/push/ultimo con su endpoint
+// (el endpoint lo conoce solo ese navegador). Las claves VAPID se crean solas la primera vez y quedan en `ajustes`.
+const enSegundoPlano = (env, promesa) => { const p = promesa.catch((e) => console.error("push", e)); if (env.CTX) env.CTX.waitUntil(p); };
+async function clavesPush(env) {
+  const db = baseAjustes(env);
+  await db.prepare("CREATE TABLE IF NOT EXISTS ajustes (clave TEXT PRIMARY KEY, valor TEXT NOT NULL, actualizado INTEGER NOT NULL)").run();
+  const r = await db.prepare("SELECT valor FROM ajustes WHERE clave = 'vapid'").first();
+  if (r) return JSON.parse(r.valor);
+  const par = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  const claves = { publica: b64url(await crypto.subtle.exportKey("raw", par.publicKey)), privada: await crypto.subtle.exportKey("jwk", par.privateKey) };
+  await db.prepare("INSERT OR IGNORE INTO ajustes (clave, valor, actualizado) VALUES ('vapid', ?, ?)").bind(JSON.stringify(claves), Date.now()).run();
+  return JSON.parse((await db.prepare("SELECT valor FROM ajustes WHERE clave = 'vapid'").first()).valor); // si dos llegaron a la vez, gana la primera
+}
+async function tablaPush(env) {
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS push (endpoint TEXT NOT NULL, numero TEXT NOT NULL, ultimo TEXT, actualizado INTEGER NOT NULL, PRIMARY KEY (endpoint, numero))").run();
+}
+// Solo servicios de push conocidos (evita que el servidor mande pedidos a cualquier dirección).
+const HOSTS_PUSH = ["fcm.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com", ".notify.windows.com", ".push.apple.com"];
+function endpointValido(env, e) {
+  let u; try { u = new URL(String(e || "")); } catch { return false; }
+  if (String(e).length > 1000) return false;
+  if (env.PUSH_PRUEBA && u.origin === env.PUSH_PRUEBA) return true; // solo en pruebas locales (.dev.vars)
+  return u.protocol === "https:" && HOSTS_PUSH.some((h) => (h.startsWith(".") ? u.hostname.endsWith(h) : u.hostname === h));
+}
+// Pedidos del cliente que pueden recibir avisos: mismo control que /api/pedidos/estado (número + WhatsApp del pedido).
+async function pedidosDelCliente(env, lista) {
+  const pedidos = (Array.isArray(lista) ? lista : []).slice(0, 20)
+    .map((x) => ({ numero: limpio(x && x.numero, 12), tel: digitos(x && x.whatsapp) })).filter((x) => /^\d+$/.test(x.numero) && x.tel.length >= 8);
+  if (!pedidos.length) return [];
+  const { results } = await env.DB.prepare(`SELECT data FROM docs WHERE col = 'ventas' AND id IN (${pedidos.map(() => "?").join(",")})`).bind(...pedidos.map((x) => x.numero)).all();
+  const ventas = results.map((r) => JSON.parse(r.data)).filter((v) => !v._borrado);
+  const ids = [...new Set(ventas.map((v) => String(v.cliente)))];
+  const clientes = ids.length ? (await env.DB.prepare(`SELECT id, data FROM docs WHERE col = 'clientes' AND id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all()).results : [];
+  const telDe = new Map(clientes.map((c) => [c.id, digitos(JSON.parse(c.data).whatsapp)]));
+  return ventas.filter((v) => telDe.get(String(v.cliente)) === pedidos.find((x) => x.numero === String(v.numero))?.tel).map((v) => String(v.numero));
+}
+async function altaPush(req, env) {
+  let b;
+  try { b = await leerJson(req, 10_000); } catch { return json({ ok: false, error: "invalido" }, 400); }
+  const ip = req.headers.get("CF-Connecting-IP") || "";
+  if (!(await pasaLimite(env, "push:" + ip, 30, 600_000))) return json({ ok: false, error: "limite" }, 429);
+  const endpoint = String(b.endpoint || "");
+  if (!endpointValido(env, endpoint)) return json({ ok: false, error: "endpoint" }, 400);
+  const numeros = await pedidosDelCliente(env, b.pedidos);
+  await tablaPush(env);
+  const ahora = Date.now();
+  if (numeros.length) await env.DB.batch(numeros.map((n) => env.DB.prepare("INSERT INTO push (endpoint, numero, actualizado) VALUES (?, ?, ?) ON CONFLICT (endpoint, numero) DO UPDATE SET actualizado = excluded.actualizado").bind(endpoint, n, ahora)));
+  return json({ ok: true, pedidos: numeros });
+}
+async function ultimoPush(req, env) {
+  let b;
+  try { b = await leerJson(req, 2000); } catch { return json({ ok: false, error: "invalido" }, 400); }
+  await tablaPush(env);
+  const r = await env.DB.prepare("SELECT ultimo FROM push WHERE endpoint = ? AND ultimo IS NOT NULL ORDER BY actualizado DESC LIMIT 1").bind(String(b.endpoint || "")).first();
+  return json({ ok: true, aviso: r ? JSON.parse(r.ultimo) : null });
+}
+async function estadosDe(env, ids) {
+  const { results } = await env.DB.prepare(`SELECT id, data FROM docs WHERE col = 'ventas' AND id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all();
+  return new Map(results.map((r) => [r.id, JSON.parse(r.data).estado]));
+}
+function textoAviso(v) {
+  const n = `N° ${v.numero}`;
+  return [null,
+    saldoDe(v) ? `Recibimos la seña de tu pedido ${n}. ¡Quedó confirmado!` : `Recibimos el pago de tu pedido ${n}. ¡Quedó confirmado!`,
+    `Tu pedido ${n} entró en impresión.`,
+    `¡Tu pedido ${n} está listo para entregar! Coordinamos la entrega por WhatsApp.`,
+    `Entregamos tu pedido ${n}. ¡Gracias por tu compra!`][v.estado];
+}
+async function avisarPush(env, v) {
+  const texto = textoAviso(v);
+  if (!texto) return;
+  await tablaPush(env);
+  const aviso = JSON.stringify({ numero: String(v.numero), estado: v.estado, titulo: `Aukan3D · Pedido N° ${v.numero}`, texto });
+  const ahora = Date.now();
+  await env.DB.prepare("UPDATE push SET ultimo = ?, actualizado = ? WHERE numero = ?").bind(aviso, ahora, String(v.numero)).run();
+  const { results } = await env.DB.prepare("SELECT endpoint FROM push WHERE numero = ?").bind(String(v.numero)).all();
+  const claves = await clavesPush(env);
+  await Promise.all(results.map(async ({ endpoint }) => {
+    const res = await fetch(endpoint, { method: "POST", headers: { TTL: "86400", Urgency: "normal", "Content-Length": "0",
+      Authorization: `vapid t=${await jwtVapid(claves, new URL(endpoint).origin)}, k=${claves.publica}` } }).catch(() => null);
+    if (res && (res.status === 404 || res.status === 410)) await env.DB.prepare("DELETE FROM push WHERE endpoint = ?").bind(endpoint).run(); // ya no existe
+  }));
+}
+async function jwtVapid(claves, aud) {
+  const cab = b64url(texto(JSON.stringify({ typ: "JWT", alg: "ES256" })));
+  const cuerpo = b64url(texto(JSON.stringify({ aud, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: "https://aukan3d.pages.dev" })));
+  const k = await crypto.subtle.importKey("jwk", claves.privada, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  const firma = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, k, texto(`${cab}.${cuerpo}`));
+  return `${cab}.${cuerpo}.${b64url(firma)}`;
 }

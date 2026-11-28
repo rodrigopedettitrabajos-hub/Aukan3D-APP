@@ -22,5 +22,5 @@ window.AUKAN_CONFIG = {
       mapa: "-34.872695,-56.153531", // latitud,longitud del lugar
     },
   ],
-  version: "V0.49", // subir en cada entrega (ver CHANGELOG.md)
+  version: "V0.50", // subir en cada entrega (ver CHANGELOG.md)
 };

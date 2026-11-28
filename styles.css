@@ -442,3 +442,4 @@ p, li, .plazo-chip { text-wrap: pretty; }
 .pedido-pago.parcial { border-left-color: #0392ca; }
 .pedido-pago.pend { border-left-color: #c98a00; }
 @media (max-width: 600px) { .avisos-drop { position: fixed; top: 64px; left: 12px; right: 12px; width: auto; } }
+.avisos-ayuda { margin: 6px 8px; font-size: 13px; color: var(--muted); }

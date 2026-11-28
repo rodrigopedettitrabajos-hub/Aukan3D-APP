@@ -95,6 +95,7 @@ async function actualizarEstados() {
       return nuevo;
     });
     if (cambio) { guardarPedidos(lista); pintarPedidos(); }
+    suscribirPush();
   } catch { /* sin conexión: queda el último estado conocido */ }
 }
 // Se consulta al entrar, al volver a la pestaña y cada minuto mientras la tienda está abierta con sesión.
@@ -121,7 +122,7 @@ function avisar(p, antes) {
   guardarAvisos([{ numero: p.numero, estado: p.estado, texto, fecha: new Date().toISOString(), leido: false }, ...leerAvisos()]);
   pintarAvisos();
   $("#anuncio").textContent = `Pedido N° ${p.numero}: ${texto}`;
-  if ("Notification" in window && Notification.permission === "granted") {
+  if ("Notification" in window && Notification.permission === "granted" && !leerPush().endpoint) { // con push, el aviso ya llega del servidor
     const titulo = `Aukan3D · Pedido N° ${p.numero}`, op = { body: texto, icon: "logo.webp", tag: `pedido-${p.numero}` };
     navigator.serviceWorker?.getRegistration().then((r) => (r ? r.showNotification(titulo, op) : new Notification(titulo, op))).catch(() => {});
   }
@@ -138,7 +139,9 @@ function pintarAvisos() {
         el("small", { textContent: new Date(a.fecha).toLocaleString("es-UY", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) })))
     : [el("p", { className: "vacio", textContent: "Cuando tu pedido cambie de estado te avisamos acá." })]));
   const permiso = "Notification" in window ? Notification.permission : "denied";
-  $("#avisos-activar").hidden = permiso !== "default";
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent), instalada = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  $("#avisos-activar").hidden = permiso !== "default" || !("PushManager" in window);
+  $("#avisos-ios").hidden = !(ios && !instalada && !("PushManager" in window));
 }
 function abrirAvisos(si) {
   $("#avisos-drop").hidden = !si;
@@ -152,8 +155,32 @@ $("#avisos-lista").addEventListener("click", (e) => { if (e.target.closest("a"))
 $("#avisos-activar").addEventListener("click", async () => {
   try { await Notification.requestPermission(); } catch { /* navegador viejo */ }
   pintarAvisos();
+  suscribirPush();
 });
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+// Push: el navegador (o la app instalada) recibe el aviso aunque la tienda esté cerrada.
+const API_BASE = cfg.pedidosUrl ? cfg.pedidosUrl.replace(/\/api\/pedidos.*$/, "") : "", CON_E = cfg.pedidosUrl.includes("e=pruebas") ? "?e=pruebas" : "";
+const PUSH = "aukan_push";
+const leerPush = () => leerJson(PUSH, {});
+if ("serviceWorker" in navigator) navigator.serviceWorker.register(`sw.js?api=${encodeURIComponent(API_BASE)}${CON_E ? "&e=pruebas" : ""}`).catch(() => {});
+const deB64 = (t) => Uint8Array.from(atob(t.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+async function suscribirPush() {
+  if (!API_BASE || !sesion() || !("PushManager" in window) || Notification.permission !== "granted") return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const { clave } = await (await fetch(API_BASE + "/api/push/clave" + CON_E)).json();
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: deB64(clave) });
+    }
+    const abiertos = leerPedidos().filter((p) => !p.ejemplo && /^\d+$/.test(p.numero) && p.estado < ESTADOS.length - 1 && p.cliente?.whatsapp);
+    const antes = leerPush(), numeros = abiertos.map((p) => String(p.numero));
+    if (antes.endpoint === sub.endpoint && numeros.every((n) => antes.numeros?.includes(n))) return; // ya anotados
+    if (!numeros.length) return escribir(PUSH, { endpoint: sub.endpoint, numeros: [] });
+    const r = await (await fetch(API_BASE + "/api/push/alta" + CON_E, { method: "POST", headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ endpoint: sub.endpoint, pedidos: abiertos.map((p) => ({ numero: String(p.numero), whatsapp: p.cliente.whatsapp })) }) })).json();
+    if (r.ok) escribir(PUSH, { endpoint: sub.endpoint, numeros: r.pedidos });
+  } catch (e) { console.warn("push", e); }
+}
 if (cfg.pedidosUrl) for (const n of document.querySelectorAll(".nota-estado"))
   n.textContent = "Tus pedidos se guardan en este dispositivo. El estado se actualiza solo cuando Aukan3D lo cambia.";
 $("#pedidos-ejemplo").addEventListener("click", () => {

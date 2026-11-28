@@ -2,6 +2,11 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.50 · 2026-11-28
+- Arreglo: con el servidor sin actualizar (o una sesión abierta antes de V0.49) admin y dev quedaban sin secciones. Ahora las cuentas fijas tienen todo aunque el servidor no mande permisos.
+- Tienda instalable como app (manifest e íconos) y avisos push: con permiso, el aviso de cambio de estado llega aunque la tienda esté cerrada. En iPhone, desde la app agregada a inicio. Las claves se crean solas en el servidor.
+- Servidor: /api/push/clave, /api/push/alta y /api/push/ultimo; al avanzar el estado de un pedido (panel o pago de Mercado Pago) manda el push. Hay que volver a subir el servidor.
+
 ## V0.49 · 2026-11-28
 - Panel: nueva pantalla Accesos al panel (administrador y dev). Crear cuentas con usuario, nombre, correo, base (solo pruebas, solo real o ambas) y secciones permitidas; reiniciar contraseña (temporal, se ve una vez) y desactivar (corta la sesión al instante). Botón "+ Probador": cuenta solo para pruebas con todo el día a día, sin Mercado Pago, Base de datos ni Accesos.
 - Panel: el menú muestra solo las secciones permitidas y el servidor también lo controla. Quien entra con contraseña temporal tiene que elegir una nueva.
