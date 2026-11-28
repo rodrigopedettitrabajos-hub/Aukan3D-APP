@@ -543,3 +543,52 @@ legend { padding: 0 6px; font-weight: 600; }
 @media (max-width: 700px) {
   .t-stock th:nth-child(3), .t-stock td:nth-child(3), .t-stock th:nth-child(4), .t-stock td:nth-child(4), .t-stock th:nth-child(5), .t-stock td:nth-child(5), .t-stock th:nth-child(7), .t-stock td:nth-child(7), .t-stock th:nth-child(8), .t-stock td:nth-child(8) { display: none; }
 }
+/* Carga rápida */
+.ventana.carga { width: min(1000px, calc(100% - 24px)); }
+.carga-paso { display: grid; gap: 14px; min-width: 0; }
+.carga-paso > *, .carga-todos > *, .carga-todos select, .carga-todos input { min-width: 0; }
+#f-carga { grid-template-columns: minmax(0, 1fr); }
+.carga-zona { display: grid; justify-items: center; gap: 6px; text-align: center; padding: 26px 16px; border: 2px dashed var(--line); border-radius: 14px; cursor: pointer; }
+.carga-zona span:not(.btn) { color: var(--muted); font-size: 14px; }
+.carga-zona .btn { margin-top: 6px; }
+.carga-zona:hover, .carga-zona.encima { border-color: var(--brand); background: var(--brand-soft); }
+#carga-fotos:focus-visible + * { outline: 3px solid var(--brand); }
+.carga-zona:focus-within { outline: 3px solid var(--brand); outline-offset: 2px; }
+.carga-minis { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; }
+.carga-minis:empty { display: none; }
+.carga-minis figure { position: relative; margin: 0; }
+.carga-minis img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); display: block; }
+.carga-minis .x { position: absolute; top: 2px; right: 2px; width: 26px; height: 26px; font-size: 18px; background: rgb(0 0 0 / .6); color: #fff; }
+.carga-todos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 12px; align-items: end; padding: 14px; border-radius: 12px; background: var(--soft); }
+.carga-resumen { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; color: var(--muted); font-size: 14px; }
+.carga-resumen b { color: var(--ink); }
+.carga-resumen .ojo, .carga-resumen .ojo b { color: var(--warn); }
+.carga-tabla { border: 1px solid var(--line); border-radius: 12px; overflow: auto; max-height: 52dvh; }
+.carga-tabla .tabla { margin: 0; }
+.carga-tabla thead th { position: sticky; top: 0; z-index: 1; background: var(--card); }
+.carga-tabla td { padding: 6px 8px; }
+.carga-tabla td.num input { text-align: right; }
+.carga-tabla input, #f-carga textarea { width: 100%; min-width: 0; min-height: 40px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); padding: 6px 10px; color: var(--ink); font: inherit; font-size: 16px; }
+#f-carga textarea { resize: vertical; }
+.carga-tabla td.num input { min-width: 70px; }
+.carga-tabla input[name="c-nombre"]:placeholder-shown { border-color: var(--warn); }
+.carga-tabla td[data-l="Nombre"] input { min-width: 160px; }
+.carga-tabla tr.falta input, .carga-tabla tr.repetido input[name="c-nombre"] { border-color: var(--warn); background: var(--warn-soft); }
+@media (max-width: 700px) {
+  .carga-todos { grid-template-columns: 1fr 1fr; }
+  .carga-todos label:nth-child(3) { grid-column: 1 / -1; }
+  .carga-todos .btn { grid-column: 1 / -1; }
+  .carga-tabla { border: 0; max-height: none; overflow: visible; }
+  .carga-tabla thead { display: none; }
+  .carga-tabla tbody { display: grid; gap: 10px; }
+  .carga-tabla tr { display: grid; grid-template-columns: 52px 1fr 1fr 40px; gap: 6px 8px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; }
+  .carga-tabla td { display: block; padding: 0; border: 0; }
+  .carga-tabla td[data-l="Nombre"] { grid-column: 2 / 4; align-self: center; }
+  .carga-tabla td.num::before { content: attr(data-l); display: block; font-size: 12px; color: var(--muted); }
+  .carga-tabla td.num:nth-of-type(3) { grid-column: 1 / 3; }
+  .carga-tabla td.num:nth-of-type(5) { grid-column: 1 / 3; }
+  .carga-tabla td.num:nth-of-type(4), .carga-tabla td.num:nth-of-type(6) { grid-column: 3 / 5; }
+  .carga-tabla td.quitar { grid-column: 4; grid-row: 1; }
+  .carga-tabla td[data-l="Nombre"] input, .carga-tabla td.num input { min-width: 0; }
+  .carga-tabla .tabla { display: block; }
+}
