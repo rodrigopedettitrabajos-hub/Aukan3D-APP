@@ -2,6 +2,10 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.80 · 2026-11-28
+
+- Respaldos: en modo pruebas ya no aparece "Hacer un respaldo ahora" (los respaldos son solo de la base real y el botón daba error).
+
 ## V0.79 · 2026-11-28
 - Arreglos de las auditorías V0.78 (informe en la carpeta auditorias): el respaldo saca las fotos y arma el JSON en la base, sin parsear cada registro, para no pasarse del tiempo de CPU del plan gratis. Textos de avisos sin palabras sueltas.
 
