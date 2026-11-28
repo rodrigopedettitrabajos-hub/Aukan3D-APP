@@ -52,7 +52,7 @@ const montoSena = (total) => Math.ceil(total / 2);
 
 function resumenPedido(items, cliente) {
   const total = items.reduce((s, i) => s + i.precio * i.cant, 0);
-  const lineas = items.map((i) => `• ${i.cant} x ${i.nombre} ($${i.precio})`);
+  const lineas = items.map((i) => `• ${i.cant} x ${i.nombre} (${i.precio < 0 ? "−" : ""}$${Math.abs(i.precio)})`);
   return [
     "¡Hola, Aukan3D! Quiero hacer este pedido:",
     ...lineas,

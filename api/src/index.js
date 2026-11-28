@@ -3,7 +3,7 @@
 // - Panel de gestión: ingreso con usuario y contraseña, y lectura/escritura de sus datos.
 // Cada registro del panel se guarda como JSON en la tabla docs (col, id); ver schema.sql.
 
-const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas", "mensajes", "resenas"];
+const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas", "mensajes", "resenas", "cupones"];
 const MAX_ITEMS = 50, MAX_CANT = 99;
 
 export default {
@@ -39,6 +39,7 @@ async function rutear(req, env, url) {
   if (m === "POST" && p === "/api/pedidos") return nuevoPedido(req, env);
   if (m === "POST" && p === "/api/pedidos/estado") return estadoPedidos(req, env);
   if (m === "POST" && p === "/api/resenas") return nuevaResena(req, env);
+  if (m === "GET" && p === "/api/cupon") return consultaCupon(req, env, url);
   if (m === "POST" && p === "/api/login") return login(req, env);
   if (m === "POST" && p === "/api/mp/aviso") return avisoMp(req, env, url);
   if (m === "GET" && p === "/api/tienda") return datosTienda(env);
@@ -183,6 +184,32 @@ async function nuevaResena(req, env) {
   return json({ ok: true });
 }
 
+// ---------- códigos de descuento ----------
+// Cupón: { id = código en mayúsculas, tipo "%" o "$", valor, vence "AAAA-MM-DD" o "", max usos (0 = sin límite), activo }.
+// Los usos se cuentan en las ventas que lo llevan (cupon), así no hay contador que se pise entre dispositivos.
+const DESCUENTO = "descuento"; // id del renglón de descuento dentro de los items de la venta
+const hoyUy = () => new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10); // Montevideo, UTC-3
+const descuentoDe = (c, total) => Math.min(c.tipo === "%" ? Math.round((total * c.valor) / 100) : c.valor, total);
+async function cuponValido(env, codigo) {
+  const id = String(codigo || "").trim().toUpperCase();
+  if (!/^[A-Z0-9]{3,20}$/.test(id)) return { error: "no-existe" };
+  const r = await env.DB.prepare("SELECT data FROM docs WHERE col = 'cupones' AND id = ?").bind(id).first();
+  const c = r && JSON.parse(r.data);
+  if (!c || c._borrado || !c.activo || !(c.valor > 0) || (c.tipo === "%" && c.valor > 100)) return { error: "no-existe" };
+  if (c.vence && c.vence < hoyUy()) return { error: "vencido" };
+  if (c.max > 0) {
+    const u = await env.DB.prepare(`SELECT COUNT(*) AS n FROM docs WHERE col = 'ventas' AND json_extract(data, '$.cupon') = ?
+      AND json_extract(data, '$._borrado') IS NULL AND json_extract(data, '$.espera') IS NULL`).bind(id).first();
+    if (u.n >= c.max) return { error: "agotado" };
+  }
+  return { cupon: { codigo: id, tipo: c.tipo === "%" ? "%" : "$", valor: Math.round(c.valor) } };
+}
+async function consultaCupon(req, env, url) {
+  if (!(await pasaLimite(env, "cup:" + (req.headers.get("CF-Connecting-IP") || ""), 30, 600_000))) return json({ ok: false, error: "limite" }, 429);
+  const r = await cuponValido(env, url.searchParams.get("c"));
+  return json(r.cupon ? { ok: true, ...r.cupon } : { ok: false, error: r.error });
+}
+
 // ---------- pedido de la tienda ----------
 async function nuevoPedido(req, env) {
   let body;
@@ -203,6 +230,13 @@ async function nuevoPedido(req, env) {
     if (!p || !p.activo || !(p.precio > 0)) return json({ ok: false, error: "producto" }, 400);
     items.push({ id: String(p.id), nombre: String(p.nombre).slice(0, 120), precio: p.precio, cant });
   }
+  let cupon = null;
+  if (body.cupon) {
+    const r = await cuponValido(env, body.cupon);
+    if (!r.cupon) return json({ ok: false, error: "cupon", motivo: r.error }, 400);
+    const d = descuentoDe(r.cupon, items.reduce((s, i) => s + i.precio * i.cant, 0));
+    if (d > 0) { cupon = r.cupon.codigo; items.push({ id: DESCUENTO, nombre: `Descuento ${cupon}`, precio: -d, cant: 1 }); }
+  }
   const total = items.reduce((s, i) => s + i.precio * i.cant, 0);
   const sena = c.modo !== "total";
   const aPagar = sena ? Math.ceil(total / 2) : total; // igual que montoSena() de la tienda
@@ -217,17 +251,18 @@ async function nuevoPedido(req, env) {
   }
   const numero = await contador(env);
   const pago = await linkPago(env, sena ? [{ title: `Seña 50% pedido AUKAN-${numero}`, quantity: 1, unit_price: aPagar, currency_id: "UYU" }]
+    : cupon ? [{ title: `Pedido AUKAN-${numero}`, quantity: 1, unit_price: total, currency_id: "UYU" }] // Mercado Pago no acepta renglones negativos
     : items.map((i) => ({ title: i.nombre, quantity: i.cant, unit_price: i.precio, currency_id: "UYU" })), referencia(env, numero), volverATienda(env));
   const entrega = limpio(c.entrega, 40) + (c.envio ? " · " + limpio(c.envio, 160) : "");
   const venta = { numero: String(numero), fecha: new Date(ahora).toISOString(), origen: "web", cliente: cli.id, vendedor: "", moneda: "UYU", items, pagos: [],
-    estado: 0, sena, entrega, nota: limpio(c.comentario, 500), pago };
+    estado: 0, sena, entrega, nota: limpio(c.comentario, 500), pago, ...(cupon ? { cupon } : {}) };
   // Con link de Mercado Pago el pedido espera el pago: no aparece en el panel hasta que Mercado Pago avisa que se acreditó.
   // Sin link (no hay credencial o Mercado Pago no respondió) entra igual, para no perderlo, y el pago se coordina.
   if (pago) venta.espera = true;
   await guardarDoc(env, "ventas", numero, venta, ahora).run();
   // Pedidos que esperaban el pago y nunca se pagaron: a los 7 días se borran.
   await env.DB.prepare(`DELETE FROM docs WHERE col = 'ventas' AND actualizado < ? AND data LIKE '%"espera":true%'`).bind(ahora - 7 * 86400_000).run();
-  return json({ ok: true, total, aPagar, sena, numero, pago });
+  return json({ ok: true, total, aPagar, sena, numero, pago, descuento: cupon ? -items.at(-1).precio : 0 });
 }
 
 // ---------- Mercado Pago ----------
@@ -392,7 +427,7 @@ function mismo(a, b) { // comparación de tiempo constante
 export const PERMISOS = ["ventas", "feria", "pendientes", "clientes", "productos", "reportes", "usuarios", "medios", "mensajes", "mp", "accesos", "base"];
 // Qué permiso hace falta para escribir cada colección (alcanza con uno de la lista).
 const ESCRIBE = { ventas: ["ventas", "feria", "pendientes"], clientes: ["clientes", "ventas", "feria"], productos: ["productos", "ventas", "feria"],
-  gastos: ["reportes"], medios: ["medios"], usuarios: ["usuarios"], cajas: ["feria"], mensajes: ["mensajes"], resenas: ["reportes"] };
+  gastos: ["reportes"], medios: ["medios"], usuarios: ["usuarios"], cajas: ["feria"], mensajes: ["mensajes"], resenas: ["reportes"], cupones: ["productos"] };
 const puedeEscribir = (q, col) => (ESCRIBE[col] || []).some((x) => q.permisos.includes(x));
 // Lectura: sin estos permisos, los clientes llegan solo con id y nombre (sin WhatsApp ni correo) y los gastos no llegan.
 const VE_CLIENTES = ["ventas", "pendientes", "clientes", "reportes"];

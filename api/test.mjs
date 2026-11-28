@@ -286,4 +286,21 @@ assert.ok(mia && mia.estrellas === 5 && mia.productos.length && !("numero" in mi
 assert.ok((await pedir("/api/admin/lote", { token, body: { set: [{ col: "resenas", id: rs[0].id, data: { ...rs[0], oculta: true } }] } })).j.ok);
 assert.ok(!(await enTienda()).some((r) => r.comentario === "Excelente " + unico));
 
+// Códigos de descuento: el servidor los valida, descuenta en un renglón "descuento" y cuenta los usos por las ventas.
+const cod = "T" + unico, cupon = (data) => pedir("/api/admin/lote", { token, body: { set: [{ col: "cupones", id: data.id, data }] } });
+assert.ok((await cupon({ id: cod, tipo: "%", valor: 10, vence: "", max: 1, activo: true })).j.ok);
+assert.ok((await cupon({ id: "V" + unico, tipo: "$", valor: 50, vence: "2020-01-01", max: 0, activo: true })).j.ok);
+const consulta = (c) => pedir("/api/cupon?c=" + c, { ip: "10.6.0." + (unico % 250) }).then((x) => x.j);
+assert.deepStrictEqual(await consulta(cod.toLowerCase()), { ok: true, codigo: cod, tipo: "%", valor: 10 });
+assert.strictEqual((await consulta("NOEXISTE" + unico)).error, "no-existe");
+assert.strictEqual((await consulta("V" + unico)).error, "vencido");
+const cliCupon = { ...cliente, whatsapp: "+598 8" + unico, modo: "total" };
+const conCupon = await pedir("/api/pedidos", { body: { cliente: cliCupon, items: [{ id: idProd, cant: 2 }], cupon: cod }, ip: "10.5.0." + (unico % 250) });
+const bruto = precioProd * 2, desc = Math.round(bruto / 10);
+assert.ok(conCupon.j.ok && conCupon.j.total === bruto - desc && conCupon.j.descuento === desc, conCupon.t);
+const vCupon = (await pedir("/api/admin/datos", { token })).j.ventas.find((v) => v.numero === String(conCupon.j.numero));
+assert.ok(vCupon.cupon === cod && vCupon.items.at(-1).id === "descuento" && vCupon.items.at(-1).precio === -desc, JSON.stringify(vCupon));
+const otra = await pedir("/api/pedidos", { body: { cliente: cliCupon, items: [{ id: idProd, cant: 1 }], cupon: cod }, ip: "10.5.0." + (unico % 250) });
+assert.ok(otra.r.status === 400 && otra.j.error === "cupon" && otra.j.motivo === "agotado", otra.t);
+
 console.log("api ok");
