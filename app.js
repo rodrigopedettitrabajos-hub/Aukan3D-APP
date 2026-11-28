@@ -389,7 +389,7 @@ async function enviar(ev) {
 
 let ultimoPedido = null;
 // Con servidor el pedido llega solo al panel: el botón no pasa por WhatsApp y después se paga con Mercado Pago.
-const TEXTO_ENVIAR = cfg.pedidosUrl ? "Hacer pedido" : "Enviar pedido por WhatsApp";
+const TEXTO_ENVIAR = cfg.pedidosUrl ? "Hacer pedido y pagar" : "Enviar pedido por WhatsApp";
 if (cfg.pedidosUrl) {
   $("#enviar-txt").textContent = TEXTO_ENVIAR;
   $("#enviar svg").remove();
@@ -434,10 +434,10 @@ function mostrarPago({ pago = "", texto, sena, recibido, bloqueado, total, aPaga
   for (const e of [$("#items"), $(".total"), $("#plazo"), $("#checkout")]) e.hidden = true;
   $("#pago").hidden = false;
   const n = ultimoPedido.items.reduce((s, i) => s + i.cant, 0);
-  $("#pago-titulo").textContent = recibido ? "¡Pedido recibido!" : "Falta un paso: mandanos el mensaje";
+  $("#pago-titulo").textContent = pago ? "Último paso: pagá con Mercado Pago" : recibido ? "¡Pedido recibido!" : "Falta un paso: mandanos el mensaje";
   $("#pago-numero").textContent = `Pedido N° ${ultimoPedido.numero} · ${n === 1 ? "1 producto" : `${n} productos`}`;
   $("#pago-total").textContent = sena ? `Seña ${pesos(aPagar)} · total ${pesos(total)}` : `Total ${pesos(total)}`;
-  $("#pago-texto").textContent = pago ? `${sena ? "Pagá la seña" : "Pagalo"} con Mercado Pago: escaneá el QR o tocá el botón. Cuando se acredita queda confirmado y lo ves en "Mis pedidos".`
+  $("#pago-texto").textContent = pago ? `${sena ? "Pagá la seña" : "Pagalo"} con Mercado Pago: escaneá el QR o tocá el botón. El pedido entra en cuanto se acredita el pago y lo seguís en "Mis pedidos".`
     : recibido ? "Ya lo tenemos. Te escribimos por WhatsApp para coordinar el pago."
     : bloqueado ? "Tu navegador no abrió WhatsApp. Tocá el botón para mandarnos el pedido."
     : "Te abrimos WhatsApp con el pedido escrito. Hasta que nos llegue ese mensaje no lo tenemos: si no lo mandaste, tocá el botón.";

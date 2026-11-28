@@ -134,8 +134,10 @@ const devMp = (await pedir("/api/admin/mp?e=pruebas", { token: dev.token })).j; 
 assert.ok(devMp.configurado && devMp.final === "9876");
 const conLink = (await pedir("/api/pedidos", { body: { cliente: { nombre: "Mp Test", whatsapp: "+598 97" + unico.slice(-6), modo: "sena" }, items: [{ id: idProd, cant: 1 }] } })).j;
 assert.ok(conLink.ok && conLink.pago.startsWith("https://sandbox.mercadopago.com.uy/"), JSON.stringify(conLink));
-// QR del panel: link por la seña; el monto no puede pasar el saldo.
+// Con link de pago el pedido espera: el panel no lo ve hasta que Mercado Pago confirma.
 numMp = String(conLink.numero); montoMp = conLink.aPagar;
+assert.ok(!(await pedir("/api/admin/datos", { token })).j.ventas.some((v) => v.numero === numMp));
+// QR del panel: link por la seña; el monto no puede pasar el saldo.
 const cobro = (await pedir("/api/admin/mp/cobro", { token, body: { numero: numMp, monto: montoMp, sena: true } })).j;
 assert.ok(cobro.ok && cobro.link.startsWith("https://sandbox.mercadopago.com.uy/"), JSON.stringify(cobro));
 assert.strictEqual((await pedir("/api/admin/mp/cobro", { token, body: { numero: numMp, monto: conLink.total + 1 } })).j.error, "monto");
@@ -149,7 +151,7 @@ assert.strictEqual((await aviso("555")).j.registrado, false); // repetido: no du
 assert.ok((await aviso("123")).j.ignorado); // Mercado Pago no lo conoce
 assert.ok((await pedir("/api/mp/aviso", { body: { type: "merchant_order", data: { id: "1" } } })).j.ignorado);
 const vMp = (await pedir("/api/admin/datos", { token })).j.ventas.find((v) => v.numero === numMp);
-assert.ok(vMp.estado === 1 && vMp.pagos.length === 1 && vMp.pagos[0].mp === "555" && vMp.pagos[0].monto === montoMp, JSON.stringify(vMp));
+assert.ok(vMp && !vMp.espera && vMp.estado === 1 && vMp.pagos.length === 1 && vMp.pagos[0].mp === "555" && vMp.pagos[0].monto === montoMp, JSON.stringify(vMp));
 assert.strictEqual((await mp({ token: "" })).j.configurado, false);
 mock.close();
 

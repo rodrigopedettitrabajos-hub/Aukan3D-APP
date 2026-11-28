@@ -221,7 +221,9 @@ const repintar = () => { const v = location.hash.slice(1); if (v !== "base" && v
 // --- Campana: pedidos de la tienda en "Recibido" que todavía no se abrieron en este navegador ---
 const VISTOS = PRUEBAS ? "aukan_vistos_pruebas" : "aukan_vistos"; // los números se repiten entre la base real y la de pruebas
 const vistos = new Set(leerJson(VISTOS, []).map(String));
-const nuevos = () => db.ventas.filter((v) => v.origen === "web" && v.estado === 0 && !vistos.has(String(v.numero)));
+// Recibido o ya pagado: con Mercado Pago el pedido llega al panel recién cuando se acredita (en Seña pagada o Pagado).
+const llegoPagado = (v) => v.estado === 1 && v.pagos.length && v.pagos.every((p) => p.mp);
+const nuevos = () => db.ventas.filter((v) => v.origen === "web" && (v.estado === 0 || llegoPagado(v)) && !vistos.has(String(v.numero)));
 function marcarVistos(numeros) {
   for (const n of numeros) vistos.add(String(n));
   try { localStorage.setItem(VISTOS, JSON.stringify([...vistos].slice(-500))); } catch { /* sin almacenamiento */ }
@@ -258,7 +260,10 @@ $("#notis-todo").addEventListener("click", () => marcarVistos(nuevos().map((v) =
 $("#notis-permiso").addEventListener("click", async () => { try { await Notification.requestPermission(); } catch { /* sin notificaciones */ } pintarCampana(); });
 
 // --- Piezas comunes ---
-const pastilla = (v) => el("span", { className: `pill e${v.estado}`, textContent: v.estado === 1 && !v.sena ? "Pagado" : ESTADOS[v.estado] });
+// "Pagado" en vez de "Seña pagada" si se pagó todo de una o si ya no queda saldo.
+const pagadoTodo = (v) => !v.sena || !saldo(v);
+const nombreEstado = (v) => (v.estado === 1 && pagadoTodo(v) ? "Pagado" : ESTADOS[v.estado]);
+const pastilla = (v) => el("span", { className: `pill e${v.estado}`, textContent: nombreEstado(v) });
 const kpi = (titulo, valor, pista, tono = "") => el("div", { className: "kpi" },
   el("p", { textContent: titulo }), el("strong", { className: tono, textContent: valor }), pista ? el("small", { textContent: pista }) : "");
 function barras(filas) { // filas: [[etiqueta, valor, texto]]
@@ -367,7 +372,7 @@ function abrirDetalle(numero) {
   $("#detalle-imp").replaceChildren(botonesImp(v.numero));
   const pasos = el("ol", { className: "pasos" }, ...ESTADOS.map((e, i) => el("li", {},
     el("button", { type: "button", className: i < v.estado ? "hecho" : i === v.estado ? "actual" : "", ariaCurrent: i === v.estado ? "step" : null,
-      textContent: i === 1 && !v.sena ? "Pagado" : e, onclick: () => cambiarEstado(v, i) }))));
+      textContent: i === 1 && pagadoTodo(v) ? "Pagado" : e, onclick: () => cambiarEstado(v, i) }))));
   const msg = `¡Hola, ${c.nombre.split(" ")[0]}! Te escribimos de Aukan3D por tu pedido N° ${v.numero}: ${ESTADOS[v.estado].toLowerCase()}.`
     + (saldo(v) ? ` Saldo a pagar: ${plata(saldo(v), v.moneda)}.` : "");
   $("#detalle-cuerpo").replaceChildren(
@@ -470,7 +475,7 @@ function esperarPagoQr() {
     qrDe = v;
     $("#qr-img").hidden = $("#qr-link").hidden = true;
     $("#qr-estado").className = "pago-ok";
-    $("#qr-estado").textContent = `¡Pago recibido! ${plata(v.pagos.at(-1).monto, v.moneda)} por Mercado Pago. El pedido quedó en ${v.estado === 1 && !v.sena ? "Pagado" : ESTADOS[v.estado]}.`;
+    $("#qr-estado").textContent = `¡Pago recibido! ${plata(v.pagos.at(-1).monto, v.moneda)} por Mercado Pago. El pedido quedó en ${nombreEstado(v)}.`;
     repintar();
   }, 5000);
 }
