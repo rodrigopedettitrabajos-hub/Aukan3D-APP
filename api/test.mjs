@@ -49,6 +49,7 @@ assert.deepStrictEqual(sigue, [200, 200, 200, 429]);
 // Estado para "Mis pedidos": solo con el WhatsApp del pedido.
 const est = (wa) => pedir("/api/pedidos/estado", { body: { pedidos: [{ numero: String(ped.j.numero), whatsapp: wa }] }, ip: "10.8.0." + (unico % 250) });
 assert.deepStrictEqual((await est(cliente.whatsapp)).j.estados, { [ped.j.numero]: 0 });
+assert.deepStrictEqual((await est(cliente.whatsapp)).j.pagos, { [ped.j.numero]: [] });
 assert.deepStrictEqual((await est("+598 91111111")).j.estados, {});
 
 // Ingreso al panel.
@@ -152,6 +153,9 @@ assert.ok((await aviso("123")).j.ignorado); // Mercado Pago no lo conoce
 assert.ok((await pedir("/api/mp/aviso", { body: { type: "merchant_order", data: { id: "1" } } })).j.ignorado);
 const vMp = (await pedir("/api/admin/datos", { token })).j.ventas.find((v) => v.numero === numMp);
 assert.ok(vMp && !vMp.espera && vMp.estado === 1 && vMp.pagos.length === 1 && vMp.pagos[0].mp === "555" && vMp.pagos[0].monto === montoMp, JSON.stringify(vMp));
+// El cliente ve el pago con su N° de operación (sin el medio interno).
+const estMp = (await pedir("/api/pedidos/estado", { body: { pedidos: [{ numero: numMp, whatsapp: "+598 97" + unico.slice(-6) }] }, ip: "10.8.1." + (unico % 250) })).j;
+assert.ok(estMp.estados[numMp] === 1 && estMp.pagos[numMp].length === 1 && estMp.pagos[numMp][0].mp === "555" && estMp.pagos[numMp][0].monto === montoMp && !("medio" in estMp.pagos[numMp][0]), JSON.stringify(estMp));
 assert.strictEqual((await mp({ token: "" })).j.configurado, false);
 mock.close();
 
