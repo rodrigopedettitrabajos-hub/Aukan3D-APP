@@ -518,7 +518,7 @@ function abrirQr(numero) {
   $("#qr-sub").textContent = `Pedido N° ${numero} · ${cliente(qrDe.cliente).nombre}`;
   $("#qr-montos").replaceChildren(...opciones.map(([t, m, esSena]) => el("button", { type: "button", className: "btn sec", ariaPressed: "false",
     textContent: `${t} · ${plata(m, qrDe.moneda)}`, onclick: (e) => generarQr(m, esSena, e.currentTarget) })));
-  $("#qr-img").hidden = $("#qr-link").hidden = true;
+  $("#qr-img").hidden = $("#qr-link").hidden = true; $("#qr-check").setAttribute("hidden", "");
   $("#qr-estado").className = ""; $("#qr-estado").textContent = "";
   $("#d-qr").showModal();
   $("#qr-montos button").click(); // la seña si corresponde; si no, el total
@@ -556,7 +556,7 @@ function esperarPagoQr() {
     clearInterval(qrEspera);
     qrDe = v;
     $("#qr-img").hidden = $("#qr-link").hidden = true;
-    $("#qr-estado").className = "pago-ok";
+    $("#qr-estado").className = "pago-ok"; $("#qr-check").removeAttribute("hidden");
     $("#qr-estado").textContent = `¡Pago recibido! ${plata(v.pagos.at(-1).monto, v.moneda)} por Mercado Pago.` + (feriaQr ? "" : ` El pedido quedó en ${nombreEstado(v)}.`);
     if (feriaQr) pagoFeriaListo(); else repintar();
   }, 5000);
@@ -567,7 +567,7 @@ $("#qr-copiar").addEventListener("click", async (e) => {
   setTimeout(() => { b.textContent = "Copiar link"; }, 1500);
 });
 $("#d-qr").addEventListener("close", () => {
-  clearInterval(qrEspera);
+  clearInterval(qrEspera); clearInterval(cierreQr);
   $("#qr-manual").hidden = true; $("#qr-cerrar").textContent = "Cerrar";
   if (feriaQr) return cerrarFeriaQr();
   if (qrDe && $("#d-detalle").open) abrirDetalle(qrDe.numero);
@@ -583,7 +583,7 @@ function cobrarFeriaQr(v, recibido) {
   $("#qr-montos").replaceChildren();
   $("#qr-manual").hidden = false;
   $("#qr-cerrar").textContent = "Cancelar cobro";
-  $("#qr-img").hidden = $("#qr-link").hidden = true;
+  $("#qr-img").hidden = $("#qr-link").hidden = true; $("#qr-check").setAttribute("hidden", "");
   $("#qr-estado").className = ""; $("#qr-estado").textContent = "Guardando la venta…";
   $("#d-qr").showModal();
   sincronizar().then(() => generarQr(totalVenta(v), false, null));
@@ -592,13 +592,22 @@ function pagoFeriaListo() {
   const { v } = feriaQr;
   terminarVentaFeria(venta(v.numero) || v, feriaQr.recibido);
   feriaQr = null;
-  setTimeout(() => { if ($("#d-qr").open && !feriaQr) $("#d-qr").close(); }, 2500);
+  // Pagado: queda el check a la vista 10 s (o hasta que toquen Cerrar) y se cierra sola.
+  $("#qr-manual").hidden = true;
+  let falta = 10;
+  const cuenta = () => { $("#qr-cerrar").textContent = `Cerrar (${falta})`; };
+  cuenta(); clearInterval(cierreQr);
+  cierreQr = setInterval(() => { if (!$("#d-qr").open || feriaQr) return clearInterval(cierreQr); if (--falta <= 0) $("#d-qr").close(); else cuenta(); }, 1000);
 }
+let cierreQr = 0;
 $("#qr-manual").addEventListener("click", () => {
   const v = venta(feriaQr.v.numero);
   if (v && saldo(v)) { v.pagos.push({ fecha: new Date().toISOString(), medio: feriaMedio, monto: saldo(v) }); guardar(); }
+  clearInterval(qrEspera);
+  $("#qr-img").hidden = $("#qr-link").hidden = true;
+  $("#qr-estado").className = "pago-ok"; $("#qr-check").removeAttribute("hidden");
+  $("#qr-estado").textContent = `Pago anotado: ${plata(totalVenta(v || feriaQr.v))} con Mercado Pago.`;
   pagoFeriaListo();
-  $("#d-qr").close();
 });
 async function cerrarFeriaQr() {
   const { v } = feriaQr;
