@@ -233,7 +233,7 @@ function avisar(t, deshacer) {
 
 // --- Navegación ---
 const VISTAS = { panel: "Panel principal", ventas: "Ventas y pedidos", feria: "Modo feria", pendientes: "Cuentas pendientes", clientes: "Clientes",
-  productos: "Productos y precios", stock: "Stock", cupones: "Códigos de descuento", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Estadísticas", base: "Base de datos", mp: "Mercado Pago",
+  productos: "Productos y precios", stock: "Stock", cupones: "Códigos de descuento", respaldos: "Respaldos", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Estadísticas", base: "Base de datos", mp: "Mercado Pago",
   accesos: "Accesos al panel", mensajes: "Mensajes de WhatsApp", envios: "Entregas y envíos" };
 const PINTAR = {};
 // Grupos del menú: plegados de entrada; se abren tocando el título y se recuerda en este navegador. El de la pantalla abierta siempre se ve.
@@ -261,7 +261,7 @@ $("#nav").addEventListener("click", (e) => { if (e.target.closest("a")) menuMovi
 addEventListener("keydown", (e) => { if (e.key === "Escape" && $(".side").classList.contains("menu-abierto")) { menuMovil(false); $("#menu-movil").focus(); } });
 function mostrarVista() {
   let v = location.hash.slice(1) in VISTAS ? location.hash.slice(1) : "panel";
-  if (!puede(v === "panel" ? "" : v === "envios" ? "mensajes" : v === "stock" || v === "cupones" ? "productos" : v) || ((v === "mp" || v === "accesos" || v === "base") && !API)) v = "panel";
+  if (!puede(v === "panel" ? "" : v === "envios" ? "mensajes" : v === "stock" || v === "cupones" ? "productos" : v === "respaldos" ? "accesos" : v) || ((v === "mp" || v === "accesos" || v === "base" || v === "respaldos") && !API)) v = "panel";
   for (const s of document.querySelectorAll(".vista")) s.hidden = s.id !== "v-" + v;
   for (const a of document.querySelectorAll(".nav a")) a.ariaCurrent = a.hash === "#" + v ? "page" : null;
   pintarGrupos();
@@ -271,7 +271,7 @@ function mostrarVista() {
   pintarCampana();
 }
 addEventListener("hashchange", () => { mostrarVista(); scrollTo(0, 0); });
-const repintar = () => { const v = location.hash.slice(1); if (!["base", "mp", "accesos", "mensajes", "envios"].includes(v)) PINTAR[v in VISTAS ? v : "panel"](); pintarCampana(); };
+const repintar = () => { const v = location.hash.slice(1); if (!["base", "mp", "accesos", "mensajes", "envios", "respaldos"].includes(v)) PINTAR[v in VISTAS ? v : "panel"](); pintarCampana(); };
 
 // --- Campana: pedidos de la tienda en "Recibido" que todavía no se abrieron en este navegador ---
 const VISTOS = PRUEBAS ? "aukan_vistos_pruebas" : "aukan_vistos"; // los números se repiten entre la base real y la de pruebas
@@ -365,6 +365,11 @@ function pintarAlertas() {
     if (listos) a.push([`${plural(listos, "cliente")} ${listos === 1 ? "espera" : "esperan"} aviso: ya tenés stock de lo que pidieron.`, "#stock", "Avisar"]);
     const bajos = db.productos.filter(bajoMinimo);
     if (bajos.length) a.push([`Stock bajo: ${bajos.length === 1 ? bajos[0].nombre + " tiene" : plural(bajos.length, "producto") + " tienen"} menos que el mínimo.`, "#stock", "Ver", () => { $("#stock-filtro").value = "bajo"; }]);
+  }
+  if (API && !PRUEBAS && puede("accesos")) {
+    if (respaldos === null) { respaldos = []; traerRespaldos().then(pintarAlertas); }
+    const r = respaldos[0];
+    if (r && r.fecha > (leerLocal(BAJADO) || "")) a.push([`Hay un respaldo nuevo de la base (${r.fecha.split("-").reverse().join("/")}). Bajalo a tu PC para tener una copia.`, "#respaldos", "Bajar"]);
   }
   $("#panel-alertas").replaceChildren(...a.map(([t, href, accion, antes]) => el("p", { className: "alerta" }, el("span", { textContent: t }), el("a", { href, textContent: accion, onclick: antes }))));
 }
@@ -1483,6 +1488,48 @@ $("#f-cupon").addEventListener("submit", (e) => {
   db.cupones.push(datos);
   guardar(); PINTAR.cupones();
   avisar(`Código ${id} guardado.`);
+});
+// --- Respaldos de la base real: el servidor guarda una copia cada lunes (y cuando se pide); acá se bajan en Excel ---
+const BAJADO = "aukan_respaldo_bajado"; // fecha del último respaldo bajado en este navegador
+let respaldos = null; // lista del servidor, o null si no se pidió todavía
+async function traerRespaldos() {
+  if (!API || PRUEBAS || !puede("accesos")) return [];
+  try { respaldos = (await llamar("/api/admin/respaldos")).respaldos; } catch { respaldos = respaldos || []; }
+  return respaldos;
+}
+async function bajarRespaldo(fecha, boton) {
+  if (boton) { boton.disabled = true; boton.textContent = "Bajando…"; }
+  try {
+    const r = await llamar("/api/admin/respaldos/" + fecha);
+    bajarArchivo(crearLibro(respaldoAHojas(r.datos)), `respaldo-aukan3d-${fecha}.xlsx`);
+    if (fecha > (leerLocal(BAJADO) || "")) try { localStorage.setItem(BAJADO, fecha); } catch { /* sin almacenamiento */ }
+    avisar(`Respaldo del ${fecha.split("-").reverse().join("/")} descargado.`);
+  } catch { avisar("No pudimos bajar el respaldo. Probá de nuevo."); }
+  if (boton) { boton.disabled = false; boton.textContent = "Bajar Excel"; }
+  pintarAlertas(); if (location.hash === "#respaldos") pintarListaRespaldos();
+}
+PINTAR.respaldos = async () => {
+  const caja = $("#respaldos-lista");
+  if (PRUEBAS) return caja.replaceChildren(el("p", { className: "vacio caja", textContent: "Los respaldos son de la base real. Volvé a producción para verlos." }));
+  caja.replaceChildren(el("p", { className: "vacio", textContent: "Cargando…" }));
+  await traerRespaldos();
+  pintarListaRespaldos();
+};
+function pintarListaRespaldos() {
+  const lista = respaldos || [], ultimo = leerLocal(BAJADO) || "";
+  $("#respaldos-lista").replaceChildren(tabla(["Fecha", "#Ventas", "#Clientes", "#Productos", "Estado", ""], lista.map((r) => el("tr", {},
+    td(el("strong", { textContent: new Date(r.fecha + "T12:00").toLocaleDateString("es-UY", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" }) })),
+    td(String(r.cuantos.ventas || 0), "num"), td(String(r.cuantos.clientes || 0), "num"), td(String(r.cuantos.productos || 0), "num"),
+    td(el("span", { className: "pill " + (r.fecha <= ultimo ? "e4" : "e1"), textContent: r.fecha <= ultimo ? "Bajado en esta PC" : "Sin bajar" })),
+    td(el("button", { type: "button", className: "btn sec chico", textContent: "Bajar Excel", onclick: (e) => bajarRespaldo(r.fecha, e.currentTarget) })))),
+  "Todavía no hay respaldos. El primero se hace el lunes, o tocá \"Hacer un respaldo ahora\"."));
+}
+$("#respaldo-ahora").addEventListener("click", async (e) => {
+  const b = e.currentTarget;
+  b.disabled = true;
+  try { respaldos = (await llamar("/api/admin/respaldos", {})).respaldos; avisar("Respaldo hecho."); } catch { avisar("No pudimos hacer el respaldo. Probá de nuevo."); }
+  b.disabled = false;
+  PINTAR.respaldos();
 });
 // --- Medios de pago ---
 // Ícono de cada medio de pago, según su nombre (trazos simples, toman el color del texto).

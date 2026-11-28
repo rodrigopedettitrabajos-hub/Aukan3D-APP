@@ -280,6 +280,30 @@ function resumenCaja(db, caja) {
     diferencia: caja.contado == null ? null : caja.contado - esperado };
 }
 const cajaAbierta = (db) => db.cajas.find((c) => !c.cerrada) || null;
+// Respaldo de la base -> hojas de Excel (una por colección). Las listas (productos de la venta, pagos, movimientos) quedan en texto.
+const HOJAS_RESPALDO = { ventas: "Ventas", clientes: "Clientes", productos: "Productos", gastos: "Gastos", cajas: "Cajas", medios: "Medios de pago",
+  usuarios: "Usuarios", cupones: "Códigos de descuento", avisos: "Avisos de stock", resenas: "Reseñas", mensajes: "Mensajes" };
+function respaldoAHojas(datos) {
+  const medio = (id) => (datos.medios || []).find((m) => m.id === id)?.nombre || id;
+  const cliente = (id) => { const c = (datos.clientes || []).find((x) => x.id === id); return c ? `${c.nombre}${c.whatsapp ? " · " + c.whatsapp : ""}` : id; };
+  const vendedor = (id) => (datos.usuarios || []).find((u) => u.id === id)?.nombre || id;
+  const texto = (k, v) => {
+    if (v == null) return "";
+    if (k === "cliente" && typeof v === "string") return cliente(v);
+    if (k === "vendedor" && typeof v === "string") return vendedor(v);
+    if (typeof v === "number") return v;
+    if (typeof v === "boolean") return v ? "SI" : "NO";
+    if (!Array.isArray(v)) return typeof v === "object" ? JSON.stringify(v) : String(v);
+    if (k === "items") return v.map((i) => `${i.cant} x ${i.nombre} ($${i.precio})`).join("; ");
+    if (k === "pagos") return v.map((x) => `${medio(x.medio)} $${x.monto}${x.mp ? " (MP " + x.mp + ")" : ""} ${String(x.fecha || "").slice(0, 10)}`.trim()).join("; ");
+    if (k === "movimientos") return v.map((x) => `${x.tipo} $${x.monto}${x.nota ? " " + x.nota : ""}`).join("; ");
+    return JSON.stringify(v);
+  };
+  return Object.keys(HOJAS_RESPALDO).filter((c) => datos[c]?.length).map((c) => {
+    const claves = [...new Set(datos[c].flatMap(Object.keys))];
+    return { hoja: HOJAS_RESPALDO[c], filas: [claves, ...datos[c].map((d) => claves.map((k) => texto(k, d[k])))] };
+  });
+}
 // Cierre de caja para compartir por WhatsApp o imprimir: ventas por medio de pago, lo más vendido y la diferencia de caja.
 function cierreCaja(db, caja) {
   const r = resumenCaja(db, caja);
@@ -378,4 +402,4 @@ function mensajeDe(db, v, nombre, plata, extra = {}) {
 
 if (typeof module !== "undefined") module.exports = { ESTADOS, bajoMinimo, totalVenta, cobrado, saldo, porMoneda, catalogoDesdeCsv, precioConGanancia, gananciaPct, inventario, margenes, resumenResenas, productosAFilas, inventarioAFilas, numeroCelda, filasAProductos,
   resumenMes, resumenRango, serieVentas, masVendidos, comisiones, registrarPago, datosEjemplo, nuevoNumero, mesDe, suma, hoy, importarPedidosWeb,
-  dbVacia, cambiosDb, marcarEnviado, aplicarServidor, resumenCaja, cajaAbierta, cierreCaja, textoCierre, esEfectivo, MENSAJES_BASE, NEGOCIO_BASE, DATOS_MENSAJE, claveMensaje, armarMensaje, mensajeDe };
+  dbVacia, cambiosDb, marcarEnviado, aplicarServidor, resumenCaja, cajaAbierta, cierreCaja, textoCierre, respaldoAHojas, esEfectivo, MENSAJES_BASE, NEGOCIO_BASE, DATOS_MENSAJE, claveMensaje, armarMensaje, mensajeDe };

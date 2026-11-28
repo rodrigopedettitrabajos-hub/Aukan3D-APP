@@ -7,6 +7,8 @@ const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usu
 const MAX_ITEMS = 50, MAX_CANT = 99;
 
 export default {
+  // Respaldo semanal (wrangler.toml: [triggers] crons): copia de la base real en la tabla `respaldos`.
+  async scheduled(evento, env, ctx) { ctx.waitUntil(respaldar(env)); },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     const origen = req.headers.get("Origin") || "";
@@ -56,6 +58,13 @@ async function rutear(req, env, url) {
     if (m === "GET" && p === "/api/admin/datos") return datos(env, Number(url.searchParams.get("desde")) || 0, quien);
     if (m === "POST" && p === "/api/admin/lote") return lote(req, env, quien);
     if (m === "POST" && p === "/api/admin/numero") return json({ ok: true, numero: await contador(env) });
+    if (p.startsWith("/api/admin/respaldos")) {
+      if (!quien.permisos.includes("accesos")) return no();
+      if (env.PRUEBAS) return json({ ok: false, error: "entorno" }, 400); // solo la base real
+      if (m === "GET" && p === "/api/admin/respaldos") return json({ ok: true, respaldos: await listaRespaldos(env) });
+      if (m === "POST" && p === "/api/admin/respaldos") { await respaldar(env); return json({ ok: true, respaldos: await listaRespaldos(env) }); }
+      if (m === "GET" && /^\/api\/admin\/respaldos\/\d{4}-\d{2}-\d{2}$/.test(p)) return respaldo(env, p.slice(-10));
+    }
     if (m === "GET" && p === "/api/admin/estado") return quien.permisos.includes("base") ? estadoBases(env) : no();
     if (p.startsWith("/api/admin/mp/cobro")) { if (!puedeCobrar(quien)) return no(); }
     else if (p.startsWith("/api/admin/mp") && !quien.permisos.includes("mp")) return no();
@@ -299,6 +308,7 @@ const baseAjustes = (env) => env.DB_REAL || env.DB;
 const TABLAS = {
   ajustes: "CREATE TABLE IF NOT EXISTS ajustes (clave TEXT PRIMARY KEY, valor TEXT NOT NULL, actualizado INTEGER NOT NULL)",
   cuentas: "CREATE TABLE IF NOT EXISTS cuentas (usuario TEXT PRIMARY KEY, data TEXT NOT NULL, actualizado INTEGER NOT NULL)",
+  respaldos: "CREATE TABLE IF NOT EXISTS respaldos (fecha TEXT NOT NULL, col TEXT NOT NULL, parte INTEGER NOT NULL, n INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY (fecha, col, parte))",
   push: "CREATE TABLE IF NOT EXISTS push (endpoint TEXT NOT NULL, numero TEXT NOT NULL, ultimo TEXT, actualizado INTEGER NOT NULL, PRIMARY KEY (endpoint, numero))",
 };
 const creadas = new WeakMap(); // base -> Set de tablas ya creadas
@@ -573,6 +583,39 @@ async function cambiarMiClave(req, env, quien) {
   const c = await cuentaGuardada(env, quien.usuario);
   await escribirCuenta(env, { ...c, hash: await hashClave(nueva), cambiarClave: false });
   return json({ ok: true });
+}
+
+// ---------- respaldos de la base real ----------
+// Una copia por día (la del lunes la hace el cron; también se puede pedir desde el panel). Se guardan las últimas 8.
+// Sin las fotos subidas (pesan mucho y no cambian): el producto queda con "(foto subida)". Sin cuentas ni ajustes (claves).
+const RESPALDOS = 8, PARTE = 1_500_000; // D1 acepta filas de hasta 2 MB
+async function respaldar(env) {
+  const db = await tabla(env.DB, "respaldos"), fecha = hoyUy(), filas = [];
+  for (const col of COLECCIONES) {
+    const { results } = await db.prepare("SELECT data FROM docs WHERE col = ?").bind(col).all();
+    const docs = results.map((x) => JSON.parse(x.data)).filter((d) => !d._borrado)
+      .map((d) => (col === "productos" && String(d.foto || "").startsWith("data:") ? { ...d, foto: "(foto subida)" } : d));
+    let parte = [], tam = 0;
+    const cerrar = () => { if (parte.length) filas.push([col, filas.filter((f) => f[0] === col).length, parte.length, JSON.stringify(parte)]); parte = []; tam = 0; };
+    for (const d of docs) { const t = JSON.stringify(d).length; if (tam + t > PARTE) cerrar(); parte.push(d); tam += t; }
+    cerrar();
+  }
+  await db.batch([db.prepare("DELETE FROM respaldos WHERE fecha = ?").bind(fecha),
+    ...filas.map(([col, parte, n, data]) => db.prepare("INSERT INTO respaldos (fecha, col, parte, n, data) VALUES (?, ?, ?, ?, ?)").bind(fecha, col, parte, n, data)),
+    db.prepare("DELETE FROM respaldos WHERE fecha NOT IN (SELECT DISTINCT fecha FROM respaldos ORDER BY fecha DESC LIMIT ?)").bind(RESPALDOS)]);
+}
+async function listaRespaldos(env) {
+  const { results } = await (await tabla(env.DB, "respaldos")).prepare("SELECT fecha, col, SUM(n) AS n FROM respaldos GROUP BY fecha, col ORDER BY fecha DESC").all();
+  const m = new Map();
+  for (const r of results) m.set(r.fecha, { ...(m.get(r.fecha) || {}), [r.col]: r.n });
+  return [...m].map(([fecha, cuantos]) => ({ fecha, cuantos }));
+}
+async function respaldo(env, fecha) {
+  const { results } = await (await tabla(env.DB, "respaldos")).prepare("SELECT col, data FROM respaldos WHERE fecha = ? ORDER BY col, parte").bind(fecha).all();
+  if (!results.length) return json({ ok: false, error: "no-existe" }, 404);
+  const datos = {};
+  for (const r of results) (datos[r.col] ||= []).push(...JSON.parse(r.data));
+  return json({ ok: true, fecha, datos });
 }
 
 // ---------- datos del panel ----------
