@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.55">
-  <script src="../tema.js?v=0.55"></script>
+  <link rel="stylesheet" href="admin.css?v=0.56">
+  <script src="../tema.js?v=0.56"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -41,7 +41,7 @@
       <p class="nav-grupo">Catálogo</p>
       <a href="#productos" data-permiso="productos">Productos y stock</a>
       <p class="nav-grupo">Administración</p>
-      <a href="#reportes" data-permiso="reportes">Reportes y gastos</a>
+      <a href="#reportes" data-permiso="reportes">Estadísticas</a>
       <a href="#usuarios" data-permiso="usuarios">Usuarios y comisiones</a>
       <a href="#medios" data-permiso="medios">Medios de pago</a>
       <a href="#mensajes" data-permiso="mensajes">Mensajes de WhatsApp</a>
@@ -247,7 +247,7 @@
       </section>
 
       <section id="v-reportes" class="vista" hidden>
-        <div class="cabeza"><div><p class="eyebrow">Finanzas</p><h1>Reportes y gastos</h1><p class="sub">Ventas, cobros y gastos del período, en pesos y en dólares por separado.</p></div>
+        <div class="cabeza"><div><p class="eyebrow">Finanzas</p><h1>Estadísticas</h1><p class="sub">Ventas, márgenes, reseñas y gastos del período, en pesos y en dólares por separado.</p></div>
           <button class="btn" type="button" id="nuevo-gasto">+ Registrar gasto</button></div>
         <div class="filtros periodo">
           <select id="rep-tipo" aria-label="Período">
@@ -264,7 +264,7 @@
             <label>Desde <input type="date" id="rep-desde"></label><label>Hasta <input type="date" id="rep-hasta"></label>
           </div>
         </div>
-        <div class="pestanas" role="tablist" aria-label="Reportes">
+        <div class="pestanas" role="tablist" aria-label="Estadísticas">
           <button type="button" role="tab" id="tab-resumen" aria-controls="rep-resumen" aria-selected="true">Resumen</button>
           <button type="button" role="tab" id="tab-ventas" aria-controls="rep-ventas" aria-selected="false" tabindex="-1">Ventas</button>
           <button type="button" role="tab" id="tab-productos" aria-controls="rep-productos" aria-selected="false" tabindex="-1">Productos y márgenes</button>
@@ -591,11 +591,11 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.55"></script>
-<script src="../productos.js?v=0.55"></script>
-<script src="../catalogo.js?v=0.55"></script>
-<script src="datos.js?v=0.55"></script>
-<script src="excel.js?v=0.55"></script>
-<script src="admin.js?v=0.55"></script>
+<script src="../config.js?v=0.56"></script>
+<script src="../productos.js?v=0.56"></script>
+<script src="../catalogo.js?v=0.56"></script>
+<script src="datos.js?v=0.56"></script>
+<script src="excel.js?v=0.56"></script>
+<script src="admin.js?v=0.56"></script>
 </body>
 </html>
