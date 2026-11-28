@@ -475,7 +475,11 @@ const tarjetaResena = (r, conPedido = false) => el("div", { className: "resena" 
   el("p", { className: "resena-cab" }, el("span", { className: "estrellas", textContent: estrellasTxt(r.estrellas), ariaLabel: `${r.estrellas} de 5 estrellas`, role: "img" }),
     el("small", { textContent: [fecha(r.fecha), conPedido ? cliente(r.cliente)?.nombre : ""].filter(Boolean).join(" · ") }),
     conPedido && venta(r.numero) ? el("button", { type: "button", className: "link", textContent: `Pedido N° ${r.numero}`, onclick: () => abrirDetalle(r.numero) }) : ""),
-  r.comentario ? el("p", { textContent: r.comentario }) : el("p", { className: "sub chico", textContent: "Sin comentario." }));
+  r.comentario ? el("p", { textContent: r.comentario }) : el("p", { className: "sub chico", textContent: "Sin comentario." }),
+  // Las reseñas se ven en la tienda (inicio y cada producto); acá se puede sacar una (ej. un comentario fuera de lugar).
+  conPedido ? el("p", { className: "resena-pie" }, r.oculta ? el("span", { className: "pill", textContent: "Oculta en la tienda" }) : "",
+    el("button", { type: "button", className: "btn sec chico", textContent: r.oculta ? "Mostrar en la tienda" : "Ocultar en la tienda",
+      onclick: () => { r.oculta = !r.oculta; guardar(); PINTAR.reportes(); avisar(r.oculta ? "La reseña ya no se ve en la tienda." : "La reseña vuelve a verse en la tienda."); } })) : "");
 
 let confirmarEstado = ""; // D1: pasar a impresión o más sin ningún pago pide un segundo toque
 function cambiarEstado(v, i) {

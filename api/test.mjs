@@ -270,7 +270,7 @@ assert.strictEqual((await pedir("/api/push/ultimo", { body: { endpoint: ep + "x"
 servicioPush.close();
 
 // Reseñas: solo de pedidos entregados, con el WhatsApp del pedido; llegan al panel.
-const resena = (x) => pedir("/api/resenas", { body: { numero: String(ped.j.numero), whatsapp: cliente.whatsapp, estrellas: 5, comentario: "Excelente", ...x }, ip: "10.7.0." + (unico % 250) });
+const resena = (x) => pedir("/api/resenas", { body: { numero: String(ped.j.numero), whatsapp: cliente.whatsapp, estrellas: 5, comentario: "Excelente " + unico, ...x }, ip: "10.7.0." + (unico % 250) });
 assert.strictEqual((await resena()).j.error, "sin-entregar");
 assert.ok((await pedir("/api/admin/lote", { token, body: { set: [{ col: "ventas", id: String(vPush.numero), data: { ...vPush, estado: 4 } }] } })).j.ok);
 assert.strictEqual((await resena({ estrellas: 6 })).j.error, "estrellas");
@@ -278,6 +278,12 @@ assert.strictEqual((await resena({ whatsapp: "+598 91111111" })).j.error, "pedid
 assert.ok((await resena({ estrellas: 4 })).j.ok);
 assert.ok((await resena()).j.ok); // la vuelve a mandar: se reemplaza
 const rs = (await pedir("/api/admin/datos", { token })).j.resenas.filter((r) => r.id === String(ped.j.numero));
-assert.ok(rs.length === 1 && rs[0].estrellas === 5 && rs[0].comentario === "Excelente", JSON.stringify(rs));
+assert.ok(rs.length === 1 && rs[0].estrellas === 5 && rs[0].comentario === "Excelente " + unico, JSON.stringify(rs));
+// En la tienda: estrellas, comentario, nombre de pila y productos; sin WhatsApp ni número de pedido. Las ocultas no salen.
+const enTienda = () => pedir("/api/tienda").then((x) => x.j.resenas);
+const mia = (await enTienda()).find((r) => r.comentario === "Excelente " + unico);
+assert.ok(mia && mia.estrellas === 5 && mia.productos.length && !("numero" in mia) && !("cliente" in mia) && !("whatsapp" in mia) && !/\s/.test(mia.nombre), JSON.stringify(mia));
+assert.ok((await pedir("/api/admin/lote", { token, body: { set: [{ col: "resenas", id: rs[0].id, data: { ...rs[0], oculta: true } }] } })).j.ok);
+assert.ok(!(await enTienda()).some((r) => r.comentario === "Excelente " + unico));
 
 console.log("api ok");

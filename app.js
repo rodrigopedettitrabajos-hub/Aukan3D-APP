@@ -14,6 +14,7 @@ const $ = (s) => document.querySelector(s);
 const pesos = (n) => "$" + n.toLocaleString("es-UY");
 
 let productos = [];
+let resenas = []; // reseñas públicas (llegan con /api/tienda)
 const filtro = { cat: "Todo", sub: "", q: "", orden: "", fav: false };
 const carrito = new Map(); // id -> cantidad (se guarda en el dispositivo: no se pierde al recargar)
 const MAX = 99; // mismo tope por producto que el servidor (api: MAX_CANT)
@@ -88,6 +89,7 @@ const VISTAS = [...INFO.map(([h]) => h), ...CUENTA];
 function mostrarVista() {
   const vista = VISTAS.includes(location.hash) ? location.hash.slice(1) : "";
   $("#hero").hidden = $("#catalogo").hidden = !!vista;
+  $("#opiniones").hidden = !!vista || !resenas.length;
   $("#proximo").hidden = !!vista || !eventos.length;
   for (const h of VISTAS) $(h).hidden = h.slice(1) !== vista;
   vista ? (document.body.dataset.vista = vista) : delete document.body.dataset.vista;
@@ -169,6 +171,41 @@ function control(p, pre = "") {
 const precioTexto = (p) => (p.precio ? pesos(p.precio) : "Consultar");
 const waConsulta = (p) => waLink(`¡Hola, Aukan3D! Quiero consultar por: ${p.nombre}`);
 
+// Reseñas de clientes (llegan con /api/tienda): estrellas por producto, en el detalle y en el inicio.
+const coma = (n) => n.toLocaleString("es-UY", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+const estrellasDe = (n) => "★★★★★".slice(0, Math.round(n)) + "☆☆☆☆☆".slice(0, 5 - Math.round(n));
+function resumenResenas(lista) {
+  return lista.length ? { n: lista.length, prom: lista.reduce((t, r) => t + r.estrellas, 0) / lista.length } : null;
+}
+const resenasDe = (p) => resenas.filter((r) => r.productos.includes(String(p.id)));
+// Primero las que tienen comentario y más estrellas; entre iguales, la más nueva.
+const mejores = (lista, n) => [...lista].sort((a, b) => !!b.comentario - !!a.comentario || b.estrellas - a.estrellas || b.fecha.localeCompare(a.fecha)).slice(0, n);
+const mesAnio = (f) => new Date(f + "T12:00").toLocaleDateString("es-UY", { month: "long", year: "numeric" });
+function tarjetaOpinion(r, conProducto) {
+  const nombres = conProducto ? r.productos.map((id) => productos.find((p) => String(p.id) === id)?.nombre).filter(Boolean).slice(0, 2) : [];
+  return el("figure", { className: "opinion" },
+    el("span", { className: "estrellas", role: "img", ariaLabel: `${r.estrellas} de 5 estrellas`, textContent: estrellasDe(r.estrellas) }),
+    r.comentario ? el("blockquote", { textContent: r.comentario }) : "",
+    el("figcaption", { textContent: [r.nombre || "Cliente", nombres.join(", "), mesAnio(r.fecha)].filter(Boolean).join(" · ") }));
+}
+function pintarOpiniones() {
+  const t = resumenResenas(resenas);
+  $("#opiniones").hidden = !t || !!document.body.dataset.vista;
+  if (!t) return;
+  $("#opiniones-resumen").replaceChildren(el("span", { className: "estrellas", role: "img", ariaLabel: `${coma(t.prom)} de 5 estrellas`, textContent: estrellasDe(t.prom) }),
+    ` ${coma(t.prom)} de 5 · ${t.n} ${t.n === 1 ? "reseña" : "reseñas"} de compras entregadas`);
+  $("#opiniones-lista").replaceChildren(...mejores(resenas.filter((r) => r.comentario), 6).map((r) => tarjetaOpinion(r, true)));
+}
+function pintarResenasDetalle(p) {
+  const lista = resenasDe(p), t = resumenResenas(lista);
+  $("#detalle-resenas").hidden = !t;
+  if (!t) return;
+  $("#detalle-resenas").replaceChildren(
+    el("p", { className: "detalle-resenas-cab" }, el("span", { className: "estrellas", role: "img", ariaLabel: `${coma(t.prom)} de 5 estrellas`, textContent: estrellasDe(t.prom) }),
+      ` ${coma(t.prom)} · ${t.n} ${t.n === 1 ? "reseña" : "reseñas"}`),
+    ...mejores(lista.filter((r) => r.comentario), 3).map((r) => tarjetaOpinion(r, false)));
+}
+
 function tarjeta(p) {
   const fav = favs.has(p.id);
   return el("article", { className: "card" },
@@ -179,6 +216,7 @@ function tarjeta(p) {
     el("div", { className: "info" },
       el("span", { className: "sub", textContent: p.subcategoria || p.categoria }),
       el("h3", { textContent: p.nombre }),
+      (() => { const t = resumenResenas(resenasDe(p)); return t ? el("span", { className: "card-estrellas", ariaLabel: `${coma(t.prom)} de 5 estrellas, ${t.n} ${t.n === 1 ? "reseña" : "reseñas"}`, textContent: `★ ${coma(t.prom)} (${t.n})` }) : ""; })(),
       el("div", { className: "row" },
         el("strong", { className: "precio", textContent: precioTexto(p) }),
         p.precio ? control(p)
@@ -193,6 +231,7 @@ function abrirDetalle(p) {
   $("#detalle-precio").textContent = precioTexto(p);
   $("#detalle-datos").textContent = [p.tamano, p.material].filter(Boolean).join(" · ");
   $("#detalle-plazo").hidden = !p.precio;
+  pintarResenasDetalle(p);
   pintarDetalle();
   $("#detalle").showModal();
 }
@@ -615,6 +654,7 @@ cargar();
 // Envíos y datos del negocio que se editan en el panel.
 if (cfg.apiUrl) fetch(cfg.catalogoCsvUrl.replace("/api/productos.csv", "/api/tienda")).then((r) => r.json()).then((d) => {
   if (!d.ok) return;
+  if (Array.isArray(d.resenas) && d.resenas.length) { resenas = d.resenas; pintarOpiniones(); if (productos.length) pintar(); }
   const t = textosEnvio(d);
   $("#faq-envios").textContent = t.faq; $("#ayuda-entrega").textContent = t.entrega;
   $("#envio-info").textContent = t.info; $("#envio-info").hidden = !t.info;

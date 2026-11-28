@@ -126,7 +126,7 @@ async function actualizarEstados() {
     const lista = leerPedidos().map((p) => {
       if (!(p.numero in estados)) return p;
       const nuevo = { ...p, estado: estados[p.numero], ...(pagos[p.numero] ? { pagos: pagos[p.numero] } : {}) };
-      if (nuevo.estado !== p.estado) avisar(nuevo, p.estado);
+      if (nuevo.estado !== p.estado) avisarEstado(nuevo, p.estado);
       if (nuevo.estado !== p.estado || JSON.stringify(nuevo.pagos) !== JSON.stringify(p.pagos)) cambio = true;
       return nuevo;
     });
@@ -152,7 +152,7 @@ const TEXTO_AVISO = [
 ];
 const leerAvisos = () => { try { return JSON.parse(localStorage.getItem(AVISOS)) || []; } catch { return []; } };
 const guardarAvisos = (a) => { try { localStorage.setItem(AVISOS, JSON.stringify(a.slice(0, 20))); } catch { /* sin espacio: no pasa nada */ } };
-function avisar(p, antes) {
+function avisarEstado(p, antes) {
   const texto = TEXTO_AVISO[p.estado]?.(p);
   if (!texto || p.estado < antes) return;
   guardarAvisos([{ numero: p.numero, estado: p.estado, texto, fecha: new Date().toISOString(), leido: false }, ...leerAvisos()]);
