@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.56 · 2026-11-28
+- Panel: "Reportes y gastos" pasa a llamarse "Estadísticas" (menú, título y permisos).
+
 ## V0.55 · 2026-11-28
 - Reseñas: en "Historial de compras" de la tienda, cada pedido entregado pide de 1 a 5 estrellas y un comentario opcional. Se envía con el número y el WhatsApp del pedido (servidor: POST /api/resenas, solo pedidos entregados, una por pedido).
 - Panel: pestaña "Reseñas" en Reportes (promedio, cuántas de cada estrella y lo que dicen, con link al pedido) y la reseña dentro del detalle del pedido.

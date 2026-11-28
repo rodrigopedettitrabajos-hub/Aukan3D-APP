@@ -226,7 +226,7 @@ function avisar(t, deshacer) {
 
 // --- Navegación ---
 const VISTAS = { panel: "Panel principal", ventas: "Ventas y pedidos", feria: "Modo feria", pendientes: "Cuentas pendientes", clientes: "Clientes",
-  productos: "Productos y stock", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Reportes y gastos", base: "Base de datos", mp: "Mercado Pago",
+  productos: "Productos y stock", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Estadísticas", base: "Base de datos", mp: "Mercado Pago",
   accesos: "Accesos al panel", mensajes: "Mensajes de WhatsApp", envios: "Entregas y envíos" };
 const PINTAR = {};
 function mostrarVista() {
@@ -1406,7 +1406,7 @@ $("#mp-quitar").addEventListener("click", async (e) => {
   try { pintarMp(await llamar("/api/admin/mp", { token: "" })); avisar("Credencial quitada."); } catch { avisar("No se pudo quitar. Probá de nuevo."); }
 });
 
-// --- Reportes y gastos ---
+// --- Estadísticas ---
 // Período del reporte: día, mes, trimestre, semestre, año o entre fechas; las flechas viajan de a un período.
 const rep = { tipo: "mes", ancla: hoy() };
 const MESES_DE = { mes: 1, trimestre: 3, semestre: 6, anio: 12 };
@@ -1549,7 +1549,7 @@ $("#reiniciar").addEventListener("click", () => {
 
 // --- Accesos: cuentas para entrar al panel (las crea quien tiene el permiso "accesos") ---
 const NOMBRE_PERMISO = { ventas: "Ventas y pedidos", feria: "Modo feria", pendientes: "Cuentas pendientes", clientes: "Clientes", productos: "Productos y stock",
-  reportes: "Reportes y gastos", usuarios: "Usuarios y comisiones", medios: "Medios de pago", mensajes: "Mensajes y envíos", mp: "Mercado Pago", accesos: "Accesos al panel", base: "Base de datos" };
+  reportes: "Estadísticas", usuarios: "Usuarios y comisiones", medios: "Medios de pago", mensajes: "Mensajes y envíos", mp: "Mercado Pago", accesos: "Accesos al panel", base: "Base de datos" };
 // Plantilla para quienes prueban la app y dan feedback: todo el día a día, sin Mercado Pago, Base de datos ni Accesos, y solo en la base de pruebas.
 const PROBADOR = ["ventas", "feria", "pendientes", "clientes", "productos", "reportes", "usuarios", "medios", "mensajes"];
 const ENTORNO_TXT = { pruebas: "Solo pruebas", real: "Solo real", ambos: "Real y pruebas" };
