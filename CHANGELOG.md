@@ -2,6 +2,11 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.78 · 2026-11-28
+- Respaldo automático semanal: cada lunes a las 03:00 (Montevideo) el servidor guarda una copia de la base real (sin fotos subidas, contraseñas ni credencial de Mercado Pago). Quedan las últimas 8.
+- Panel, Administración > Respaldos: lista de copias con "Bajar Excel" (una hoja por cada parte de la base, con nombres de clientes, medios y vendedores en texto) y "Hacer un respaldo ahora".
+- Panel principal: aviso "Hay un respaldo nuevo" hasta que se baja en esa PC.
+
 ## V0.77 · 2026-11-28
 - Modo feria: al cerrar la caja aparece el resumen del cierre para compartir: ventas por medio de pago, lo más vendido, efectivo (inicial, cobrado, retiros, lo que tendría que haber, contado) y la diferencia. Botones "Compartir por WhatsApp", "Copiar" e "Imprimir o PDF".
 - Cajas anteriores: botón "Resumen" para volver a ver o mandar el cierre de cualquier caja.

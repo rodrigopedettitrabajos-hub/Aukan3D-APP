@@ -14,6 +14,10 @@ binding = "DB_PRUEBAS"
 database_name = "aukan3d-pruebas"
 database_id = "e99190b9-a5b7-4a45-ba9b-650e71ef45e2"
 
+# Respaldo semanal de la base real: lunes 06:00 UTC (03:00 en Montevideo). Ver respaldar() en src/index.js.
+[triggers]
+crons = ["0 6 * * 1"]
+
 [vars]
 # Páginas que pueden usar el servidor (la tienda y el panel). Separadas por coma.
 ORIGENES = "https://aukan3d.pages.dev,https://*.aukan3d.pages.dev,https://rodrigopedettitrabajos-hub.github.io"

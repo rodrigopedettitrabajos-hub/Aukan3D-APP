@@ -313,4 +313,12 @@ assert.ok(avisos.length === 1 && avisos[0].nombre === "Ana" && !avisos[0].avisad
 const tienda = (await pedir("/api/tienda")).j;
 assert.ok(Array.isArray(tienda.listos) && !JSON.stringify(tienda).includes("+598 7" + unico));
 
+// Respaldos: copia de la base real por día, sin fotos subidas; se lista y se baja con permiso de accesos.
+const hecho = await pedir("/api/admin/respaldos", { token, body: {} });
+assert.ok(hecho.j.ok && hecho.j.respaldos[0].cuantos.ventas > 0, hecho.t);
+const copia = (await pedir("/api/admin/respaldos/" + hecho.j.respaldos[0].fecha, { token })).j;
+assert.ok(copia.ok && copia.datos.ventas.some((v) => v.numero === String(ped.j.numero)) && !JSON.stringify(copia.datos.productos).includes("data:image"), "respaldo");
+assert.ok(!("cuentas" in copia.datos) && !("ajustes" in copia.datos));
+assert.strictEqual((await pedir("/api/admin/respaldos/2020-01-01", { token })).r.status, 404);
+
 console.log("api ok");

@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.77">
-  <script src="../tema.js?v=0.77"></script>
+  <link rel="stylesheet" href="admin.css?v=0.78">
+  <script src="../tema.js?v=0.78"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -49,6 +49,7 @@
       <a href="#mensajes" data-permiso="mensajes">Mensajes de WhatsApp</a>
       <a href="#envios" data-permiso="mensajes">Entregas y envíos</a>
       <a href="#accesos" data-permiso="accesos" data-solo-servidor hidden>Accesos al panel</a>
+      <a href="#respaldos" data-permiso="accesos" data-solo-servidor hidden>Respaldos</a>
       <button type="button" class="nav-grupo" aria-expanded="false">Panel Developers</button>
       <a href="#mp" data-permiso="mp" data-solo-servidor hidden>Mercado Pago</a>
       <a href="#base" data-permiso="base" data-solo-servidor hidden>Base de datos</a>
@@ -255,6 +256,13 @@
           <button class="btn" type="button" id="nuevo-usuario">+ Nuevo usuario</button></div>
         <div class="filtros"><input id="usuarios-mes" type="month" aria-label="Mes"></div>
         <div id="usuarios-lista"></div>
+      </section>
+
+      <section id="v-respaldos" class="vista" hidden>
+        <div class="cabeza"><div><p class="eyebrow">Seguridad</p><h1>Respaldos</h1><p class="sub">Cada lunes a la madrugada el servidor guarda una copia de la base real. Quedan las últimas 8. Bajala en Excel para tener una copia en tu PC.</p></div>
+          <button class="btn sec" type="button" id="respaldo-ahora">Hacer un respaldo ahora</button></div>
+        <div id="respaldos-lista"></div>
+        <p class="sub chico">El Excel trae una hoja por cada parte de la base: ventas, clientes, productos, gastos, cajas y demás. Las fotos subidas no van (pesan mucho); las contraseñas y la credencial de Mercado Pago tampoco.</p>
       </section>
 
       <section id="v-accesos" class="vista" hidden>
@@ -659,11 +667,11 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.77"></script>
-<script src="../productos.js?v=0.77"></script>
-<script src="../catalogo.js?v=0.77"></script>
-<script src="datos.js?v=0.77"></script>
-<script src="excel.js?v=0.77"></script>
-<script src="admin.js?v=0.77"></script>
+<script src="../config.js?v=0.78"></script>
+<script src="../productos.js?v=0.78"></script>
+<script src="../catalogo.js?v=0.78"></script>
+<script src="datos.js?v=0.78"></script>
+<script src="excel.js?v=0.78"></script>
+<script src="admin.js?v=0.78"></script>
 </body>
 </html>
