@@ -365,7 +365,7 @@ legend { padding: 0 6px; font-weight: 600; }
 .top { gap: 12px; }
 @media (max-width: 1000px) {
   .user small { display: none; }
-  #ventas-lista th:nth-child(7), #ventas-lista td:nth-child(7) { display: none; } /* en tablet y celular se imprime desde el detalle */
+  #ventas-lista th:nth-child(7), #ventas-lista td:nth-child(7), #ultimas th:nth-child(7), #ultimas td:nth-child(7) { display: none; } /* en tablet y celular se imprime desde el detalle */
 }
 @media (max-width: 700px) {
   .caja .t-ventas .pill { padding: 3px 6px; font-size: 11px; }
