@@ -509,3 +509,6 @@ legend { padding: 0 6px; font-weight: 600; }
 .estrellas { color: #e0a100; letter-spacing: .08em; font-size: 17px; }
 .resena-detalle { margin-top: 8px; }
 @media (max-width: 700px) { .resenas-grilla { grid-template-columns: 1fr; } }
+@media (max-width: 700px) {
+  .t-stock th:nth-child(4), .t-stock td:nth-child(4), .t-stock th:nth-child(5), .t-stock td:nth-child(5), .t-stock th:nth-child(7), .t-stock td:nth-child(7), .t-stock th:nth-child(8), .t-stock td:nth-child(8) { display: none; }
+}

@@ -226,12 +226,12 @@ function avisar(t, deshacer) {
 
 // --- Navegación ---
 const VISTAS = { panel: "Panel principal", ventas: "Ventas y pedidos", feria: "Modo feria", pendientes: "Cuentas pendientes", clientes: "Clientes",
-  productos: "Productos y stock", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Estadísticas", base: "Base de datos", mp: "Mercado Pago",
+  productos: "Productos y precios", stock: "Stock", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Estadísticas", base: "Base de datos", mp: "Mercado Pago",
   accesos: "Accesos al panel", mensajes: "Mensajes de WhatsApp", envios: "Entregas y envíos" };
 const PINTAR = {};
 function mostrarVista() {
   let v = location.hash.slice(1) in VISTAS ? location.hash.slice(1) : "panel";
-  if (!puede(v === "panel" ? "" : v === "envios" ? "mensajes" : v) || ((v === "mp" || v === "accesos" || v === "base") && !API)) v = "panel";
+  if (!puede(v === "panel" ? "" : v === "envios" ? "mensajes" : v === "stock" ? "productos" : v) || ((v === "mp" || v === "accesos" || v === "base") && !API)) v = "panel";
   for (const s of document.querySelectorAll(".vista")) s.hidden = s.id !== "v-" + v;
   for (const a of document.querySelectorAll(".nav a")) a.ariaCurrent = a.hash === "#" + v ? "page" : null;
   $("#crumb").textContent = VISTAS[v];
@@ -887,7 +887,7 @@ const seleccion = new Set(); // ids marcados en la lista (pueden estar fuera de 
 let listaProductos = [];
 function filtrarProductos() {
   const q = normalizar($("#prod-q").value.trim()), cat = $("#prod-cat").value, st = $("#prod-stock").value;
-  const filtro = { sin: (p) => !p.stock, con: (p) => p.stock > 0, oculto: (p) => !p.activo, faltan: (p) => !(p.tamano && p.material), sincosto: (p) => !p.costo }[st];
+  const filtro = { oculto: (p) => !p.activo, faltan: (p) => !(p.tamano && p.material), sincosto: (p) => !p.costo, sinprecio: (p) => !p.precio }[st];
   return db.productos.filter((p) => !p._borrado && (!cat || p.categoria === cat) && (!q || normalizar(`${p.nombre} ${p.subcategoria}`).includes(q)) && (!filtro || filtro(p)));
 }
 function pintarSeleccion() {
@@ -904,15 +904,11 @@ PINTAR.productos = () => {
   const todos = el("input", { type: "checkbox", id: "sel-todos", ariaLabel: `Marcar los ${lista.length} productos de este filtro`, title: "Marcar todos los del filtro",
     onchange: (e) => { for (const p of lista) e.target.checked ? seleccion.add(p.id) : seleccion.delete(p.id); PINTAR.productos(); } });
   const gan = (p) => { const g = gananciaPct(p); return g == null ? "—" : g + " %"; };
-  $("#prod-lista").replaceChildren(tabla([todos, "", "Producto", "Categoría", "#Costo", "#Precio", "#Ganancia", "#Stock listo", "Tienda", ""], mostrar.map((p) => el("tr", { className: seleccion.has(p.id) ? "marcado" : "" },
+  $("#prod-lista").replaceChildren(tabla([todos, "", "Producto", "Categoría", "#Costo", "#Precio", "#Ganancia", "Tienda", ""], mostrar.map((p) => el("tr", { className: seleccion.has(p.id) ? "marcado" : "" },
     td(el("input", { type: "checkbox", checked: seleccion.has(p.id), ariaLabel: `Marcar ${p.nombre}`, onchange: (e) => { e.target.checked ? seleccion.add(p.id) : seleccion.delete(p.id); e.target.closest("tr").classList.toggle("marcado", e.target.checked); pintarSeleccion(); } }), "marca"),
     td(p.foto ? el("img", { src: foto(p.foto), alt: "", width: 44, height: 44, loading: "lazy", className: "mini-foto" }) : el("span", { className: "mini-foto vacia", textContent: "3D" })),
     td(el("span", {}, el("b", { textContent: p.nombre }), el("small", { textContent: [p.subcategoria, p.tamano, p.material].filter(Boolean).join(" · ") || "Sin tamaño ni material" }))), td(p.categoria),
     td(p.costo ? plata(p.costo) : "—", "num"), td(p.precio ? plata(p.precio) : "Consultar", "num"), td(gan(p), "num"),
-    td(el("span", { className: "stock" },
-      el("button", { type: "button", className: "paso", textContent: "−", ariaLabel: `Restar stock de ${p.nombre}`, disabled: !p.stock, onclick: () => { p.stock--; guardar(); PINTAR.productos(); } }),
-      el("b", { textContent: p.stock || 0 }),
-      el("button", { type: "button", className: "paso", textContent: "+", ariaLabel: `Sumar stock de ${p.nombre}`, onclick: () => { p.stock = (p.stock || 0) + 1; guardar(); PINTAR.productos(); } })), "num"),
     td(el("span", { className: "pill " + (p.activo ? "e4" : "e0"), textContent: p.activo ? "Visible" : "Oculto" })),
     td(el("button", { type: "button", className: "btn sec chico", textContent: "Editar", onclick: () => abrirProducto(p) })))),
   "No hay productos con esos filtros.", "t-productos"), lista.length > mostrar.length ? el("p", { className: "sub", textContent: `Se muestran 60 de ${lista.length}. Buscá para encontrar el resto (marcar todos incluye los ${lista.length}).` }) : "");
@@ -958,37 +954,46 @@ fpr.addEventListener("submit", (e) => {
   avisar(`Listo: cambiamos ${plural(cambios.length, "producto")}.`, () => { for (const [p, k, n] of antes) p[k] = n; });
 });
 
-// Inventario: lo que hay en stock, valorizado al costo y al precio de venta.
-const fi = $("#f-inventario");
-const productosInventario = () => db.productos.filter((p) => !p._borrado && (!fi.categoria.value || p.categoria === fi.categoria.value) && (!fi.soloStock.checked || p.stock > 0))
-  .sort((a, b) => a.categoria.localeCompare(b.categoria) || a.nombre.localeCompare(b.nombre));
-function pintarInventario() {
-  const lista = productosInventario(), t = inventario(lista);
-  $("#inv-kpis").replaceChildren(kpi("Unidades", String(t.unidades), plural(lista.filter((p) => p.stock > 0).length, "producto")),
+// Stock: lo que hay hecho, valorizado al costo y al precio de venta, con la planilla de conteo.
+for (const id of ["#stock-q", "#stock-cat", "#stock-filtro"]) $(id).addEventListener("input", () => PINTAR.stock());
+const productosStock = () => {
+  const q = normalizar($("#stock-q").value.trim()), cat = $("#stock-cat").value, f = $("#stock-filtro").value;
+  return db.productos.filter((p) => !p._borrado && (!cat || p.categoria === cat) && (!q || normalizar(`${p.nombre} ${p.subcategoria}`).includes(q))
+    && (f === "" || (f === "con" ? p.stock > 0 : !p.stock))).sort((a, b) => a.categoria.localeCompare(b.categoria) || a.nombre.localeCompare(b.nombre));
+};
+PINTAR.stock = () => {
+  const sel = $("#stock-cat"), actual = sel.value;
+  sel.replaceChildren(el("option", { value: "", textContent: "Todas las categorías" }), ...cats().map((c) => el("option", { value: c, textContent: c })));
+  sel.value = actual;
+  const t = inventario(db.productos.filter((p) => !p._borrado));
+  $("#inv-kpis").replaceChildren(kpi("Unidades", String(t.unidades), plural(db.productos.filter((p) => !p._borrado && p.stock > 0).length, "producto")),
     kpi("Valor al costo", plata(t.costo), t.sinCosto ? `${plural(t.sinCosto, "producto")} sin costo` : "Lo que te costó"),
     kpi("Valor de venta", plata(t.venta), "A precio de la tienda"), kpi("Ganancia posible", plata(t.venta - t.costo), "Venta menos costo", "verde"));
-  $("#inv-lista").replaceChildren(tabla(["Producto", "Categoría", "#Stock", "#Costo", "#Valor costo", "#Valor venta"], lista.slice(0, 100).map((p) => el("tr", {},
-    td(p.nombre), td(p.categoria), td(String(p.stock || 0), "num"), td(p.costo ? plata(p.costo) : "—", "num"),
-    td(plata((p.stock || 0) * (p.costo || 0)), "num"), td(plata((p.stock || 0) * (p.precio || 0)), "num"))), "No hay productos con stock en esta selección."),
-  lista.length > 100 ? el("p", { className: "sub chico", textContent: `Se muestran 100 de ${lista.length}; la planilla los incluye todos.` }) : "");
-}
-$("#inventario").addEventListener("click", () => {
-  fi.reset();
-  fi.categoria.replaceChildren(el("option", { value: "", textContent: "Todas las categorías" }), ...cats().map((c) => el("option", { value: c, textContent: c })));
-  pintarInventario(); $("#d-inventario").showModal();
-});
-fi.addEventListener("input", pintarInventario);
+  const lista = productosStock(), mostrar = lista.slice(0, 60);
+  $("#stock-lista").replaceChildren(tabla(["", "Producto", "Categoría", "#Costo", "#Precio", "#Stock listo", "#Valor costo", "#Valor venta"], mostrar.map((p) => el("tr", {},
+    td(p.foto ? el("img", { src: foto(p.foto), alt: "", width: 44, height: 44, loading: "lazy", className: "mini-foto" }) : el("span", { className: "mini-foto vacia", textContent: "3D" })),
+    td(el("span", {}, el("b", { textContent: p.nombre }), p.subcategoria ? el("small", { textContent: p.subcategoria }) : "")), td(p.categoria),
+    td(p.costo ? plata(p.costo) : "—", "num"), td(p.precio ? plata(p.precio) : "—", "num"),
+    td(el("span", { className: "stock" },
+      el("button", { type: "button", className: "paso", textContent: "−", ariaLabel: `Restar stock de ${p.nombre}`, disabled: !p.stock, onclick: () => { p.stock--; guardar(); PINTAR.stock(); } }),
+      el("b", { textContent: p.stock || 0 }),
+      el("button", { type: "button", className: "paso", textContent: "+", ariaLabel: `Sumar stock de ${p.nombre}`, onclick: () => { p.stock = (p.stock || 0) + 1; guardar(); PINTAR.stock(); } })), "num"),
+    td(plata((p.stock || 0) * (p.costo || 0)), "num"), td(plata((p.stock || 0) * (p.precio || 0)), "num"))),
+  $("#stock-filtro").value === "con" ? "No hay productos con stock con esos filtros. Usá + en \"Todos\" para cargar lo que tenés hecho." : "No hay productos con esos filtros.", "t-stock"),
+  lista.length > mostrar.length ? el("p", { className: "sub", textContent: `Se muestran 60 de ${lista.length}. Buscá para encontrar el resto; la planilla los incluye todos.` }) : "");
+};
 const bajarArchivo = (blob, nombre) => { const url = URL.createObjectURL(blob); el("a", { href: url, download: nombre }).click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
+$("#inv-subir").addEventListener("click", () => $("#excel-input").click());
 $("#inv-excel").addEventListener("click", () => {
-  bajarArchivo(crearXlsx(inventarioAFilas(productosInventario()), { hoja: "Inventario", anchos: [8, 40, 18, 18, 10, 10, 16, 12] }), `inventario-aukan3d-${hoy()}.xlsx`);
-  avisar("Planilla descargada. Completá Contado y subila con Importar Excel.");
+  bajarArchivo(crearXlsx(inventarioAFilas(productosStock()), { hoja: "Inventario", anchos: [8, 40, 18, 18, 10, 10, 16, 12] }), `inventario-aukan3d-${hoy()}.xlsx`);
+  avisar("Planilla descargada. Completá Contado y subila con \"Subir conteo\".");
 });
 $("#inv-imprimir").addEventListener("click", () => {
-  const lista = productosInventario(), cat = fi.categoria.value;
+  const lista = productosStock(), cat = $("#stock-cat").value, f = $("#stock-filtro").value;
   $("#imprimir").className = "";
   $("#imprimir").replaceChildren(
     el("header", {}, el("img", { src: "../logo-comprobante.webp", alt: "" }), el("div", {}, el("h1", { textContent: "Planilla de conteo" }),
-      el("p", { textContent: `${fecha(new Date())} · ${cat || "Todas las categorías"}${fi.soloStock.checked ? " · solo con stock" : ""} · ${plural(lista.length, "producto")}` }))),
+      el("p", { textContent: `${fecha(new Date())} · ${cat || "Todas las categorías"}${f === "con" ? " · solo con stock" : f === "sin" ? " · sin stock" : ""} · ${plural(lista.length, "producto")}` }))),
     el("table", { className: "conteo" }, el("thead", {}, el("tr", {}, ...["ID", "Producto", "Categoría", "En sistema", "Contado"].map((t) => el("th", { textContent: t })))),
       el("tbody", {}, ...lista.map((p) => el("tr", {}, td(p.id), td(p.nombre), td(p.categoria), td(String(p.stock || 0), "num"), td(""))))),
     el("p", { className: "pie-imp", textContent: "Contado por: ____________________   Fecha: ____/____/______" }));
