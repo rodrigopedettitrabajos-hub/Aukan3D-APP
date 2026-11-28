@@ -20,11 +20,16 @@ assert.ok(Number.isNaN(d.numeroCelda("mucho")));
 const prods = [{ id: "1", nombre: "Gato", categoria: "Figuras", subcategoria: "", tamano: "", material: "PLA", costo: 100, precio: 300, stock: 2, activo: true, foto: "a.webp" },
   { id: "2", nombre: "Perro", categoria: "Figuras", precio: 0, stock: 0, activo: false }];
 const hoja = d.productosAFilas(prods);
-assert.deepStrictEqual(hoja[1].slice(4, 8), [100, 200, 300, 2]); // costo, ganancia %, precio, stock
-assert.strictEqual(hoja[2][10], "NO");
+assert.deepStrictEqual(hoja[1].slice(4, 7), [100, 200, 300]); // costo, ganancia %, precio (sin stock)
+assert.strictEqual(hoja[2][9], "NO");
 assert.deepStrictEqual(d.filasAProductos(hoja, prods), { cambios: [], nuevos: [], errores: [], iguales: 2 }); // ida y vuelta sin cambios
 const imp = d.filasAProductos([["id", "COSTO", "ganancia %", "Precio", "Contado"], ["2", "50", "100", "", "4"], ["", "", "", "", ""], ["1", "x"], ["9z!", "1"]], prods);
-assert.deepStrictEqual(imp.cambios, [{ producto: prods[1], datos: { costo: 50, precio: 100, stock: 4 } }]);
+assert.deepStrictEqual(imp.cambios, [{ producto: prods[1], datos: { costo: 50, precio: 100 } }]); // Productos y precios no toca el stock
+// Planilla de stock: solo el stock, por ID; precios y productos nuevos se ignoran.
+const st = d.filasAProductos([...d.inventarioAFilas(prods).map((f, i) => (i === 1 ? [...f.slice(0, 5), 999, f[6], 7] : f)), ["77", "Nuevo", "X", "", "", "", "", "3"]], prods, "stock");
+assert.deepStrictEqual(st.cambios, [{ producto: prods[0], datos: { stock: 7 } }]);
+assert.deepStrictEqual([st.nuevos.length, st.errores.length], [0, 1]);
+assert.strictEqual(d.filasAProductos([["ID", "Precio"], ["1", "5"]], prods, "stock").errores.length, 1);
 assert.strictEqual(imp.errores.length, 2);
 const alta = d.filasAProductos([["Nombre", "Categoría", "Precio"], ["Dragón", "Figuras", "1.500"], ["Sin cat", "", ""]], prods);
 assert.deepStrictEqual(alta.nuevos.map((p) => [p.id, p.precio, p.activo]), [["3", 1500, true]]);
