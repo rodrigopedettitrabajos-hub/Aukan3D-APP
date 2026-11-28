@@ -3,7 +3,7 @@
 // - Panel de gestión: ingreso con usuario y contraseña, y lectura/escritura de sus datos.
 // Cada registro del panel se guarda como JSON en la tabla docs (col, id); ver schema.sql.
 
-const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas", "mensajes"];
+const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas", "mensajes", "resenas"];
 const MAX_ITEMS = 50, MAX_CANT = 99;
 
 export default {
@@ -38,6 +38,7 @@ async function rutear(req, env, url) {
   if (m === "GET" && p.startsWith("/api/fotos/")) return foto(env, p.slice(11).replace(/\.webp$/, ""));
   if (m === "POST" && p === "/api/pedidos") return nuevoPedido(req, env);
   if (m === "POST" && p === "/api/pedidos/estado") return estadoPedidos(req, env);
+  if (m === "POST" && p === "/api/resenas") return nuevaResena(req, env);
   if (m === "POST" && p === "/api/login") return login(req, env);
   if (m === "POST" && p === "/api/mp/aviso") return avisoMp(req, env, url);
   if (m === "GET" && p === "/api/tienda") return datosTienda(env);
@@ -151,6 +152,22 @@ async function estadoPedidos(req, env) {
     pagos[v.numero] = (v.pagos || []).map((x) => ({ fecha: x.fecha, monto: x.monto, ...(x.mp ? { mp: String(x.mp) } : {}) }));
   }
   return json({ ok: true, estados, pagos });
+}
+
+// ---------- reseñas: el cliente califica un pedido entregado (mismo control: número + WhatsApp del pedido) ----------
+// Una por pedido (id = número); si la manda de nuevo, la reemplaza.
+async function nuevaResena(req, env) {
+  let b;
+  try { b = await leerJson(req, 5_000); } catch { return json({ ok: false, error: "invalido" }, 400); }
+  if (!(await pasaLimite(env, "res:" + (req.headers.get("CF-Connecting-IP") || ""), 10, 600_000))) return json({ ok: false, error: "limite" }, 429);
+  const estrellas = Number(b.estrellas), comentario = limpio(b.comentario, 500);
+  if (!Number.isInteger(estrellas) || estrellas < 1 || estrellas > 5) return json({ ok: false, error: "estrellas" }, 400);
+  const [v] = await pedidosDelCliente(env, [{ numero: b.numero, whatsapp: b.whatsapp }]);
+  if (!v) return json({ ok: false, error: "pedido" }, 404);
+  if (v.estado < 4) return json({ ok: false, error: "sin-entregar" }, 409);
+  const resena = { id: String(v.numero), numero: v.numero, cliente: v.cliente, estrellas, comentario, fecha: new Date().toISOString() };
+  await guardarDoc(env, "resenas", resena.id, resena).run();
+  return json({ ok: true });
 }
 
 // ---------- pedido de la tienda ----------
@@ -362,7 +379,7 @@ function mismo(a, b) { // comparación de tiempo constante
 export const PERMISOS = ["ventas", "feria", "pendientes", "clientes", "productos", "reportes", "usuarios", "medios", "mensajes", "mp", "accesos", "base"];
 // Qué permiso hace falta para escribir cada colección (alcanza con uno de la lista).
 const ESCRIBE = { ventas: ["ventas", "feria", "pendientes"], clientes: ["clientes", "ventas", "feria"], productos: ["productos", "ventas", "feria"],
-  gastos: ["reportes"], medios: ["medios"], usuarios: ["usuarios"], cajas: ["feria"], mensajes: ["mensajes"] };
+  gastos: ["reportes"], medios: ["medios"], usuarios: ["usuarios"], cajas: ["feria"], mensajes: ["mensajes"], resenas: ["reportes"] };
 const puedeEscribir = (q, col) => (ESCRIBE[col] || []).some((x) => q.permisos.includes(x));
 // Lectura: sin estos permisos, los clientes llegan solo con id y nombre (sin WhatsApp ni correo) y los gastos no llegan.
 const VE_CLIENTES = ["ventas", "pendientes", "clientes", "reportes"];

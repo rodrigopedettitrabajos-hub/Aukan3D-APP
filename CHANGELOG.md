@@ -2,6 +2,11 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.55 · 2026-11-28
+- Reseñas: en "Historial de compras" de la tienda, cada pedido entregado pide de 1 a 5 estrellas y un comentario opcional. Se envía con el número y el WhatsApp del pedido (servidor: POST /api/resenas, solo pedidos entregados, una por pedido).
+- Panel: pestaña "Reseñas" en Reportes (promedio, cuántas de cada estrella y lo que dicen, con link al pedido) y la reseña dentro del detalle del pedido.
+- Mensaje de WhatsApp "Entregado": dato nuevo "Link para la reseña" (lleva al historial de la tienda), incluido en el texto original.
+
 ## V0.54 · 2026-11-28
 - Productos: costo y ganancia (% sobre el costo). En la ficha, el costo y la ganancia calculan el precio, y el precio recalcula la ganancia. La lista muestra costo, precio y ganancia, con el filtro "Sin costo cargado".
 - Productos: casillas para marcar varios (o todos los del filtro) y "Cambiar precios": precio con un % de ganancia sobre el costo, subir o bajar un % el precio actual, o cargar el mismo costo. Redondeo hacia arriba a $10, $50 o $100, vista previa y deshacer.
