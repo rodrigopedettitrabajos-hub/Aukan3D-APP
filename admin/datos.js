@@ -215,27 +215,38 @@ function aplicarServidor(db, r, enviado) {
 }
 
 // Mensajes de WhatsApp al cambiar el estado (pantalla Mensajes). Si no se editaron, valen estos.
+// Los datos van como {clave} en el texto; en la pantalla se ven como etiquetas con su nombre.
+const DATOS_MENSAJE = [["nombre", "Nombre del cliente"], ["items", "Lo que pidió"], ["entrega", "Entrega"], ["total", "Total"], ["pagado", "Lo que pagó"],
+  ["saldo", "Lo que debe"], ["resta", "Aviso de lo que debe"], ["numero", "N° de pedido"], ["negocio", "Nombre del negocio"], ["direccion", "Dirección"],
+  ["horario", "Horario"], ["redes", "Redes"]];
+const NEGOCIO_BASE = { id: "negocio", negocio: "Aukan3D", direccion: "", horario: "", redes: "" }; // datos del negocio para los mensajes
 const MENSAJES_BASE = [
   { id: "sena", estado: 1, nombre: "Seña recibida", texto: "¡Hola, {nombre}! Recibimos la seña de tu pedido N° {numero}. ¡Quedó confirmado! {resta}" },
   { id: "pagado", estado: 1, nombre: "Pago total recibido", texto: "¡Hola, {nombre}! Recibimos el pago de tu pedido N° {numero}. ¡Quedó confirmado!" },
   { id: "impresion", estado: 2, nombre: "En impresión", texto: "¡Hola, {nombre}! Tu pedido N° {numero} entró en impresión. Te avisamos cuando esté listo." },
   { id: "listo", estado: 3, nombre: "Listo para entregar", texto: "¡Hola, {nombre}! ¡Tu pedido N° {numero} está listo para entregar! {resta} ¿Coordinamos la entrega?" },
-  { id: "entregado", estado: 4, nombre: "Entregado", texto: "¡Hola, {nombre}! Entregamos tu pedido N° {numero}. ¡Gracias por comprar en Aukan3D!" },
+  { id: "entregado", estado: 4, nombre: "Entregado", texto: "¡Hola, {nombre}! Entregamos tu pedido N° {numero}. ¡Gracias por comprar en {negocio}!" },
 ];
 const claveMensaje = (v) => (v.estado === 1 ? (!v.sena || !saldo(v) ? "pagado" : "sena") : MENSAJES_BASE.find((m) => m.estado === v.estado && m.estado !== 1)?.id || "");
-function armarMensaje(texto, v, nombre, plata) {
+// negocio: { negocio, direccion, horario, redes }. Una línea que solo tenía datos vacíos (ej. "Aviso de lo que debe" sin deuda) se saca.
+function armarMensaje(texto, v, nombre, plata, negocio = NEGOCIO_BASE) {
   const resta = saldo(v) ? `Queda un saldo de ${plata(saldo(v), v.moneda)}.` : "";
-  const vars = { nombre, numero: v.numero, total: plata(totalVenta(v), v.moneda), saldo: plata(saldo(v), v.moneda), resta };
-  return String(texto).replace(/\{(\w+)\}/g, (x, k) => (k in vars ? vars[k] : x)).replace(/[ \t]{2,}/g, " ").replace(/ +([.,!?])/g, "$1").trim();
+  const vars = { nombre, numero: v.numero, total: plata(totalVenta(v), v.moneda), saldo: plata(saldo(v), v.moneda), pagado: plata(cobrado(v), v.moneda), resta,
+    items: v.items.map((i) => `${i.cant} x ${i.nombre}`).join(", "), entrega: v.entrega || "",
+    negocio: negocio.negocio || "Aukan3D", direccion: negocio.direccion || "", horario: negocio.horario || "", redes: negocio.redes || "" };
+  return String(texto).split("\n").map((linea) => {
+    const r = linea.replace(/\{(\w+)\}/g, (x, k) => (k in vars ? vars[k] : x)).replace(/[ \t]{2,}/g, " ").replace(/ +([.,!?])/g, "$1").trim();
+    return /\{\w+\}/.test(linea) && !/[\p{L}\p{N}]/u.test(r) ? null : r; // quedó sin letras ni números: la línea solo tenía datos vacíos
+  }).filter((x) => x !== null).join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 // "" si ese estado no tiene mensaje o está desactivado.
 function mensajeDe(db, v, nombre, plata) {
   const id = claveMensaje(v), base = MENSAJES_BASE.find((m) => m.id === id);
   if (!base) return "";
   const m = { ...base, activo: true, ...(db.mensajes || []).find((x) => x.id === id) };
-  return m.activo ? armarMensaje(m.texto, v, nombre, plata) : "";
+  return m.activo ? armarMensaje(m.texto, v, nombre, plata, { ...NEGOCIO_BASE, ...(db.mensajes || []).find((x) => x.id === "negocio") }) : "";
 }
 
 if (typeof module !== "undefined") module.exports = { ESTADOS, totalVenta, cobrado, saldo, porMoneda, catalogoDesdeCsv, catalogoACsv,
   resumenMes, resumenRango, serieVentas, masVendidos, comisiones, registrarPago, datosEjemplo, nuevoNumero, mesDe, suma, hoy, importarPedidosWeb,
-  dbVacia, cambiosDb, marcarEnviado, aplicarServidor, resumenCaja, cajaAbierta, esEfectivo, MENSAJES_BASE, claveMensaje, armarMensaje, mensajeDe };
+  dbVacia, cambiosDb, marcarEnviado, aplicarServidor, resumenCaja, cajaAbierta, esEfectivo, MENSAJES_BASE, NEGOCIO_BASE, DATOS_MENSAJE, claveMensaje, armarMensaje, mensajeDe };

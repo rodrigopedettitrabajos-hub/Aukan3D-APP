@@ -1,0 +1,19 @@
+# Sube el servidor (api/) a Cloudflare cada vez que cambia en la rama que publica la tienda.
+# Necesita dos secretos del repositorio: CLOUDFLARE_API_TOKEN y CLOUDFLARE_ACCOUNT_ID.
+name: Subir servidor
+on:
+  push:
+    branches: [claude/project-thread-3ecx6n]
+    paths: ["api/**"]
+  workflow_dispatch: # también a mano, desde la pestaña Actions
+jobs:
+  subir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: api
+          command: deploy

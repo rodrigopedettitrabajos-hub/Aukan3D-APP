@@ -442,10 +442,18 @@ legend { padding: 0 6px; font-weight: 600; }
 .mensaje { display: flex; flex-direction: column; gap: 10px; }
 .mensaje-cabeza { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .mensaje-cabeza h2 { margin: 0; font-size: 18px; }
-.mensaje textarea { width: 100%; resize: vertical; min-height: 84px; font: inherit; font-size: 15px; line-height: 1.45; padding: 10px 12px; border-radius: 10px; }
+.editor-msj { min-height: 96px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; outline: none; }
+.editor-msj:focus { border-color: var(--brand-ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-ink) 25%, transparent); }
+.editor-msj[contenteditable="false"] { opacity: .55; }
+.dato { display: inline-block; padding: 0 10px; margin: 0 2px; border-radius: 99px; background: var(--brand-soft); color: var(--brand-ink); border: 1px solid color-mix(in srgb, var(--brand-ink) 35%, transparent); font-size: 13px; font-weight: 600; line-height: 1.7; white-space: nowrap; user-select: all; }
+.chip-dato { border: 1.5px dashed color-mix(in srgb, var(--brand-ink) 55%, var(--line)); background: transparent; color: var(--brand-ink); border-radius: 99px; padding: 4px 12px; min-height: 32px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.chip-dato:hover { background: var(--brand-soft); border-style: solid; }
+.negocio { grid-column: 1 / -1; }
+.negocio h2 { margin: 0; font-size: 18px; }
+.negocio-campos { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 14px; }
+.negocio-campos label { display: grid; gap: 4px; font-size: 14px; }
 .mensaje > .btn { align-self: flex-start; }
 .etiquetas { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip.chico { min-height: 32px; padding: 4px 10px; font-size: 13px; font-family: ui-monospace, monospace; }
 .previa { margin: 0; padding: 10px 12px; border-radius: 10px 10px 10px 2px; background: #dcf8c6; color: #111; font-size: 14px; white-space: pre-wrap; }
 .previa.apagado { background: var(--card); color: var(--muted); border: 1px dashed var(--line); }
 .nota-servidor { border-color: var(--warn); color: var(--ink); margin-bottom: 14px; }

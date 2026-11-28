@@ -106,5 +106,9 @@ assert.strictEqual(d.mensajeDe({ mensajes: [] }, vm3, "Ana", pl), "¡Hola, Ana! 
 assert.strictEqual(d.mensajeDe({ mensajes: [{ id: "listo", texto: "{nombre}: listo el {numero}, total {total}. {resta} {otra}", activo: true }] }, vm3, "Ana", pl), "Ana: listo el 7, total $ 1000. {otra}");
 assert.strictEqual(d.mensajeDe({ mensajes: [{ id: "listo", texto: "x", activo: false }] }, vm3, "Ana", pl), "");
 assert.strictEqual(d.mensajeDe({}, { ...vm1, estado: 0 }, "Ana", pl), "");
+// Varias líneas: una línea que solo tenía datos vacíos se saca; datos del negocio y lo que pidió.
+const vi = { ...vm3, entrega: "", items: [{ nombre: "Kirby", precio: 600, cant: 2 }] };
+assert.strictEqual(d.armarMensaje("¡Hola {nombre}! Gracias por comprar en {negocio}:\n🗒 {items}\n💲 Total: {total} · Pagaste: {pagado}\n{resta}\n📅 {entrega}\n{direccion}", vi, "Ana", pl, { negocio: "Aukan3D", direccion: "Av. Italia 1" }),
+  "¡Hola Ana! Gracias por comprar en Aukan3D:\n🗒 2 x Kirby\n💲 Total: $ 1200 · Pagaste: $ 1000\nQueda un saldo de $ 200.\nAv. Italia 1");
 
 console.log("admin: ok");
