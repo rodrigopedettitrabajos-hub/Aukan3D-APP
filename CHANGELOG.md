@@ -2,6 +2,15 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.51 · 2026-11-28
+- Panel: nueva pantalla "Mensajes de WhatsApp" (Administración). Un texto por paso (seña, pago total, impresión, listo, entregado), con etiquetas {nombre}, {numero}, {total}, {saldo} y {resta}, vista previa, activar/desactivar y volver al original. "Avisarle por WhatsApp" usa esos textos. Permiso nuevo "Mensajes".
+- Panel: el cobro con QR suma "Enviar por WhatsApp" (abre el chat del cliente con el link de pago) y "Copiar link".
+- Comprobantes (tienda y panel): logo redondo, sin el recuadro negro.
+- Arreglo: el link de WhatsApp quedaba mal armado con números guardados como "+598 9…".
+- Seguridad (auditoría V0.50): una cuenta con Accesos no puede dar la base real si no entra a ella ni tocar cuentas con más permisos (S1); los pagos de la base de pruebas usan la referencia AUKAN-P- y no se anotan en la real (S2); límite de pedidos por IP (S3); sin Ventas/Clientes/Reportes los clientes llegan sin WhatsApp ni correo y sin gastos (S4); el panel no se puede abrir dentro de otra página (_headers).
+- Diseño (auditoría V0.50): pasar a "En impresión" sin ningún pago pide un segundo toque; la campana cuenta solo la última semana; Mis pedidos sin textos repetidos; en Accesos se pueden borrar las cuentas desactivadas; contraste de la campana y el avatar; el botón de WhatsApp de la tienda ya no tapa el pie.
+- Código: se borró apps-script/ (ya no se usaba) y el README quedó al día; las tablas nuevas se crean una sola vez por instancia; los pedidos sin pagar se borran a los 7 días; localhost salió de la configuración de producción. Hay que volver a subir el servidor.
+
 ## V0.50 · 2026-11-28
 - Arreglo: con el servidor sin actualizar (o una sesión abierta antes de V0.49) admin y dev quedaban sin secciones. Ahora las cuentas fijas tienen todo aunque el servidor no mande permisos.
 - Tienda instalable como app (manifest e íconos) y avisos push: con permiso, el aviso de cambio de estado llega aunque la tienda esté cerrada. En iPhone, desde la app agregada a inicio. Las claves se crean solas en el servidor.

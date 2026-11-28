@@ -3,7 +3,7 @@
 // - Panel de gestión: ingreso con usuario y contraseña, y lectura/escritura de sus datos.
 // Cada registro del panel se guarda como JSON en la tabla docs (col, id); ver schema.sql.
 
-const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas"];
+const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas", "mensajes"];
 const MAX_ITEMS = 50, MAX_CANT = 99;
 
 export default {
@@ -49,7 +49,7 @@ async function rutear(req, env, url) {
     if (!(env.PRUEBAS ? quien.pruebas : quien.real)) return json({ ok: false, error: "entorno" }, 403);
     const no = () => json({ ok: false, error: "permiso" }, 403);
     if (m === "POST" && p === "/api/admin/mi-clave") return cambiarMiClave(req, env, quien);
-    if (m === "GET" && p === "/api/admin/datos") return datos(env, Number(url.searchParams.get("desde")) || 0);
+    if (m === "GET" && p === "/api/admin/datos") return datos(env, Number(url.searchParams.get("desde")) || 0, quien);
     if (m === "POST" && p === "/api/admin/lote") return lote(req, env, quien);
     if (m === "POST" && p === "/api/admin/numero") return json({ ok: true, numero: await contador(env) });
     if (m === "GET" && p === "/api/admin/estado") return quien.permisos.includes("base") ? estadoBases(env) : no();
@@ -61,7 +61,8 @@ async function rutear(req, env, url) {
     if (p.startsWith("/api/admin/cuentas") && !quien.permisos.includes("accesos")) return no();
     if (m === "GET" && p === "/api/admin/cuentas") return listarCuentas(env);
     if (m === "POST" && p === "/api/admin/cuentas") return guardarCuenta(req, env, quien);
-    if (m === "POST" && p === "/api/admin/cuentas/clave") return reiniciarClave(req, env);
+    if (m === "POST" && p === "/api/admin/cuentas/clave") return reiniciarClave(req, env, quien);
+    if (m === "POST" && p === "/api/admin/cuentas/borrar") return borrarCuenta(req, env, quien);
   }
   return json({ ok: false, error: "no existe" }, 404);
 }
@@ -134,29 +135,16 @@ async function estadoPedidos(req, env) {
   try { body = await leerJson(req, 10_000); } catch { return json({ ok: false, error: "invalido" }, 400); }
   const ip = req.headers.get("CF-Connecting-IP") || "";
   if (!(await pasaLimite(env, "est:" + ip, 60, 600_000))) return json({ ok: false, error: "limite" }, 429);
-  const pedidos = (Array.isArray(body.pedidos) ? body.pedidos : []).slice(0, 20)
-    .map((x) => ({ numero: limpio(x && x.numero, 12), tel: digitos(x && x.whatsapp) })).filter((x) => /^\d+$/.test(x.numero) && x.tel.length >= 8);
   const estados = {}, pagos = {};
-  if (pedidos.length) {
-    const marcas = pedidos.map(() => "?").join(",");
-    const { results } = await env.DB.prepare(`SELECT data FROM docs WHERE col = 'ventas' AND id IN (${marcas})`).bind(...pedidos.map((x) => x.numero)).all();
-    const ventas = results.map((r) => JSON.parse(r.data)).filter((v) => !v._borrado);
-    const ids = [...new Set(ventas.map((v) => String(v.cliente)))];
-    const clientes = ids.length ? (await env.DB.prepare(`SELECT id, data FROM docs WHERE col = 'clientes' AND id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all()).results : [];
-    const telDe = new Map(clientes.map((c) => [c.id, digitos(JSON.parse(c.data).whatsapp)]));
-    for (const v of ventas) {
-      const pedido = pedidos.find((x) => x.numero === String(v.numero));
-      if (pedido && telDe.get(String(v.cliente)) === pedido.tel) {
-        estados[v.numero] = v.estado;
-        // Pagos para el comprobante del cliente: de Mercado Pago va el N° de operación; el medio interno no sale.
-        pagos[v.numero] = (v.pagos || []).map((x) => ({ fecha: x.fecha, monto: x.monto, ...(x.mp ? { mp: String(x.mp) } : {}) }));
-      }
-    }
+  for (const v of await pedidosDelCliente(env, body.pedidos)) {
+    estados[v.numero] = v.estado;
+    // Pagos para el comprobante del cliente: de Mercado Pago va el N° de operación; el medio interno no sale.
+    pagos[v.numero] = (v.pagos || []).map((x) => ({ fecha: x.fecha, monto: x.monto, ...(x.mp ? { mp: String(x.mp) } : {}) }));
   }
   return json({ ok: true, estados, pagos });
 }
 
-// ---------- pedido de la tienda (mismo contrato que apps-script/Code.gs) ----------
+// ---------- pedido de la tienda ----------
 async function nuevoPedido(req, env) {
   let body;
   try { body = await leerJson(req, 50_000); } catch { return json({ ok: false, error: "invalido" }, 400); }
@@ -164,6 +152,7 @@ async function nuevoPedido(req, env) {
   const nombre = limpio(c.nombre, 80), whatsapp = limpio(c.whatsapp, 20);
   if (c.web || !nombre || !/^\+?[0-9 ]{8,20}$/.test(whatsapp)) return json({ ok: false, error: "datos" }, 400); // web: campo trampa
   if (!(await pasaLimite(env, "wa:" + digitos(whatsapp), 5, 600_000))) return json({ ok: false, error: "limite" }, 429);
+  if (!(await pasaLimite(env, "ped:" + (req.headers.get("CF-Connecting-IP") || ""), 20, 600_000))) return json({ ok: false, error: "limite" }, 429); // con otro WhatsApp cada vez
   if (!Array.isArray(body.items) || !body.items.length || body.items.length > MAX_ITEMS) return json({ ok: false, error: "items" }, 400);
 
   // Precios desde la base, nunca desde el navegador.
@@ -189,7 +178,7 @@ async function nuevoPedido(req, env) {
   }
   const numero = await contador(env);
   const pago = await linkPago(env, sena ? [{ title: `Seña 50% pedido AUKAN-${numero}`, quantity: 1, unit_price: aPagar, currency_id: "UYU" }]
-    : items.map((i) => ({ title: i.nombre, quantity: i.cant, unit_price: i.precio, currency_id: "UYU" })), `AUKAN-${numero}`, volverATienda(env));
+    : items.map((i) => ({ title: i.nombre, quantity: i.cant, unit_price: i.precio, currency_id: "UYU" })), referencia(env, numero), volverATienda(env));
   const entrega = limpio(c.entrega, 40) + (c.envio ? " · " + limpio(c.envio, 160) : "");
   const venta = { numero: String(numero), fecha: new Date(ahora).toISOString(), origen: "web", cliente: cli.id, vendedor: "", moneda: "UYU", items, pagos: [],
     estado: 0, sena, entrega, nota: limpio(c.comentario, 500), pago };
@@ -197,19 +186,35 @@ async function nuevoPedido(req, env) {
   // Sin link (no hay credencial o Mercado Pago no respondió) entra igual, para no perderlo, y el pago se coordina.
   if (pago) venta.espera = true;
   await guardarDoc(env, "ventas", numero, venta, ahora).run();
+  // Pedidos que esperaban el pago y nunca se pagaron: a los 7 días se borran.
+  await env.DB.prepare(`DELETE FROM docs WHERE col = 'ventas' AND actualizado < ? AND data LIKE '%"espera":true%'`).bind(ahora - 7 * 86400_000).run();
   return json({ ok: true, total, aPagar, sena, numero, pago });
 }
 
 // ---------- Mercado Pago ----------
 // Dirección de vuelta tras pagar: la tienda que hizo el pedido, solo si es un origen permitido (ORIGENES).
+// Referencia del pago: las dos bases numeran por separado y comparten la credencial, así que la de pruebas lleva "P-".
+const referencia = (env, numero) => `AUKAN-${env.PRUEBAS ? "P-" : ""}${numero}`;
 const volverATienda = (env) => (String(env.TIENDA || "").startsWith("https://") ? env.TIENDA + "/#mis-pedidos" : "");
 // La credencial se carga desde el panel (o queda el secreto MP_ACCESS_TOKEN de wrangler). Se guarda siempre en la base real,
 // así admin y dev (también en modo pruebas) ven y usan la misma cuenta. Nunca se devuelve al navegador: solo sus últimos 4 caracteres.
 const mpApi = (env) => env.MP_API || "https://api.mercadopago.com"; // MP_API solo para pruebas locales
 const baseAjustes = (env) => env.DB_REAL || env.DB;
+// Tablas que se agregaron después de la primera versión: se crean si faltan, una sola vez por instancia del Worker.
+const TABLAS = {
+  ajustes: "CREATE TABLE IF NOT EXISTS ajustes (clave TEXT PRIMARY KEY, valor TEXT NOT NULL, actualizado INTEGER NOT NULL)",
+  cuentas: "CREATE TABLE IF NOT EXISTS cuentas (usuario TEXT PRIMARY KEY, data TEXT NOT NULL, actualizado INTEGER NOT NULL)",
+  push: "CREATE TABLE IF NOT EXISTS push (endpoint TEXT NOT NULL, numero TEXT NOT NULL, ultimo TEXT, actualizado INTEGER NOT NULL, PRIMARY KEY (endpoint, numero))",
+};
+const creadas = new WeakMap(); // base -> Set de tablas ya creadas
+async function tabla(db, nombre) {
+  if (!creadas.has(db)) creadas.set(db, new Set());
+  const hechas = creadas.get(db);
+  if (!hechas.has(nombre)) { await db.prepare(TABLAS[nombre]).run(); hechas.add(nombre); }
+  return db;
+}
 async function credencialMp(env) {
-  const db = baseAjustes(env);
-  await db.prepare("CREATE TABLE IF NOT EXISTS ajustes (clave TEXT PRIMARY KEY, valor TEXT NOT NULL, actualizado INTEGER NOT NULL)").run();
+  const db = await tabla(baseAjustes(env), "ajustes");
   const r = await db.prepare("SELECT valor, actualizado FROM ajustes WHERE clave = 'mp_token'").first();
   if (r) return { token: r.valor, origen: "panel", actualizado: r.actualizado };
   return { token: env.MP_ACCESS_TOKEN || "", origen: env.MP_ACCESS_TOKEN ? "secreto" : "", actualizado: null };
@@ -261,7 +266,7 @@ async function cobroMp(req, env) {
   const monto = Math.round(Number(body.monto));
   if (!(monto >= 1 && monto <= saldoDe(v))) return json({ ok: false, error: "monto" }, 400);
   const titulo = body.sena ? `Seña 50 % pedido AUKAN-${v.numero}` : `Pedido AUKAN-${v.numero}`;
-  const link = await linkPago(env, [{ title: titulo, quantity: 1, unit_price: monto, currency_id: v.moneda === "USD" ? "USD" : "UYU" }], `AUKAN-${v.numero}`);
+  const link = await linkPago(env, [{ title: titulo, quantity: 1, unit_price: monto, currency_id: v.moneda === "USD" ? "USD" : "UYU" }], referencia(env, v.numero));
   return link ? json({ ok: true, link }) : json({ ok: false, error: "mp" }, 502);
 }
 // Aviso de Mercado Pago (webhook). No se confía en lo que llega: se pide el pago a Mercado Pago con la credencial y,
@@ -279,7 +284,7 @@ async function avisoMp(req, env, url) {
   const res = await pedirMp(env, token, "/v1/payments/" + id);
   if (!res.ok) return json({ ok: true, ignorado: true });
   const x = await res.json();
-  const numero = (String(x.external_reference || "").match(/^AUKAN-(\d+)$/) || [])[1];
+  const numero = (String(x.external_reference || "").match(env.PRUEBAS ? /^AUKAN-P-(\d+)$/ : /^AUKAN-(\d+)$/) || [])[1]; // solo pagos de esta base
   if (x.status !== "approved" || !numero) return json({ ok: true, estado: x.status });
   return json({ ok: true, registrado: await anotarPagoMp(env, numero, x) });
 }
@@ -345,21 +350,22 @@ function mismo(a, b) { // comparación de tiempo constante
 // - Fijas (secretos del Worker): la del negocio (ADMIN_USUARIO / ADMIN_CLAVE_HASH) y "dev" (DEV_CLAVE_HASH, entra también a pruebas).
 // - Creadas desde el panel (pantalla Accesos): tabla `cuentas` de la base REAL, con permisos por sección y en qué base pueden entrar.
 // Permisos: secciones del panel. "base", "mp" y "accesos" son de administración; el resto, del día a día.
-export const PERMISOS = ["ventas", "feria", "pendientes", "clientes", "productos", "reportes", "usuarios", "medios", "mp", "accesos", "base"];
+export const PERMISOS = ["ventas", "feria", "pendientes", "clientes", "productos", "reportes", "usuarios", "medios", "mensajes", "mp", "accesos", "base"];
 // Qué permiso hace falta para escribir cada colección (alcanza con uno de la lista).
 const ESCRIBE = { ventas: ["ventas", "feria", "pendientes"], clientes: ["clientes", "ventas", "feria"], productos: ["productos", "ventas", "feria"],
-  gastos: ["reportes"], medios: ["medios"], usuarios: ["usuarios"], cajas: ["feria"] };
+  gastos: ["reportes"], medios: ["medios"], usuarios: ["usuarios"], cajas: ["feria"], mensajes: ["mensajes"] };
 const puedeEscribir = (q, col) => (ESCRIBE[col] || []).some((x) => q.permisos.includes(x));
+// Lectura: sin estos permisos, los clientes llegan solo con id y nombre (sin WhatsApp ni correo) y los gastos no llegan.
+const VE_CLIENTES = ["ventas", "pendientes", "clientes", "reportes"];
+const algunoDe = (q, lista) => lista.some((x) => q.permisos.includes(x));
+// Quien tiene Accesos solo maneja cuentas que no lo superan: ni permisos que no tiene, ni la base real si no entra a ella.
+const abarca = (q, c) => c.permisos.every((x) => q.permisos.includes(x)) && (c.entorno === "pruebas" || q.real);
 const puedeCobrar = (q) => ["ventas", "pendientes"].some((x) => q.permisos.includes(x));
 const FIJAS = (env) => [
   { usuario: String(env.ADMIN_USUARIO || "").toLowerCase(), hash: env.ADMIN_CLAVE_HASH, nombre: "Administrador", permisos: PERMISOS.filter((x) => x !== "base"), real: true, pruebas: false },
   { usuario: "dev", hash: env.DEV_CLAVE_HASH, nombre: "Dev", permisos: PERMISOS, real: true, pruebas: true },
 ].filter((c) => c.usuario && c.hash);
-async function tablaCuentas(env) {
-  const db = baseAjustes(env);
-  await db.prepare("CREATE TABLE IF NOT EXISTS cuentas (usuario TEXT PRIMARY KEY, data TEXT NOT NULL, actualizado INTEGER NOT NULL)").run();
-  return db;
-}
+const tablaCuentas = (env) => tabla(baseAjustes(env), "cuentas");
 async function cuentaGuardada(env, usuario) {
   const r = await (await tablaCuentas(env)).prepare("SELECT data FROM cuentas WHERE usuario = ?").bind(usuario).first();
   return r ? { usuario, ...JSON.parse(r.data) } : null;
@@ -430,6 +436,7 @@ async function guardarCuenta(req, env, quien) {
   // Nadie da permisos que no tiene (una cuenta con Accesos no puede crear otra con Base de datos si ella no lo tiene).
   const permisos = PERMISOS.filter((x) => Array.isArray(b.permisos) && b.permisos.includes(x) && quien.permisos.includes(x));
   const antes = await cuentaGuardada(env, usuario);
+  if (!abarca(quien, { permisos, entorno }) || (antes && !abarca(quien, antes))) return json({ ok: false, error: "permiso" }, 403);
   if (b.nueva && antes) return json({ ok: false, error: "existe" }, 409);
   if (!b.nueva && !antes) return json({ ok: false, error: "no existe" }, 404);
   const c = { ...(antes || { creado: Date.now() }), usuario, nombre, email, entorno, permisos, activo: b.activo !== false };
@@ -438,14 +445,26 @@ async function guardarCuenta(req, env, quien) {
   await escribirCuenta(env, c);
   return json({ ok: true, cuenta: sinClave(c), ...(clave ? { clave } : {}) });
 }
-async function reiniciarClave(req, env) {
+async function reiniciarClave(req, env, quien) {
   let b;
   try { b = await leerJson(req, 2000); } catch { return json({ ok: false, error: "invalido" }, 400); }
   const c = await cuentaGuardada(env, limpio(b.usuario, 30).toLowerCase());
   if (!c) return json({ ok: false, error: "no existe" }, 404);
+  if (!abarca(quien, c)) return json({ ok: false, error: "permiso" }, 403);
   const clave = claveTemporal();
   await escribirCuenta(env, { ...c, hash: await hashClave(clave), cambiarClave: true });
   return json({ ok: true, clave });
+}
+// Borrar: solo cuentas ya desactivadas (primero se desactiva, así no se borra una por error).
+async function borrarCuenta(req, env, quien) {
+  let b;
+  try { b = await leerJson(req, 2000); } catch { return json({ ok: false, error: "invalido" }, 400); }
+  const c = await cuentaGuardada(env, limpio(b.usuario, 30).toLowerCase());
+  if (!c) return json({ ok: false, error: "no existe" }, 404);
+  if (!abarca(quien, c)) return json({ ok: false, error: "permiso" }, 403);
+  if (c.activo) return json({ ok: false, error: "activa" }, 400);
+  await (await tablaCuentas(env)).prepare("DELETE FROM cuentas WHERE usuario = ?").bind(c.usuario).run();
+  return json({ ok: true });
 }
 async function cambiarMiClave(req, env, quien) {
   if (quien.fija) return json({ ok: false, error: "fija" }, 400); // las fijas se cambian con wrangler secret
@@ -460,13 +479,16 @@ async function cambiarMiClave(req, env, quien) {
 }
 
 // ---------- datos del panel ----------
-async function datos(env, desde) {
+async function datos(env, desde, quien) {
   const { results } = await env.DB.prepare("SELECT col, data, actualizado FROM docs WHERE actualizado >= ?").bind(desde).all();
   const r = Object.fromEntries(COLECCIONES.map((c) => [c, []]));
+  const veClientes = algunoDe(quien, VE_CLIENTES), veGastos = algunoDe(quien, ["reportes"]);
   let hasta = desde;
   for (const x of results) {
-    const d = JSON.parse(x.data);
-    if (r[x.col] && !d.espera) r[x.col].push(d); // pedidos de la tienda sin pagar: el panel no los ve hasta que se pagan
+    let d = JSON.parse(x.data);
+    if (x.col === "gastos" && !veGastos) d = null;
+    if (x.col === "clientes" && !veClientes && d) d = { id: d.id, nombre: d.nombre, ...(d._borrado ? { _borrado: true } : {}) };
+    if (d && r[x.col] && !d.espera) r[x.col].push(d); // pedidos de la tienda sin pagar: el panel no los ve hasta que se pagan
     hasta = Math.max(hasta, x.actualizado);
   }
   return json({ ok: true, hasta, ...r }); // >= desde: puede repetir algo ya visto; el panel lo reemplaza por id
@@ -498,8 +520,7 @@ async function lote(req, env, quien) {
 // (el endpoint lo conoce solo ese navegador). Las claves VAPID se crean solas la primera vez y quedan en `ajustes`.
 const enSegundoPlano = (env, promesa) => { const p = promesa.catch((e) => console.error("push", e)); if (env.CTX) env.CTX.waitUntil(p); };
 async function clavesPush(env) {
-  const db = baseAjustes(env);
-  await db.prepare("CREATE TABLE IF NOT EXISTS ajustes (clave TEXT PRIMARY KEY, valor TEXT NOT NULL, actualizado INTEGER NOT NULL)").run();
+  const db = await tabla(baseAjustes(env), "ajustes");
   const r = await db.prepare("SELECT valor FROM ajustes WHERE clave = 'vapid'").first();
   if (r) return JSON.parse(r.valor);
   const par = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
@@ -507,9 +528,7 @@ async function clavesPush(env) {
   await db.prepare("INSERT OR IGNORE INTO ajustes (clave, valor, actualizado) VALUES ('vapid', ?, ?)").bind(JSON.stringify(claves), Date.now()).run();
   return JSON.parse((await db.prepare("SELECT valor FROM ajustes WHERE clave = 'vapid'").first()).valor); // si dos llegaron a la vez, gana la primera
 }
-async function tablaPush(env) {
-  await env.DB.prepare("CREATE TABLE IF NOT EXISTS push (endpoint TEXT NOT NULL, numero TEXT NOT NULL, ultimo TEXT, actualizado INTEGER NOT NULL, PRIMARY KEY (endpoint, numero))").run();
-}
+const tablaPush = (env) => tabla(env.DB, "push");
 // Solo servicios de push conocidos (evita que el servidor mande pedidos a cualquier dirección).
 const HOSTS_PUSH = ["fcm.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com", ".notify.windows.com", ".push.apple.com"];
 function endpointValido(env, e) {
@@ -528,7 +547,7 @@ async function pedidosDelCliente(env, lista) {
   const ids = [...new Set(ventas.map((v) => String(v.cliente)))];
   const clientes = ids.length ? (await env.DB.prepare(`SELECT id, data FROM docs WHERE col = 'clientes' AND id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all()).results : [];
   const telDe = new Map(clientes.map((c) => [c.id, digitos(JSON.parse(c.data).whatsapp)]));
-  return ventas.filter((v) => telDe.get(String(v.cliente)) === pedidos.find((x) => x.numero === String(v.numero))?.tel).map((v) => String(v.numero));
+  return ventas.filter((v) => telDe.get(String(v.cliente)) === pedidos.find((x) => x.numero === String(v.numero))?.tel);
 }
 async function altaPush(req, env) {
   let b;
@@ -537,7 +556,7 @@ async function altaPush(req, env) {
   if (!(await pasaLimite(env, "push:" + ip, 30, 600_000))) return json({ ok: false, error: "limite" }, 429);
   const endpoint = String(b.endpoint || "");
   if (!endpointValido(env, endpoint)) return json({ ok: false, error: "endpoint" }, 400);
-  const numeros = await pedidosDelCliente(env, b.pedidos);
+  const numeros = (await pedidosDelCliente(env, b.pedidos)).map((v) => String(v.numero));
   await tablaPush(env);
   const ahora = Date.now();
   if (numeros.length) await env.DB.batch(numeros.map((n) => env.DB.prepare("INSERT INTO push (endpoint, numero, actualizado) VALUES (?, ?, ?) ON CONFLICT (endpoint, numero) DO UPDATE SET actualizado = excluded.actualizado").bind(endpoint, n, ahora)));

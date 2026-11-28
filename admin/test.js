@@ -95,4 +95,16 @@ assert.deepStrictEqual([rc.total, rc.efectivo, rc.esperado, rc.porMedio.m3, rc.d
 caja.contado = 1500; caja.cerrada = "2026-11-27T20:00:00Z";
 assert.strictEqual(d.resumenCaja(dbF, caja).diferencia, -50);
 assert.strictEqual(d.cajaAbierta(dbF), null);
+// Mensajes de WhatsApp por estado: originales, editados, desactivados y la frase del saldo.
+const pl = (n) => "$ " + n;
+const vm1 = { numero: "7", estado: 1, sena: true, moneda: "UYU", items: [{ precio: 1000, cant: 1 }], pagos: [{ monto: 500 }] };
+assert.strictEqual(d.claveMensaje(vm1), "sena");
+assert.strictEqual(d.mensajeDe({ mensajes: [] }, vm1, "Ana", pl), "¡Hola, Ana! Recibimos la seña de tu pedido N° 7. ¡Quedó confirmado! Queda un saldo de $ 500.");
+assert.strictEqual(d.claveMensaje({ ...vm1, pagos: [{ monto: 1000 }] }), "pagado");
+const vm3 = { ...vm1, estado: 3, pagos: [{ monto: 1000 }] };
+assert.strictEqual(d.mensajeDe({ mensajes: [] }, vm3, "Ana", pl), "¡Hola, Ana! ¡Tu pedido N° 7 está listo para entregar! ¿Coordinamos la entrega?"); // sin saldo: sin frase
+assert.strictEqual(d.mensajeDe({ mensajes: [{ id: "listo", texto: "{nombre}: listo el {numero}, total {total}. {resta} {otra}", activo: true }] }, vm3, "Ana", pl), "Ana: listo el 7, total $ 1000. {otra}");
+assert.strictEqual(d.mensajeDe({ mensajes: [{ id: "listo", texto: "x", activo: false }] }, vm3, "Ana", pl), "");
+assert.strictEqual(d.mensajeDe({}, { ...vm1, estado: 0 }, "Ana", pl), "");
+
 console.log("admin: ok");

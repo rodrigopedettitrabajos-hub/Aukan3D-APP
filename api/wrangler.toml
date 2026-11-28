@@ -16,6 +16,6 @@ database_id = "e99190b9-a5b7-4a45-ba9b-650e71ef45e2"
 
 [vars]
 # Páginas que pueden usar el servidor (la tienda y el panel). Separadas por coma.
-ORIGENES = "https://aukan3d.pages.dev,https://*.aukan3d.pages.dev,https://rodrigopedettitrabajos-hub.github.io,http://localhost:8090"
+ORIGENES = "https://aukan3d.pages.dev,https://*.aukan3d.pages.dev,https://rodrigopedettitrabajos-hub.github.io"
 
 # Secretos (no van acá): npx wrangler secret put ADMIN_USUARIO / ADMIN_CLAVE_HASH / DEV_CLAVE_HASH / FIRMA / MP_ACCESS_TOKEN

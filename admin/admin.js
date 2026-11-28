@@ -38,7 +38,7 @@ function cambiarEntorno(pruebas) {
 }
 const leerSesion = () => { try { return sessionStorage.getItem(SESION) || ""; } catch { return ""; } };
 // Cuenta que entró (nombre, permisos y en qué bases puede entrar). Sin servidor (demo): todo menos Base de datos.
-const TODOS = ["ventas", "feria", "pendientes", "clientes", "productos", "reportes", "usuarios", "medios", "mp", "accesos", "base"];
+const TODOS = ["ventas", "feria", "pendientes", "clientes", "productos", "reportes", "usuarios", "medios", "mensajes", "mp", "accesos", "base"];
 function cuentaActual() {
   if (!API) return { nombre: "Administrador", permisos: TODOS.filter((x) => !["base", "mp", "accesos"].includes(x)), real: true, pruebas: false };
   let c = null, u = "";
@@ -120,6 +120,7 @@ for (const b of document.querySelectorAll("[data-salir]")) b.addEventListener("c
 // --- Datos ---
 let db = API ? dbVacia() : leerJson(CLAVE_DB, null);
 if (!db?.version) db = datosEjemplo(catalogoDesdeCsv(window.PRODUCTOS_CSV));
+db.mensajes ||= []; // datos guardados antes de V0.51
 db.cajas ||= []; // datos guardados antes del modo feria
 function avisoPedidos(n) {
   if (n) notificar(n === 1 ? "Llegó 1 pedido nuevo de la tienda." : `Llegaron ${n} pedidos nuevos de la tienda.`);
@@ -139,7 +140,7 @@ function avisoPagosMp(antes) {
 // Servidor: cada guardar() manda solo lo cambiado; cada 20 s se trae lo nuevo (pedidos web, otros dispositivos).
 // shortcut: si dos dispositivos editan lo mismo a la vez, queda el último que guardó.
 const enviado = new Map();
-let hasta = 0, enviando = null, otraVez = false;
+let hasta = 0, enviando = null, otraVez = false, servidorMensajes = false;
 async function llamar(ruta, body) {
   const res = await fetch(API + conEntorno(ruta), { method: body ? "POST" : "GET", body: body && JSON.stringify(body),
     headers: { Authorization: "Bearer " + leerSesion(), ...(body ? { "Content-Type": "application/json" } : {}) } });
@@ -153,7 +154,9 @@ async function traerServidor() {
   const r = await llamar("/api/admin/datos?desde=" + hasta);
   const primera = !hasta, antes = pagosMp();
   const n = aplicarServidor(db, r, enviado);
-  hasta = r.hasta;
+  hasta = r.hasta; servidorMensajes = "mensajes" in r; // servidor anterior a V0.51: no guarda mensajes
+  if (primera && location.hash === "#mensajes") PINTAR.mensajes(); // no se repinta solo: borraría lo que se está escribiendo
+
   if (!primera) { avisoPedidos(n); avisoPagosMp(antes); } // el pago va último: si llegan juntos, es el aviso que queda a la vista
   return primera ? 0 : n;
 }
@@ -204,7 +207,7 @@ const cliente = (id) => db.clientes.find((c) => c.id === id) || { nombre: "Sin c
 const usuario = (id) => db.usuarios.find((u) => u.id === id);
 const medio = (id) => db.medios.find((m) => m.id === id)?.nombre || "—";
 const venta = (n) => db.ventas.find((v) => v.numero === n);
-const waDe = (tel) => "598" + String(tel).replace(/\D/g, "").replace(/^0/, "");
+const waDe = (tel) => { const d = String(tel).replace(/\D/g, ""); return d.startsWith("598") && d.length >= 11 ? d : "598" + d.replace(/^0/, ""); }; // "+598 98…" o "098…"
 
 let avisoT;
 // Con una ventana abierta, el resto de la página no se puede tocar: el aviso se mete en esa ventana
@@ -224,7 +227,7 @@ function avisar(t, deshacer) {
 // --- Navegación ---
 const VISTAS = { panel: "Panel principal", ventas: "Ventas y pedidos", feria: "Modo feria", pendientes: "Cuentas pendientes", clientes: "Clientes",
   productos: "Productos y stock", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Reportes y gastos", base: "Base de datos", mp: "Mercado Pago",
-  accesos: "Accesos al panel" };
+  accesos: "Accesos al panel", mensajes: "Mensajes de WhatsApp" };
 const PINTAR = {};
 function mostrarVista() {
   let v = location.hash.slice(1) in VISTAS ? location.hash.slice(1) : "panel";
@@ -237,14 +240,16 @@ function mostrarVista() {
   pintarCampana();
 }
 addEventListener("hashchange", () => { mostrarVista(); scrollTo(0, 0); });
-const repintar = () => { const v = location.hash.slice(1); if (!["base", "mp", "accesos"].includes(v)) PINTAR[v in VISTAS ? v : "panel"](); pintarCampana(); };
+const repintar = () => { const v = location.hash.slice(1); if (!["base", "mp", "accesos", "mensajes"].includes(v)) PINTAR[v in VISTAS ? v : "panel"](); pintarCampana(); };
 
 // --- Campana: pedidos de la tienda en "Recibido" que todavía no se abrieron en este navegador ---
 const VISTOS = PRUEBAS ? "aukan_vistos_pruebas" : "aukan_vistos"; // los números se repiten entre la base real y la de pruebas
 const vistos = new Set(leerJson(VISTOS, []).map(String));
 // Recibido o ya pagado: con Mercado Pago el pedido llega al panel recién cuando se acredita (en Seña pagada o Pagado).
 const llegoPagado = (v) => v.estado === 1 && v.pagos.length && v.pagos.every((p) => p.mp);
-const nuevos = () => db.ventas.filter((v) => v.origen === "web" && (v.estado === 0 || llegoPagado(v)) && !vistos.has(String(v.numero)));
+// Solo los de la última semana: los viejos sin abrir no son "nuevos" y dejaban la campana trabada en 99+.
+const nuevos = () => { const desde = Date.now() - 7 * 86400_000;
+  return db.ventas.filter((v) => v.origen === "web" && (v.estado === 0 || llegoPagado(v)) && !vistos.has(String(v.numero)) && new Date(v.fecha) >= desde); };
 function marcarVistos(numeros) {
   for (const n of numeros) vistos.add(String(n));
   try { localStorage.setItem(VISTOS, JSON.stringify([...vistos].slice(-500))); } catch { /* sin almacenamiento */ }
@@ -357,7 +362,7 @@ function imprimirPedido(numero, formato = leerLocal(FORMATO) || "a4", extra = {}
   const hora = new Date(v.fecha).toLocaleString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   $("#imprimir").className = ticket ? "ticket80" : "";
   $("#imprimir").replaceChildren(
-    el("header", {}, el("img", { src: "../logo.webp", alt: "" }), el("div", {}, el("h1", { textContent: ticket ? "AUKAN3D" : `Pedido N° ${v.numero}` }),
+    el("header", {}, el("img", { src: "../logo-comprobante.webp", alt: "" }), el("div", {}, el("h1", { textContent: ticket ? "AUKAN3D" : `Pedido N° ${v.numero}` }),
       el("p", { textContent: ticket ? `Venta N° ${v.numero} · ${hora}` : `${fecha(v.fecha)} · ${ORIGEN[v.origen] || "En persona"} · ${ESTADOS[v.estado]}` }))),
     v.origen === "feria" && ticket ? "" : el("div", { className: "bloque" }, el("h2", { textContent: "Cliente" }), el("p", { textContent: c.nombre || "—" }),
       c.whatsapp ? el("p", { textContent: `WhatsApp ${c.whatsapp}` }) : "", v.entrega ? el("p", { textContent: `Entrega: ${v.entrega}` }) : ""),
@@ -390,16 +395,7 @@ const botonesImp = (numero, extra) => el("span", { className: "imp-formatos" },
   el("button", { type: "button", className: "btn sec chico", textContent: "Ticket 80 mm", onclick: () => imprimirPedido(numero, "80", extra) }));
 
 // Mensaje de WhatsApp para avisar al cliente que su pedido cambió de estado (sale desde el WhatsApp de quien toca).
-function mensajeEstado(v, nombre) {
-  const hola = `¡Hola, ${nombre}! `, n = `N° ${v.numero}`, resta = saldo(v) ? ` Queda un saldo de ${plata(saldo(v), v.moneda)}.` : "";
-  return [
-    "",
-    hola + (pagadoTodo(v) ? `Recibimos el pago de tu pedido ${n}. ¡Quedó confirmado!` : `Recibimos la seña de tu pedido ${n}. ¡Quedó confirmado!${resta}`),
-    hola + `Tu pedido ${n} entró en impresión. Te avisamos cuando esté listo.`,
-    hola + `¡Tu pedido ${n} está listo para entregar!${resta} ¿Coordinamos la entrega?`,
-    hola + `Entregamos tu pedido ${n}. ¡Gracias por comprar en Aukan3D!`,
-  ][v.estado] || "";
-}
+const mensajeEstado = (v, nombre) => mensajeDe(db, v, nombre, plata); // textos editables en la pantalla Mensajes
 const i18nEstado = (v) => (v.estado === 1 && pagadoTodo(v) ? "Pagado" : ESTADOS[v.estado]);
 let recienCambiado = null; // { numero, estado }: muestra "Avisarle por WhatsApp" después de cambiar el estado
 // Detalle de una venta: estado, pagos, WhatsApp.
@@ -438,9 +434,16 @@ function abrirDetalle(numero) {
   if (!d.open) d.showModal();
 }
 
+let confirmarEstado = ""; // D1: pasar a impresión o más sin ningún pago pide un segundo toque
 function cambiarEstado(v, i) {
   const antes = v.estado;
   if (i === antes) return;
+  const clave = v.numero + ":" + i;
+  if (i >= 2 && antes < 2 && !cobrado(v) && confirmarEstado !== clave) {
+    confirmarEstado = clave;
+    return avisar(`El pedido N° ${v.numero} no tiene ningún pago. Tocá "${ESTADOS[i]}" de nuevo para pasarlo igual.`);
+  }
+  confirmarEstado = "";
   v.estado = i; recienCambiado = { numero: v.numero, estado: i }; guardar(); repintar(); abrirDetalle(v.numero);
   avisar(`Pedido N° ${v.numero}: pasó a ${ESTADOS[i]}.`, () => { v.estado = antes; if ($("#d-detalle").open) abrirDetalle(v.numero); });
 }
@@ -472,7 +475,7 @@ $("#f-pago").addEventListener("submit", (e) => {
 
 // Cobrar con QR de Mercado Pago: seña (50 %) o saldo. El cliente escanea y paga; cuando Mercado Pago avisa al servidor,
 // el pago queda anotado en el pedido y esta ventana lo muestra (consulta cada 5 s mientras está abierta).
-let qrDe = null, qrEspera = 0;
+let qrDe = null, qrEspera = 0, qrLink = "";
 const cargarQr = () => window.qrcode ? Promise.resolve()
   : new Promise((ok, mal) => document.head.append(el("script", { src: "../qrcode.js?v=" + (window.AUKAN_CONFIG?.version || "").slice(1), onload: ok, onerror: mal })));
 function abrirQr(numero) {
@@ -497,7 +500,10 @@ async function generarQr(monto, sena, boton) {
     await cargarQr();
     const qr = qrcode(0, "M"); qr.addData(r.link); qr.make();
     $("#qr-img").src = qr.createDataURL(6, 2);
-    $("#qr-link").href = r.link;
+    const c = cliente(qrDe.cliente), texto = `¡Hola, ${c.nombre.split(" ")[0]}! Este es el link para pagar ${plata(monto, qrDe.moneda)} de tu pedido N° ${qrDe.numero} con Mercado Pago: ${r.link}`;
+    $("#qr-abrir").href = r.link; qrLink = r.link;
+    $("#qr-wa").hidden = !c.whatsapp;
+    $("#qr-wa").href = `https://wa.me/${waDe(c.whatsapp)}?text=${encodeURIComponent(texto)}`;
     $("#qr-img").hidden = $("#qr-link").hidden = false;
     $("#qr-estado").textContent = `Esperando el pago de ${plata(monto, qrDe.moneda)}. Cuando Mercado Pago lo confirme aparece acá y en el pedido.`;
     esperarPagoQr();
@@ -522,6 +528,11 @@ function esperarPagoQr() {
     repintar();
   }, 5000);
 }
+$("#qr-copiar").addEventListener("click", async (e) => {
+  const b = e.currentTarget;
+  try { await navigator.clipboard.writeText(qrLink); b.textContent = "Copiado"; } catch { b.textContent = "No se pudo copiar"; }
+  setTimeout(() => { b.textContent = "Copiar link"; }, 1500);
+});
 $("#d-qr").addEventListener("close", () => { clearInterval(qrEspera); if (qrDe && $("#d-detalle").open) abrirDetalle(qrDe.numero); });
 
 // Nueva venta (en persona o en una feria).
@@ -990,6 +1001,44 @@ $("#f-medio").addEventListener("submit", async (e) => {
 // --- Usuarios y comisiones ---
 $("#usuarios-mes").value = mesActual();
 $("#usuarios-mes").addEventListener("input", () => PINTAR.usuarios());
+// Mensajes de WhatsApp al cambiar el estado: un texto por paso, con etiquetas que se reemplazan por los datos del pedido.
+const ETIQUETAS = [["{nombre}", "Nombre"], ["{numero}", "N° de pedido"], ["{total}", "Total"], ["{saldo}", "Saldo"], ["{resta}", "Frase del saldo (solo si debe)"]];
+const EJEMPLO_MSJ = (id) => ({ numero: "1297", estado: MENSAJES_BASE.find((m) => m.id === id).estado, sena: id !== "pagado", moneda: "UYU",
+  items: [{ precio: 1800, cant: 1 }], pagos: id === "pagado" || id === "entregado" ? [{ monto: 1800 }] : id === "impresion" ? [{ monto: 900 }] : [{ monto: 900 }] });
+const mensajeGuardado = (id) => ({ ...MENSAJES_BASE.find((m) => m.id === id), activo: true, ...db.mensajes.find((x) => x.id === id) });
+PINTAR.mensajes = () => {
+  const sinServidor = API && !servidorMensajes;
+  $("#mensajes-aviso").hidden = !sinServidor;
+  $("#f-mensajes button[type=submit]").disabled = sinServidor;
+  $("#mensajes-lista").replaceChildren(...MENSAJES_BASE.map((b) => {
+    const m = mensajeGuardado(b.id), previa = el("p", { className: "previa" });
+    const texto = el("textarea", { name: "texto-" + b.id, rows: 3, maxLength: 600, value: m.texto, ariaLabel: "Mensaje: " + b.nombre });
+    const activo = el("input", { type: "checkbox", name: "activo-" + b.id, checked: m.activo });
+    const pintarPrevia = () => {
+      previa.textContent = activo.checked ? armarMensaje(texto.value, EJEMPLO_MSJ(b.id), "Lucía", plata) : "Desactivado: al cambiar a este paso no se propone mensaje.";
+      previa.classList.toggle("apagado", !activo.checked); texto.disabled = !activo.checked;
+    };
+    texto.addEventListener("input", pintarPrevia); activo.addEventListener("change", pintarPrevia); pintarPrevia();
+    const insertar = (t) => { const i = texto.selectionStart ?? texto.value.length; texto.setRangeText(t, i, texto.selectionEnd ?? i, "end"); texto.focus(); pintarPrevia(); };
+    return el("article", { className: "caja mensaje" },
+      el("div", { className: "mensaje-cabeza" }, el("h2", { textContent: b.nombre }), el("label", { className: "check" }, activo, el("span", { textContent: "Activo" }))),
+      texto,
+      el("div", { className: "etiquetas" }, ...ETIQUETAS.map(([t, n]) => el("button", { type: "button", className: "chip chico", title: n, textContent: t, onclick: () => insertar(t) }))),
+      el("p", { className: "sub chico", textContent: "Vista previa (pedido de ejemplo):" }), previa,
+      el("button", { type: "button", className: "btn sec chico", textContent: "Volver al texto original", onclick: () => { texto.value = b.texto; activo.checked = true; pintarPrevia(); } }));
+  }));
+};
+$("#f-mensajes").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const f = e.target, vacio = MENSAJES_BASE.find((b) => f["activo-" + b.id].checked && !f["texto-" + b.id].value.trim());
+  if (vacio) return avisar(`Escribí el mensaje de "${vacio.nombre}" o desactivalo.`);
+  for (const b of MENSAJES_BASE) {
+    const nuevo = { id: b.id, texto: f["texto-" + b.id].value.trim(), activo: f["activo-" + b.id].checked }, i = db.mensajes.findIndex((x) => x.id === b.id);
+    if (i < 0) db.mensajes.push(nuevo); else db.mensajes[i] = nuevo;
+  }
+  guardar(); avisar("Mensajes guardados. Se usan desde el próximo cambio de estado.");
+});
+
 PINTAR.usuarios = () => {
   const mes = $("#usuarios-mes").value || mesActual();
   const lista = comisiones(db, mes);
@@ -1207,12 +1256,12 @@ $("#reiniciar").addEventListener("click", () => {
 
 // --- Accesos: cuentas para entrar al panel (las crea quien tiene el permiso "accesos") ---
 const NOMBRE_PERMISO = { ventas: "Ventas y pedidos", feria: "Modo feria", pendientes: "Cuentas pendientes", clientes: "Clientes", productos: "Productos y stock",
-  reportes: "Reportes y gastos", usuarios: "Usuarios y comisiones", medios: "Medios de pago", mp: "Mercado Pago", accesos: "Accesos al panel", base: "Base de datos" };
+  reportes: "Reportes y gastos", usuarios: "Usuarios y comisiones", medios: "Medios de pago", mensajes: "Mensajes de WhatsApp", mp: "Mercado Pago", accesos: "Accesos al panel", base: "Base de datos" };
 // Plantilla para quienes prueban la app y dan feedback: todo el día a día, sin Mercado Pago, Base de datos ni Accesos, y solo en la base de pruebas.
-const PROBADOR = ["ventas", "feria", "pendientes", "clientes", "productos", "reportes", "usuarios", "medios"];
+const PROBADOR = ["ventas", "feria", "pendientes", "clientes", "productos", "reportes", "usuarios", "medios", "mensajes"];
 const ENTORNO_TXT = { pruebas: "Solo pruebas", real: "Solo real", ambos: "Real y pruebas" };
 const ERROR_CUENTA = { usuario: "El usuario va en minúsculas, sin espacios, de 3 a 30 letras o números.", reservado: "Ese usuario está reservado.",
-  existe: "Ya hay una cuenta con ese usuario.", nombre: "Falta el nombre.", email: "Revisá el correo.", permiso: "No tenés permiso para esto." };
+  existe: "Ya hay una cuenta con ese usuario.", nombre: "Falta el nombre.", email: "Revisá el correo.", permiso: "No podés dar la base real si no entrás a ella, ni editar una cuenta con más permisos que la tuya." };
 let cuentas = [], cuentaEdit = null;
 PINTAR.accesos = async () => {
   try { cuentas = (await llamar("/api/admin/cuentas")).cuentas; } catch (e) { if (e.message !== "sesion") $("#accesos-lista").replaceChildren(el("p", { className: "vacio", textContent: "No pudimos traer las cuentas." })); return; }
@@ -1222,7 +1271,8 @@ PINTAR.accesos = async () => {
     td(el("span", { className: "pill " + (c.activo ? "e1" : "e4"), textContent: !c.activo ? "Desactivada" : c.cambiarClave ? "Clave temporal" : "Activa" })),
     td(el("span", { className: "acciones" },
       el("button", { type: "button", className: "btn sec chico", textContent: "Editar", onclick: () => abrirCuenta(c) }),
-      el("button", { type: "button", className: "btn sec chico", textContent: "Reiniciar clave", onclick: (e) => reiniciarClave(c, e.currentTarget) })), "num"))),
+      c.activo ? el("button", { type: "button", className: "btn sec chico", textContent: "Reiniciar clave", onclick: (e) => reiniciarClave(c, e.currentTarget) })
+        : el("button", { type: "button", className: "btn sec chico peligro", textContent: "Borrar", onclick: (e) => borrarCuenta(c, e.currentTarget) })), "num"))),
   "Todavía no hay cuentas. Las fijas (administrador y dev) no aparecen acá.", "t-accesos"));
 };
 function abrirCuenta(c = null, plantilla = false) {
@@ -1235,7 +1285,7 @@ function abrirCuenta(c = null, plantilla = false) {
   f.entorno.value = c?.entorno || (plantilla ? "pruebas" : "real");
   f.activo.checked = c ? c.activo : true;
   const marcados = c ? c.permisos : plantilla ? PROBADOR : PROBADOR;
-  $("#cuenta-permisos").replaceChildren(...TODOS.map((x) => el("label", { className: "check" },
+  $("#cuenta-permisos").replaceChildren(...TODOS.map((x) => el("label", { className: "check", title: mias.includes(x) ? "" : "Tu cuenta no tiene este permiso, así que no lo podés dar." },
     el("input", { type: "checkbox", name: "permisos", value: x, checked: marcados.includes(x), disabled: !mias.includes(x) }), NOMBRE_PERMISO[x])));
   $("#cuenta-error").textContent = "";
   $("#d-cuenta").showModal();
@@ -1262,7 +1312,14 @@ async function reiniciarClave(c, boton) {
   if (boton.dataset.confirmar !== "1") { boton.dataset.confirmar = "1"; boton.textContent = "¿Seguro? Tocá de nuevo"; setTimeout(() => { boton.dataset.confirmar = ""; boton.textContent = "Reiniciar clave"; }, 4000); return; }
   boton.disabled = true;
   try { const r = await llamar("/api/admin/cuentas/clave", { usuario: c.usuario }); mostrarClave(c.usuario, r.clave); PINTAR.accesos(); }
-  catch (err) { if (err.message !== "sesion") avisar("No pudimos reiniciar la clave."); boton.disabled = false; }
+  catch (err) { if (err.message !== "sesion") avisar(err.message === "permiso" ? "No podés reiniciar la clave de una cuenta con más permisos que la tuya." : "No pudimos reiniciar la clave."); boton.disabled = false; }
+}
+// Borrar: solo cuentas desactivadas, con dos toques.
+async function borrarCuenta(c, boton) {
+  if (boton.dataset.confirmar !== "1") { boton.dataset.confirmar = "1"; boton.textContent = "¿Borrar? Tocá de nuevo"; setTimeout(() => { boton.dataset.confirmar = ""; boton.textContent = "Borrar"; }, 4000); return; }
+  boton.disabled = true;
+  try { await llamar("/api/admin/cuentas/borrar", { usuario: c.usuario }); avisar(`Borramos la cuenta ${c.usuario}.`); PINTAR.accesos(); }
+  catch (err) { if (err.message !== "sesion") avisar(err.message === "permiso" ? "No podés borrar una cuenta con más permisos que la tuya." : "No pudimos borrar la cuenta."); boton.disabled = false; }
 }
 // La contraseña temporal se ve una sola vez: el servidor guarda solo su hash.
 function mostrarClave(usuario, clave) {
