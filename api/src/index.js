@@ -174,7 +174,7 @@ async function nuevoPedido(req, env) {
   }
   const numero = await contador(env);
   const pago = await linkPago(env, sena ? [{ title: `Seña 50% pedido AUKAN-${numero}`, quantity: 1, unit_price: aPagar, currency_id: "UYU" }]
-    : items.map((i) => ({ title: i.nombre, quantity: i.cant, unit_price: i.precio, currency_id: "UYU" })), `AUKAN-${numero}`, limpio(c.email, 120), volverATienda(env));
+    : items.map((i) => ({ title: i.nombre, quantity: i.cant, unit_price: i.precio, currency_id: "UYU" })), `AUKAN-${numero}`, volverATienda(env));
   const entrega = limpio(c.entrega, 40) + (c.envio ? " · " + limpio(c.envio, 160) : "");
   const venta = { numero: String(numero), fecha: new Date(ahora).toISOString(), origen: "web", cliente: cli.id, vendedor: "", moneda: "UYU", items, pagos: [],
     estado: 0, sena, entrega, nota: limpio(c.comentario, 500), pago };
@@ -246,7 +246,7 @@ async function cobroMp(req, env) {
   const monto = Math.round(Number(body.monto));
   if (!(monto >= 1 && monto <= saldoDe(v))) return json({ ok: false, error: "monto" }, 400);
   const titulo = body.sena ? `Seña 50 % pedido AUKAN-${v.numero}` : `Pedido AUKAN-${v.numero}`;
-  const link = await linkPago(env, [{ title: titulo, quantity: 1, unit_price: monto, currency_id: v.moneda === "USD" ? "USD" : "UYU" }], `AUKAN-${v.numero}`, "");
+  const link = await linkPago(env, [{ title: titulo, quantity: 1, unit_price: monto, currency_id: v.moneda === "USD" ? "USD" : "UYU" }], `AUKAN-${v.numero}`);
   return link ? json({ ok: true, link }) : json({ ok: false, error: "mp" }, 502);
 }
 // Aviso de Mercado Pago (webhook). No se confía en lo que llega: se pide el pago a Mercado Pago con la credencial y,
@@ -284,13 +284,13 @@ async function anotarPagoMp(env, numero, x) {
 }
 
 // Cobro de Checkout Pro con los precios de la base. Devuelve el link o "" si no hay token o falla.
-async function linkPago(env, items, referencia, email, volver = "") {
+async function linkPago(env, items, referencia, volver = "") {
   const { token } = await credencialMp(env);
   if (!token) return "";
   const pref = { items, external_reference: referencia };
   // Mercado Pago avisa cada pago a esta dirección (con ?e=pruebas si el pedido es de la base de pruebas). Solo https: en local no hay aviso.
   if (String(env.AQUI || "").startsWith("https://")) pref.notification_url = env.AQUI + "/api/mp/aviso" + (env.PRUEBAS ? "?e=pruebas" : "");
-  if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) pref.payer = { email };
+  // Sin payer.email: con una cuenta de prueba, un mail real del cliente hace fallar el pago ("una de las partes es de prueba").
   // Al terminar de pagar, Mercado Pago lo devuelve a "Mis pedidos" de la tienda (solo https).
   if (volver.startsWith("https://")) { pref.back_urls = { success: volver, pending: volver, failure: volver }; pref.auto_return = "approved"; }
   const res = await fetch(mpApi(env) + "/checkout/preferences", {
