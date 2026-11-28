@@ -429,7 +429,12 @@ legend { padding: 0 6px; font-weight: 600; }
 .qr-caja { display: grid; justify-items: center; gap: 10px; text-align: center; padding: 8px 0 4px; }
 .qr-caja img { width: 240px; height: 240px; image-rendering: pixelated; background: #fff; padding: 8px; border-radius: 12px; border: 1px solid var(--line); }
 .qr-caja #qr-estado { margin: 0; font-size: 14px; color: var(--muted); max-width: 34ch; }
-.qr-caja #qr-estado.pago-ok { color: var(--ok); font-weight: 700; font-size: 16px; }
+.qr-caja #qr-estado.pago-ok { color: var(--ok); font-weight: 700; font-size: 20px; }
+.qr-check { margin: 8px 0 4px; }
+.qr-check circle { fill: var(--ok); }
+.qr-check path { fill: none; stroke: #fff; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 70; stroke-dashoffset: 70; animation: trazo .45s .15s ease-out forwards; }
+@keyframes trazo { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .qr-check path { animation: none; stroke-dashoffset: 0; } }
 .qr-caja a { color: var(--brand-ink); font-size: 14px; }
 /* N° de operación de Mercado Pago (se toca para copiar) */
 .estado-mp { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; }
