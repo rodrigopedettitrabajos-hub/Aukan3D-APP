@@ -89,9 +89,10 @@ button { cursor: pointer; }
 /* Tarjetas de números */
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
 .kpis:empty { display: none; }
-.kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; display: grid; gap: 2px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; display: grid; gap: 2px; min-width: 0; }
 .kpi p { margin: 0; color: var(--muted); font-size: 13px; }
-.kpi strong { font-size: 28px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.kpi strong { font-size: 28px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.kpi strong.largo { font-size: 20px; line-height: 1.25; }
 .kpi small { color: var(--muted); font-size: 12px; }
 .verde { color: var(--ok); }
 .ambar { color: var(--warn); }
