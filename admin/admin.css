@@ -159,7 +159,13 @@ tr.clic:focus-visible { outline-offset: -3px; }
 .tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
 .medio { display: flex; gap: 16px; align-items: flex-start; }
 .medio img, .qr-vacio { width: 96px; height: 96px; border-radius: 10px; flex: none; background: #fff; border: 1px solid var(--line); }
-.qr-vacio { display: grid; place-items: center; color: var(--muted); font-size: 12px; background: var(--soft); }
+.qr-vacio { display: grid; place-content: center; justify-items: center; gap: 6px; color: var(--muted); font-size: 12px; background: var(--soft); }
+.qr-vacio .icono-medio { width: 40px; height: 40px; color: var(--brand-ink); }
+.icono-medio { display: inline-block; width: 20px; height: 20px; flex: none; }
+.icono-medio svg { width: 100%; height: 100%; display: block; }
+.medio-nombre { display: flex; align-items: center; gap: 8px; }
+.medio-nombre .icono-medio { color: var(--brand-ink); }
+.pos-medios .chip { display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-align: left; }
 .medio .acciones { justify-content: flex-start; margin-top: 10px; }
 
 /* Ventanas */

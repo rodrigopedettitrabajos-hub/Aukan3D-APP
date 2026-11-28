@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.67 · 2026-11-28
+- Medios de pago con íconos (efectivo, banco/transferencia, Mercado Pago, tarjeta y uno genérico para los demás), según el nombre. Se ven en Medios de pago y en los botones de "Cómo paga" del Modo feria.
+
 ## V0.66 · 2026-11-28
 - Cobro con QR: al confirmarse el pago aparece un check verde grande. En Modo feria la ventana queda 10 s con "Cerrar (10…)" y se cierra sola; se puede cerrar antes. Ya no quedan a la vista "Ya pagó" ni "Cancelar cobro" después de pagar.
 
