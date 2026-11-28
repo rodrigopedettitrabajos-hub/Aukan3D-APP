@@ -388,7 +388,7 @@ const VE_COSTO = ["productos", "reportes"];
 const algunoDe = (q, lista) => lista.some((x) => q.permisos.includes(x));
 // Quien tiene Accesos solo maneja cuentas que no lo superan: ni permisos que no tiene, ni la base real si no entra a ella.
 const abarca = (q, c) => c.permisos.every((x) => q.permisos.includes(x)) && (c.entorno === "pruebas" || q.real);
-const puedeCobrar = (q) => ["ventas", "pendientes"].some((x) => q.permisos.includes(x));
+const puedeCobrar = (q) => ["ventas", "pendientes", "feria"].some((x) => q.permisos.includes(x));
 const FIJAS = (env) => [
   { usuario: String(env.ADMIN_USUARIO || "").toLowerCase(), hash: env.ADMIN_CLAVE_HASH, nombre: "Administrador", permisos: PERMISOS.filter((x) => x !== "base"), real: true, pruebas: false },
   { usuario: "dev", hash: env.DEV_CLAVE_HASH, nombre: "Dev", permisos: PERMISOS, real: true, pruebas: true },
