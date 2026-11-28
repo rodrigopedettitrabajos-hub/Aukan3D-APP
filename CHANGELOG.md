@@ -2,6 +2,12 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.49 · 2026-11-28
+- Panel: nueva pantalla Accesos al panel (administrador y dev). Crear cuentas con usuario, nombre, correo, base (solo pruebas, solo real o ambas) y secciones permitidas; reiniciar contraseña (temporal, se ve una vez) y desactivar (corta la sesión al instante). Botón "+ Probador": cuenta solo para pruebas con todo el día a día, sin Mercado Pago, Base de datos ni Accesos.
+- Panel: el menú muestra solo las secciones permitidas y el servidor también lo controla. Quien entra con contraseña temporal tiene que elegir una nueva.
+- Panel: al cambiar el estado de un pedido aparece "Avisarle por WhatsApp" con el mensaje armado para el cliente.
+- Hay que volver a subir el servidor. La verificación por mail queda para cuando haya dominio propio.
+
 ## V0.48 · 2026-11-28
 - Tienda: avisos al cliente cuando Aukan3D cambia el estado de su pedido (seña o pago recibido, en impresión, listo, entregado). Campana arriba con los avisos nuevos y, si el cliente lo permite, notificación del dispositivo mientras la tienda esté abierta. El estado se consulta al entrar, al volver a la pestaña y cada minuto.
 - Tienda: cada pedido en Mis pedidos muestra lo pagado (seña o total, saldo) y cada pago; los de Mercado Pago con su número de operación. El comprobante suma la sección Pagos.

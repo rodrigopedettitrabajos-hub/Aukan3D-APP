@@ -14,3 +14,5 @@ INSERT OR IGNORE INTO contadores (nombre, n) VALUES ('venta', 1000);
 CREATE TABLE IF NOT EXISTS limites (clave TEXT PRIMARY KEY, n INTEGER NOT NULL, hasta INTEGER NOT NULL);
 -- Ajustes del servidor que no viajan al panel (credencial de Mercado Pago). El Worker la crea sola si falta.
 CREATE TABLE IF NOT EXISTS ajustes (clave TEXT PRIMARY KEY, valor TEXT NOT NULL, actualizado INTEGER NOT NULL);
+-- Cuentas del panel creadas desde "Accesos" (permisos por sección, base real/pruebas, hash de la contraseña). Solo en la base real; el Worker la crea sola si falta.
+CREATE TABLE IF NOT EXISTS cuentas (usuario TEXT PRIMARY KEY, data TEXT NOT NULL, actualizado INTEGER NOT NULL);
