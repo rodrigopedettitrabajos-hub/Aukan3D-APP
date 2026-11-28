@@ -163,7 +163,8 @@ tr.clic:focus-visible { outline-offset: -3px; }
 .ventana form { padding: 20px 22px; display: grid; gap: 14px; }
 .ventana header { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ventana header h2 { margin: 0; font-size: 22px; }
-.ventana footer { display: flex; justify-content: flex-end; gap: 10px; position: sticky; bottom: -20px; background: var(--card); padding: 12px 0 4px; }
+.ventana footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; position: sticky; bottom: 0; z-index: 1; background: var(--card); padding: 12px 0 20px; margin-bottom: -20px; border-top: 1px solid var(--line); }
+.ventana form > * { min-width: 0; }
 .campos { display: grid; gap: 12px; }
 .campos.dos { grid-template-columns: 1fr 1fr; }
 .campos .todo { grid-column: 1 / -1; }
@@ -308,6 +309,7 @@ legend { padding: 0 6px; font-weight: 600; }
   .tabla { font-size: 13px; }
   .tabla td, .tabla th { padding: 9px 10px; }
   .ventana form { padding: 16px; }
+  .ventana footer { padding-bottom: 16px; margin-bottom: -16px; }
 }
 @media (max-width: 700px) {
   .filtros select { flex: 1 1 40%; min-width: 0; }

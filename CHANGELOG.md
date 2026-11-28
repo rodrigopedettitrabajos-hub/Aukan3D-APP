@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.57 · 2026-11-28
+- Panel: en las ventanas largas (Inventario, Importar, Cambiar precios) los botones de abajo quedaban cortados. Ahora quedan fijos y completos abajo, con una línea arriba, y en el celular la tabla se desliza adentro sin empujar la ventana.
+
 ## V0.56 · 2026-11-28
 - Panel: "Reportes y gastos" pasa a llamarse "Estadísticas" (menú, título y permisos).
 
