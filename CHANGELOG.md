@@ -2,6 +2,10 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.65 · 2026-11-28
+- Modo feria: al cobrar con Mercado Pago aparece el QR por el total y el panel espera a que el cliente pague. Cuando Mercado Pago confirma, la venta se cierra sola (con los botones de comprobante). "Cancelar cobro" borra la venta y deja los productos en el ticket; "Ya pagó: anotar a mano" sirve si el aviso de Mercado Pago tarda.
+- Servidor: las cuentas con permiso de Modo feria pueden generar el QR de cobro.
+
 ## V0.64 · 2026-11-28
 - Ticket de 80 mm pensado para impresora térmica (rollo 80 mm, 72 mm imprimibles): todo en negro puro, letra más grande, logo en blanco y negro, márgenes de 4 mm a los costados y el largo justo para el contenido (no gasta los 297 mm del rollo).
 

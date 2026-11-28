@@ -538,12 +538,12 @@ async function generarQr(monto, sena, boton) {
     $("#qr-wa").hidden = !c.whatsapp;
     $("#qr-wa").href = `https://wa.me/${waDe(c.whatsapp)}?text=${encodeURIComponent(texto)}`;
     $("#qr-img").hidden = $("#qr-link").hidden = false;
-    $("#qr-estado").textContent = `Esperando el pago de ${plata(monto, qrDe.moneda)}. Cuando Mercado Pago lo confirme aparece acá y en el pedido.`;
+    $("#qr-estado").textContent = `Esperando el pago de ${plata(monto, qrDe.moneda)}. ${feriaQr ? "Cuando Mercado Pago lo confirme, la venta se cierra sola." : "Cuando Mercado Pago lo confirme aparece acá y en el pedido."}`;
     esperarPagoQr();
   } catch (e) {
     $("#qr-estado").className = "error";
     $("#qr-estado").textContent = { mp: "Mercado Pago no respondió. Revisá la credencial en Administración → Mercado Pago.",
-      monto: "El saldo cambió. Cerrá y volvé a abrir el pedido." }[e.message] || "No se pudo generar el QR. Probá de nuevo.";
+      monto: "El saldo cambió. Cerrá y volvé a abrir el pedido.", pedido: "La venta no llegó al servidor. Revisá la conexión y probá de nuevo." }[e.message] || "No se pudo generar el QR. Probá de nuevo.";
   }
 }
 function esperarPagoQr() {
@@ -557,8 +557,8 @@ function esperarPagoQr() {
     qrDe = v;
     $("#qr-img").hidden = $("#qr-link").hidden = true;
     $("#qr-estado").className = "pago-ok";
-    $("#qr-estado").textContent = `¡Pago recibido! ${plata(v.pagos.at(-1).monto, v.moneda)} por Mercado Pago. El pedido quedó en ${nombreEstado(v)}.`;
-    repintar();
+    $("#qr-estado").textContent = `¡Pago recibido! ${plata(v.pagos.at(-1).monto, v.moneda)} por Mercado Pago.` + (feriaQr ? "" : ` El pedido quedó en ${nombreEstado(v)}.`);
+    if (feriaQr) pagoFeriaListo(); else repintar();
   }, 5000);
 }
 $("#qr-copiar").addEventListener("click", async (e) => {
@@ -566,7 +566,51 @@ $("#qr-copiar").addEventListener("click", async (e) => {
   try { await navigator.clipboard.writeText(qrLink); b.textContent = "Copiado"; } catch { b.textContent = "No se pudo copiar"; }
   setTimeout(() => { b.textContent = "Copiar link"; }, 1500);
 });
-$("#d-qr").addEventListener("close", () => { clearInterval(qrEspera); if (qrDe && $("#d-detalle").open) abrirDetalle(qrDe.numero); });
+$("#d-qr").addEventListener("close", () => {
+  clearInterval(qrEspera);
+  $("#qr-manual").hidden = true; $("#qr-cerrar").textContent = "Cerrar";
+  if (feriaQr) return cerrarFeriaQr();
+  if (qrDe && $("#d-detalle").open) abrirDetalle(qrDe.numero);
+});
+
+// Modo feria con Mercado Pago: la venta se guarda sin pago, se muestra el QR por el total y se espera a que Mercado Pago confirme.
+// Si se cancela sin pago, la venta se borra y los productos vuelven al ticket.
+let feriaQr = null;
+function cobrarFeriaQr(v, recibido) {
+  feriaQr = { v, recibido };
+  qrDe = v;
+  $("#qr-sub").textContent = `Venta N° ${v.numero} · Modo feria`;
+  $("#qr-montos").replaceChildren();
+  $("#qr-manual").hidden = false;
+  $("#qr-cerrar").textContent = "Cancelar cobro";
+  $("#qr-img").hidden = $("#qr-link").hidden = true;
+  $("#qr-estado").className = ""; $("#qr-estado").textContent = "Guardando la venta…";
+  $("#d-qr").showModal();
+  sincronizar().then(() => generarQr(totalVenta(v), false, null));
+}
+function pagoFeriaListo() {
+  const { v } = feriaQr;
+  terminarVentaFeria(venta(v.numero) || v, feriaQr.recibido);
+  feriaQr = null;
+  setTimeout(() => { if ($("#d-qr").open && !feriaQr) $("#d-qr").close(); }, 2500);
+}
+$("#qr-manual").addEventListener("click", () => {
+  const v = venta(feriaQr.v.numero);
+  if (v && saldo(v)) { v.pagos.push({ fecha: new Date().toISOString(), medio: feriaMedio, monto: saldo(v) }); guardar(); }
+  pagoFeriaListo();
+  $("#d-qr").close();
+});
+async function cerrarFeriaQr() {
+  const { v } = feriaQr;
+  feriaQr = null;
+  try { await traerServidor(); } catch { /* sin señal: se cancela igual */ }
+  const hoy = venta(v.numero);
+  if (hoy && !saldo(hoy)) { terminarVentaFeria(hoy, 0); return; } // pagó justo al cerrar
+  if (hoy) db.ventas.splice(db.ventas.indexOf(hoy), 1);
+  for (const i of v.items) { const p = productoDe(i.id); if (p) p.stock = (p.stock || 0) + i.cant; ticket.set(i.id, i.cant); }
+  guardar(); pintarTicket(); pintarGrilla();
+  avisar("Cobro cancelado. Los productos siguen en el ticket.");
+}
 
 // Nueva venta (en persona o en una feria).
 const fv = $("#f-venta");
@@ -709,7 +753,7 @@ function pintarTicket() {
       el("small", { textContent: `${n} × ${plata(p.precio)} = ${plata(p.precio * n)}` }));
   }), ticket.size ? "" : el("p", { className: "vacio", textContent: "Tocá un producto para agregarlo." }));
   $("#pos-total").textContent = plata(total);
-  $("#pos-cobrar").textContent = total ? `Cobrar ${plata(total)}` : "Cobrar";
+  $("#pos-cobrar").textContent = total ? `Cobrar ${plata(total)}${conQr() ? " con QR" : ""}` : "Cobrar";
   $("#pos-cobrar").disabled = !total;
   $("#pos-barra").textContent = cant ? `Ticket · ${cant} ${cant === 1 ? "artículo" : "artículos"} · ${plata(total)}` : "Ver ticket";
   $("#pos-vaciar").hidden = !ticket.size;
@@ -746,25 +790,33 @@ $("#pos-cobrar").addEventListener("click", () => {
   if (!caja || !total) return;
   const recibido = Math.round(+$("#pos-recibido").value || 0);
   if (esEfectivo(db, feriaMedio) && recibido && recibido < total) { $("#pos-error").textContent = `Faltan ${plata(total - recibido)} para cubrir el total.`; return; }
+  const qr = conQr(); // el QR necesita el número del servidor (la referencia de Mercado Pago es AUKAN-<número>)
+  if (qr && reservado == null) { reservarNumero(); $("#pos-error").textContent = "Esperá un segundo: estamos pidiendo el número de venta."; return; }
   // Sin conexión no hay número del servidor: la venta sale con uno propio (F + hora) y se sube cuando vuelve la señal.
   const numero = !API ? nuevoNumero(db) : reservado != null ? numeroVenta() : "F" + Date.now().toString(36).toUpperCase();
   const ahora = new Date().toISOString();
   const v = { numero, fecha: ahora, origen: "feria", cliente: consumidorFinal().id, vendedor: caja.vendedor, moneda: "UYU",
     items: [...ticket].map(([id, cant]) => { const p = productoDe(id); return { id, nombre: p.nombre, precio: p.precio, cant }; }),
-    pagos: [{ fecha: ahora, medio: feriaMedio, monto: total }], estado: 4, sena: false, entrega: "En la feria", nota: "",
+    pagos: qr ? [] : [{ fecha: ahora, medio: feriaMedio, monto: total }], estado: 4, sena: false, entrega: "En la feria", nota: "",
     comision: usuario(caja.vendedor)?.comision ?? 0, caja: caja.id };
   for (const i of v.items) { const p = productoDe(i.id); if (p) p.stock = Math.max((p.stock || 0) - i.cant, 0); }
   db.ventas.unshift(v);
-  const vuelto = recibido > total ? recibido - total : 0;
   ticket.clear(); $("#pos-recibido").value = "";
   guardar(); reservarNumero(); pintarTicket(); pintarGrilla();
+  if (qr) cobrarFeriaQr(v, recibido); else terminarVentaFeria(v, recibido);
+});
+// Mercado Pago con servidor: se cobra con QR y se espera el pago. Sin servidor se anota como cualquier medio.
+const conQr = () => Boolean(API) && /mercado ?pago/i.test(medio(feriaMedio));
+function terminarVentaFeria(v, recibido) {
+  const total = totalVenta(v), vuelto = recibido > total ? recibido - total : 0, m = v.pagos[0]?.medio || feriaMedio;
+  pintarResumenCaja();
   $("#pos-ultima").replaceChildren(el("span", { textContent: `Última venta N° ${v.numero}` }), botonesImp(v.numero, { recibido }));
-  avisar(`Venta N° ${v.numero}: ${plata(total)} con ${medio(feriaMedio)}${vuelto ? ` · vuelto ${plata(vuelto)}` : ""}.`, () => {
-    db.ventas.splice(db.ventas.indexOf(v), 1);
+  avisar(`Venta N° ${v.numero}: ${plata(total)} con ${medio(m)}${vuelto ? ` · vuelto ${plata(vuelto)}` : ""}.`, () => {
+    if (db.ventas.includes(v)) db.ventas.splice(db.ventas.indexOf(v), 1);
     for (const i of v.items) { const p = productoDe(i.id); if (p) p.stock = (p.stock || 0) + i.cant; }
   });
   scrollTo({ top: 0, behavior: "smooth" });
-});
+}
 
 function lineasCaja(caja) {
   const r = resumenCaja(db, caja), fila = (t, v, cls = "") => el("p", { className: cls }, el("span", { textContent: t }), el("b", { textContent: v }));
