@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.69">
-  <script src="../tema.js?v=0.69"></script>
+  <link rel="stylesheet" href="admin.css?v=0.70">
+  <script src="../tema.js?v=0.70"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -32,7 +32,7 @@
       <img src="../logo.webp" alt="" width="44" height="44">
       <span><strong>AUKAN<span>3D</span></strong><small>GESTIÓN</small></span>
     </a>
-    <nav class="nav" aria-label="Secciones">
+    <nav class="nav" id="nav" aria-label="Secciones">
       <a href="#panel">Panel principal</a>
       <button type="button" class="nav-grupo" aria-expanded="false">Ventas</button>
       <a href="#ventas" data-permiso="ventas">Ventas y pedidos</a>
@@ -61,6 +61,7 @@
       <button type="button" class="btn chico entorno-btn" data-entorno hidden></button>
       <button type="button" class="campana campana-movil" data-campana aria-label="Pedidos nuevos" aria-expanded="false" aria-controls="notis"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1Z"/></svg><b class="campana-n" hidden></b></button>
       <button type="button" class="btn sec chico salir-movil" data-salir>Salir</button>
+      <button type="button" class="menu-movil" id="menu-movil" aria-expanded="false" aria-controls="nav"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Menú</button>
     </div>
   </aside>
 
@@ -592,11 +593,11 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.69"></script>
-<script src="../productos.js?v=0.69"></script>
-<script src="../catalogo.js?v=0.69"></script>
-<script src="datos.js?v=0.69"></script>
-<script src="excel.js?v=0.69"></script>
-<script src="admin.js?v=0.69"></script>
+<script src="../config.js?v=0.70"></script>
+<script src="../productos.js?v=0.70"></script>
+<script src="../catalogo.js?v=0.70"></script>
+<script src="datos.js?v=0.70"></script>
+<script src="excel.js?v=0.70"></script>
+<script src="admin.js?v=0.70"></script>
 </body>
 </html>
