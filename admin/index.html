@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.73">
-  <script src="../tema.js?v=0.73"></script>
+  <link rel="stylesheet" href="admin.css?v=0.74">
+  <script src="../tema.js?v=0.74"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -41,6 +41,7 @@
       <button type="button" class="nav-grupo" aria-expanded="false">Catálogo</button>
       <a href="#productos" data-permiso="productos">Productos y precios</a>
       <a href="#stock" data-permiso="productos">Stock</a>
+      <a href="#cupones" data-permiso="productos">Códigos de descuento</a>
       <button type="button" class="nav-grupo" aria-expanded="false">Administración</button>
       <a href="#reportes" data-permiso="reportes">Estadísticas</a>
       <a href="#usuarios" data-permiso="usuarios">Usuarios y comisiones</a>
@@ -177,6 +178,12 @@
         </div>
         <div id="stock-lista"></div>
         <p class="sub chico">Para contar: bajá o imprimí la planilla, anotá lo que hay en la columna Contado y subila con "Importar inventario". El stock se actualiza solo.</p>
+      </section>
+
+      <section id="v-cupones" class="vista" hidden>
+        <div class="cabeza"><div><p class="eyebrow">Catálogo</p><h1>Códigos de descuento</h1><p class="sub">Códigos para ferias o Instagram (ej. FERIA10). El cliente lo escribe en el carrito de la tienda y el descuento se aplica al pedido.</p></div>
+          <button class="btn" type="button" id="nuevo-cupon">+ Código</button></div>
+        <div id="cupones-lista"></div>
       </section>
 
       <section id="v-medios" class="vista" hidden>
@@ -509,6 +516,23 @@
   </form>
 </dialog>
 
+<dialog id="d-cupon" class="ventana" aria-labelledby="d-cupon-t">
+  <form method="dialog" id="f-cupon" novalidate>
+    <header><h2 id="d-cupon-t">Código de descuento</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
+    <div class="campos dos">
+      <label class="todo">Código <input name="codigo" required maxlength="20" autocapitalize="characters" autocomplete="off" placeholder="Ej. FERIA10"></label>
+      <label>Tipo <select name="tipo"><option value="%">Porcentaje (%)</option><option value="$">Monto fijo ($)</option></select></label>
+      <label>Descuento <input name="valor" type="number" min="1" step="1" inputmode="numeric" required placeholder="Ej. 10"></label>
+      <label>Vence <input name="vence" type="date"></label>
+      <label>Máximo de usos <input name="max" type="number" min="0" step="1" inputmode="numeric" placeholder="Sin límite"></label>
+      <label class="check todo"><input name="activo" type="checkbox"> Activo (se puede usar en la tienda)</label>
+    </div>
+    <p class="sub chico">Vence al terminar ese día. Los usos cuentan los pedidos hechos con el código.</p>
+    <p class="error" id="cupon-error" aria-live="polite"></p>
+    <footer><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok">Guardar</button></footer>
+  </form>
+</dialog>
+
 <dialog id="d-medio" class="ventana" aria-labelledby="d-medio-t">
   <form method="dialog" id="f-medio" novalidate>
     <header><h2 id="d-medio-t">Medio de pago</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
@@ -623,11 +647,11 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.73"></script>
-<script src="../productos.js?v=0.73"></script>
-<script src="../catalogo.js?v=0.73"></script>
-<script src="datos.js?v=0.73"></script>
-<script src="excel.js?v=0.73"></script>
-<script src="admin.js?v=0.73"></script>
+<script src="../config.js?v=0.74"></script>
+<script src="../productos.js?v=0.74"></script>
+<script src="../catalogo.js?v=0.74"></script>
+<script src="datos.js?v=0.74"></script>
+<script src="excel.js?v=0.74"></script>
+<script src="admin.js?v=0.74"></script>
 </body>
 </html>

@@ -13,8 +13,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <meta name="apple-mobile-web-app-title" content="Aukan3D">
-  <link rel="stylesheet" href="styles.css?v=0.73">
-  <script src="tema.js?v=0.73"></script>
+  <link rel="stylesheet" href="styles.css?v=0.74">
+  <script src="tema.js?v=0.74"></script>
 </head>
 <body>
   <!-- Íconos: Simple Icons (CC0) -->
@@ -245,6 +245,12 @@
       <button class="icon" aria-label="Cerrar">✕</button>
     </form>
     <ul id="items" class="items"></ul>
+    <details id="cupon" class="cupon" hidden>
+      <summary>¿Tenés un código de descuento?</summary>
+      <div class="cupon-form"><input id="cupon-c" maxlength="20" autocomplete="off" autocapitalize="characters" aria-label="Código de descuento" placeholder="Ej. FERIA10"><button type="button" id="cupon-ok" class="cupon-btn">Aplicar</button></div>
+      <p id="cupon-msj" class="cupon-msj" aria-live="polite"></p>
+    </details>
+    <p id="cupon-linea" class="cupon-linea" hidden><span id="cupon-txt"></span> <strong id="cupon-monto"></strong> <button type="button" id="cupon-quitar" class="link-btn">Quitar</button></p>
     <p class="total">Total <strong id="total">$0</strong></p>
     <p id="plazo" class="plazo"></p>
 
@@ -349,10 +355,10 @@
 
   <div id="comprobante" class="comprobante" aria-hidden="true"></div>
 
-  <script src="config.js?v=0.73"></script>
-  <script src="catalogo.js?v=0.73"></script>
-  <script src="productos.js?v=0.73"></script>
-  <script src="app.js?v=0.73"></script>
-  <script src="cuenta.js?v=0.73"></script>
+  <script src="config.js?v=0.74"></script>
+  <script src="catalogo.js?v=0.74"></script>
+  <script src="productos.js?v=0.74"></script>
+  <script src="app.js?v=0.74"></script>
+  <script src="cuenta.js?v=0.74"></script>
 </body>
 </html>

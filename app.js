@@ -11,7 +11,7 @@ if (cfg.apiUrl) { // servidor propio (api/): catálogo y pedidos salen de ahí
     { className: "banda-pruebas", textContent: "Tienda en modo pruebas: los pedidos van a la base de pruebas." })));
 }
 const $ = (s) => document.querySelector(s);
-const pesos = (n) => "$" + n.toLocaleString("es-UY");
+const pesos = (n) => (n < 0 ? "−$" : "$") + Math.abs(n).toLocaleString("es-UY");
 
 let productos = [];
 let resenas = []; // reseñas públicas (llegan con /api/tienda)
@@ -335,6 +335,27 @@ function itemsCarrito() {
 }
 
 const sumar = (items) => items.reduce((s, i) => s + i.precio * i.cant, 0);
+// Código de descuento: lo valida el servidor (/api/cupon) y lo vuelve a aplicar al hacer el pedido (misma cuenta que acá).
+let cupon = null; // { codigo, tipo: "%" | "$", valor }
+const descuentoCupon = (suma) => (cupon ? Math.min(cupon.tipo === "%" ? Math.round((suma * cupon.valor) / 100) : cupon.valor, suma) : 0);
+const MOTIVO_CUPON = { "no-existe": "Ese código no existe.", vencido: "Ese código ya venció.", agotado: "Ese código ya se usó todas las veces posibles.", limite: "Probaste muchas veces. Esperá unos minutos." };
+async function aplicarCupon() {
+  const c = $("#cupon-c").value.trim().toUpperCase(), msj = $("#cupon-msj");
+  if (!c) return;
+  msj.className = "cupon-msj"; msj.textContent = "Revisando…";
+  let r = {};
+  try { r = await (await fetch(cfg.pedidosUrl.replace("/api/pedidos", "/api/cupon") + (cfg.pedidosUrl.includes("?") ? "&" : "?") + "c=" + encodeURIComponent(c))).json(); } catch { /* sin conexión */ }
+  if (!r.ok) { msj.className = "cupon-msj mal"; msj.textContent = MOTIVO_CUPON[r.error] || "No pudimos revisar el código. Probá de nuevo."; return; }
+  cupon = { codigo: r.codigo, tipo: r.tipo, valor: r.valor };
+  msj.textContent = ""; $("#cupon").open = false;
+  pintarCarrito();
+}
+function quitarCupon(texto = "") {
+  cupon = null;
+  $("#cupon-msj").className = "cupon-msj mal"; $("#cupon-msj").textContent = texto;
+  if (texto) $("#cupon").open = true;
+  pintarCarrito();
+}
 
 function cambiar(id, d) {
   const antes = carrito.get(id) || 0, n = Math.min(MAX, antes + d);
@@ -369,7 +390,10 @@ function avisar(texto, deshacer) {
 function pintarCarrito() {
   const items = itemsCarrito();
   const n = items.reduce((s, i) => s + i.cant, 0);
-  const suma = sumar(items), total = pesos(suma);
+  const bruto = sumar(items), desc = descuentoCupon(bruto), suma = bruto - desc, total = pesos(suma);
+  $("#cupon").hidden = !cfg.pedidosUrl || !n || !!cupon;
+  $("#cupon-linea").hidden = !cupon || !n;
+  if (cupon) { $("#cupon-txt").textContent = `Descuento ${cupon.codigo}` + (cupon.tipo === "%" ? ` (${cupon.valor}\u00a0%)` : ""); $("#cupon-monto").textContent = "−" + pesos(desc); }
   $("#cart-count").textContent = n;
   $("#total").textContent = total;
   $("#barra").hidden = !n;
@@ -393,14 +417,16 @@ async function enviar(ev) {
   const cliente = Object.fromEntries(new FormData(form));
   cliente.envio = [cliente.envio_dir, cliente.envio_depto].filter(Boolean).join(", "); // solo con "Envío por agencia"
   delete cliente.envio_dir; delete cliente.envio_depto;
-  const items = itemsCarrito(), suma = sumar(items), sena = cliente.modo !== "total";
+  const items = itemsCarrito(), sena = cliente.modo !== "total";
+  const desc = descuentoCupon(sumar(items)), suma = sumar(items) - desc;
+  const conDescuento = (d) => (d > 0 ? [...items, { id: "descuento", nombre: `Descuento ${cupon.codigo}`, precio: -d, cant: 1 }] : items);
   const perfil = sesion();
   const direccion = cliente.envio || [...new Set([perfil?.direccion, perfil?.barrio, perfil?.ciudad, perfil?.departamento].filter(Boolean))].join(", ");
   // El pedido guarda sus propios datos (cliente y dirección): el comprobante no mezcla con otra cuenta.
   const registro = (numero, total = suma) => { ultimoPedido = guardarPedido({ numero, total, sena, entrega: cliente.entrega, direccion,
     cliente: { nombre: cliente.nombre, whatsapp: cliente.whatsapp, email: cliente.email },
-    items: items.map(({ id, nombre, precio, cant }) => ({ id, nombre, precio, cant })) }); };
-  const texto = resumenPedido(items, cliente);
+    items: conDescuento(desc).map(({ id, nombre, precio, cant }) => ({ id, nombre, precio, cant })) }); };
+  const texto = resumenPedido(conDescuento(desc), cliente);
   if (!cfg.pedidosUrl) { // sin servidor: el pedido llega solo si el cliente manda el WhatsApp
     registro();
     const msj = `${texto}\nPedido N° ${ultimoPedido.numero}`;
@@ -413,11 +439,12 @@ async function enviar(ev) {
   try {
     // text/plain evita el preflight CORS que Apps Script no responde.
     const res = await fetch(cfg.pedidosUrl, { method: "POST", headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ cliente, items: items.map((i) => ({ id: i.id, cant: i.cant })) }) });
+      body: JSON.stringify({ cliente, items: items.map((i) => ({ id: i.id, cant: i.cant })), ...(cupon ? { cupon: cupon.codigo } : {}) }) });
     r = await res.json();
   } catch { /* sin respuesta: queda el WhatsApp */ }
   $("#enviar-txt").textContent = TEXTO_ENVIAR;
   $("#enviar").disabled = false;
+  if (r.error === "cupon") return quitarCupon((MOTIVO_CUPON[r.motivo] || "El código ya no vale.") + " Lo sacamos del pedido: revisá el total y volvé a enviarlo.");
   // Los montos del servidor mandan; si falló, los calculamos acá y el pedido sale por WhatsApp.
   registro(r.ok ? r.numero : undefined, r.ok ? r.total : suma);
   const pago = r.ok && /^https:\/\/([\w-]+\.)*mercadopago\.com(\.[a-z]{2})?\//.test(r.pago || "") ? r.pago : "";
@@ -462,7 +489,7 @@ function comprobante(p) {
 const waLink = (texto) => `https://wa.me/${cfg.whatsapp}?text=${encodeURIComponent(texto)}`;
 
 function terminar(form) {
-  carrito.clear();
+  carrito.clear(); cupon = null;
   guardarCarrito();
   form.reset();
   pintar();
@@ -650,6 +677,9 @@ document.addEventListener("input", (e) => e.target.setCustomValidity?.(""), true
 document.addEventListener("click", (e) => {
   e.target.closest?.("button[type=submit], form button:not([type])")?.form?.querySelectorAll("input, select, textarea").forEach((i) => i.setCustomValidity(""));
 }, true);
+$("#cupon-ok").addEventListener("click", aplicarCupon);
+$("#cupon-c").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); aplicarCupon(); } });
+$("#cupon-quitar").addEventListener("click", () => quitarCupon());
 cargar();
 // Envíos y datos del negocio que se editan en el panel.
 if (cfg.apiUrl) fetch(cfg.catalogoCsvUrl.replace("/api/productos.csv", "/api/tienda")).then((r) => r.json()).then((d) => {

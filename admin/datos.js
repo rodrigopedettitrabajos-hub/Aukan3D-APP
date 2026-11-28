@@ -8,6 +8,7 @@ const diaLocal = (d = new Date()) => d.toLocaleDateString("sv"); // "2026-11-27"
 const hoy = () => diaLocal();
 const mesDe = (fecha) => (fecha.length > 10 ? diaLocal(new Date(fecha)) : fecha).slice(0, 7); // fecha y hora ISO o "AAAA-MM-DD"
 
+const DESCUENTO = "descuento"; // renglón de descuento (código) dentro de los items: el total ya lo resta; no es un producto
 const totalVenta = (v) => v.items.reduce((s, i) => s + i.precio * i.cant, 0);
 const cobrado = (v) => v.pagos.reduce((s, p) => s + p.monto, 0);
 const saldo = (v) => Math.max(totalVenta(v) - cobrado(v), 0);
@@ -47,6 +48,7 @@ function inventario(productos) {
 function margenes(ventas, productos) {
   const costoDe = new Map(productos.map((p) => [String(p.id), p.costo || 0])), m = new Map();
   for (const v of ventas) if (v.moneda === "UYU") for (const i of v.items) {
+    if (i.id === DESCUENTO) continue;
     const x = m.get(i.id) || { id: i.id, nombre: i.nombre, cant: 0, vendido: 0, costo: 0, sinCosto: !costoDe.get(String(i.id)) };
     x.cant += i.cant; x.vendido += i.precio * i.cant; x.costo += (costoDe.get(String(i.id)) || 0) * i.cant;
     m.set(i.id, x);
@@ -160,6 +162,7 @@ function serieVentas(ventas, desde, hasta, largo = 10) {
 function masVendidos(ventas, n = 10) {
   const m = new Map();
   for (const v of ventas) for (const i of v.items) {
+    if (i.id === DESCUENTO) continue;
     const x = m.get(i.id) || { id: i.id, nombre: i.nombre, cant: 0, pesos: 0 };
     x.cant += i.cant; if (v.moneda === "UYU") x.pesos += i.precio * i.cant;
     m.set(i.id, x);
@@ -277,7 +280,7 @@ function resumenCaja(db, caja) {
 const cajaAbierta = (db) => db.cajas.find((c) => !c.cerrada) || null;
 
 // --- Sincronización con el servidor (api/) ---
-const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas", "mensajes", "resenas"];
+const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas", "mensajes", "resenas", "cupones"];
 const idDoc = (col, d) => String(col === "ventas" ? d.numero : d.id);
 const dbVacia = () => ({ version: 1, ultimo: 0, ...Object.fromEntries(COLECCIONES.map((c) => [c, []])) });
 // Lo cambiado desde el último envío. enviado: Map "col id" -> JSON tal como lo tiene el servidor.
