@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.58">
-  <script src="../tema.js?v=0.58"></script>
+  <link rel="stylesheet" href="admin.css?v=0.59">
+  <script src="../tema.js?v=0.59"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -166,7 +166,7 @@
 
       <section id="v-stock" class="vista" hidden>
         <div class="cabeza"><div><p class="eyebrow">Catálogo</p><h1>Stock</h1><p class="sub">Lo que tenés hecho y listo para entregar, valorizado al costo y a precio de venta. Sin stock, el producto se imprime a pedido.</p></div>
-          <div class="botones"><button class="btn sec" type="button" id="inv-excel">Planilla de conteo en Excel</button><button class="btn sec" type="button" id="inv-subir">Subir conteo</button><button class="btn" type="button" id="inv-imprimir">Imprimir planilla</button></div></div>
+          <div class="botones"><button class="btn sec" type="button" id="inv-excel">Planilla de stock a Excel</button><button class="btn sec" type="button" id="inv-subir">Importar inventario</button><button class="btn" type="button" id="inv-imprimir">Imprimir planilla</button></div></div>
         <div class="kpis" id="inv-kpis"></div>
         <div class="filtros">
           <input id="stock-q" type="search" placeholder="Buscar producto" aria-label="Buscar en stock">
@@ -174,7 +174,7 @@
           <select id="stock-filtro" aria-label="Stock"><option value="con">Con stock</option><option value="">Todos</option><option value="sin">Sin stock (a pedido)</option></select>
         </div>
         <div id="stock-lista"></div>
-        <p class="sub chico">Para contar: bajá o imprimí la planilla, anotá lo que hay en la columna Contado y subila con "Subir conteo". El stock se actualiza solo.</p>
+        <p class="sub chico">Para contar: bajá o imprimí la planilla, anotá lo que hay en la columna Contado y subila con "Importar inventario". El stock se actualiza solo.</p>
       </section>
 
       <section id="v-medios" class="vista" hidden>
@@ -591,11 +591,11 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.58"></script>
-<script src="../productos.js?v=0.58"></script>
-<script src="../catalogo.js?v=0.58"></script>
-<script src="datos.js?v=0.58"></script>
-<script src="excel.js?v=0.58"></script>
-<script src="admin.js?v=0.58"></script>
+<script src="../config.js?v=0.59"></script>
+<script src="../productos.js?v=0.59"></script>
+<script src="../catalogo.js?v=0.59"></script>
+<script src="datos.js?v=0.59"></script>
+<script src="excel.js?v=0.59"></script>
+<script src="admin.js?v=0.59"></script>
 </body>
 </html>
