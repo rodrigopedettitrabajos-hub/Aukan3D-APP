@@ -229,11 +229,31 @@ const VISTAS = { panel: "Panel principal", ventas: "Ventas y pedidos", feria: "M
   productos: "Productos y precios", stock: "Stock", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Estadísticas", base: "Base de datos", mp: "Mercado Pago",
   accesos: "Accesos al panel", mensajes: "Mensajes de WhatsApp", envios: "Entregas y envíos" };
 const PINTAR = {};
+// Grupos del menú: se pliegan tocando el título; se recuerda en este navegador. El de la pantalla abierta siempre se ve.
+const PLEGADOS = "aukan_menu_plegado";
+const linksDe = (g) => { const r = []; for (let n = g.nextElementSibling; n && n.tagName === "A"; n = n.nextElementSibling) r.push(n); return r; };
+function pintarGrupos() {
+  let plegados = []; try { plegados = JSON.parse(leerLocal(PLEGADOS) || "[]"); } catch { /* dato viejo */ }
+  for (const g of document.querySelectorAll(".nav-grupo")) {
+    const abierto = !plegados.includes(g.textContent) || linksDe(g).some((a) => a.ariaCurrent === "page");
+    g.setAttribute("aria-expanded", abierto);
+    for (const a of linksDe(g)) a.classList.toggle("plegado", !abierto);
+  }
+}
+for (const g of document.querySelectorAll(".nav-grupo")) g.addEventListener("click", () => {
+  let plegados = []; try { plegados = JSON.parse(leerLocal(PLEGADOS) || "[]"); } catch { /* dato viejo */ }
+  const cerrar = g.getAttribute("aria-expanded") === "true";
+  plegados = cerrar ? [...new Set([...plegados, g.textContent])] : plegados.filter((x) => x !== g.textContent);
+  try { localStorage.setItem(PLEGADOS, JSON.stringify(plegados)); } catch { /* sin almacenamiento */ }
+  g.setAttribute("aria-expanded", !cerrar);
+  for (const a of linksDe(g)) a.classList.toggle("plegado", cerrar);
+});
 function mostrarVista() {
   let v = location.hash.slice(1) in VISTAS ? location.hash.slice(1) : "panel";
   if (!puede(v === "panel" ? "" : v === "envios" ? "mensajes" : v === "stock" ? "productos" : v) || ((v === "mp" || v === "accesos" || v === "base") && !API)) v = "panel";
   for (const s of document.querySelectorAll(".vista")) s.hidden = s.id !== "v-" + v;
   for (const a of document.querySelectorAll(".nav a")) a.ariaCurrent = a.hash === "#" + v ? "page" : null;
+  pintarGrupos();
   $("#crumb").textContent = VISTAS[v];
   document.title = `${VISTAS[v]} · Aukan3D Gestión`;
   PINTAR[v]();
