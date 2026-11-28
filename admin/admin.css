@@ -46,6 +46,12 @@ button { cursor: pointer; }
 .nav a[aria-current="page"] { background: rgb(3 146 202 / .18); color: #fff; box-shadow: inset 3px 0 0 var(--brand); }
 .nav-grupo { display: flex; align-items: center; gap: 10px; margin: 18px 12px 6px; color: #5cc4ee; font: 600 12px Oswald, sans-serif; letter-spacing: .14em; text-transform: uppercase; }
 .nav-grupo::after { content: ""; flex: 1; border-top: 1px solid #3a3e44; }
+/* Grupos del menú desplegables (V0.61) */
+button.nav-grupo { background: none; border: 0; padding: 4px 0; width: calc(100% - 24px); text-align: left; cursor: pointer; border-radius: 6px; }
+button.nav-grupo::before { content: ""; width: 6px; height: 6px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translate(-2px, -2px); transition: transform .15s; flex: none; }
+button.nav-grupo[aria-expanded="false"]::before { transform: rotate(-45deg); }
+button.nav-grupo:hover { color: #8fd8f5; }
+.nav a.plegado { display: none; }
 .nav-sep { border: 0; border-top: 1px solid #3a3e44; margin: 14px 6px 10px; width: auto; }
 .nav a.nav-feria { border: 1px solid var(--brand); color: #fff; display: flex; align-items: center; gap: 8px; }
 .nav a.nav-feria::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); flex: none; }
@@ -293,7 +299,8 @@ legend { padding: 0 6px; font-weight: 600; }
   .nav { order: 3; flex: 1 0 100%; display: flex; overflow-x: auto; scrollbar-width: none; margin: 0 -12px; padding: 0 8px; }
   .nav a { white-space: nowrap; font-size: 14px; padding: 12px 10px; border-radius: 0; }
   .nav a[aria-current="page"] { background: none; box-shadow: inset 0 -3px 0 var(--brand); }
-  .nav-grupo { display: none; }
+  .nav-grupo { display: none !important; }
+  .nav a.plegado { display: block; }
   .nav-sep { border-top: 0; border-left: 1px solid #2a2d31; margin: 10px 4px; }
   .nav a.nav-feria { border-radius: 999px; margin: 6px 8px 6px 0; padding: 6px 12px; }
   .top { min-height: 52px; padding: 6px 16px; } .crumb { display: none; } .user { margin-left: auto; }
