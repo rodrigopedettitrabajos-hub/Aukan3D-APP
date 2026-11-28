@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.47 · 2026-11-28
+- Panel: menú lateral más legible (letra normal en vez de mayúsculas angostas, más contraste) y títulos de sección en celeste con una línea al costado para separar mejor Ventas, Catálogo y Administración.
+
 ## V0.46 · 2026-11-28
 - Panel: el estado y el número de operación de Mercado Pago quedan compactos en la lista (la pastilla ya no se estira y el número va como texto chico debajo).
 
