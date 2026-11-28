@@ -1,6 +1,7 @@
 // Prueba el servidor contra la base local. Antes: npm run dev (en otra terminal) con .dev.vars de prueba.
 // Uso: node test.mjs [url] [contraseña]
 import assert from "node:assert";
+import http from "node:http";
 
 const API = process.argv[2] || "http://localhost:8787";
 const CLAVE = process.argv[3] || "clave-de-prueba-123";
@@ -104,5 +105,52 @@ assert.strictEqual((await pedir("/api/admin/estado", { token })).r.status, 403);
 const uso = (await pedir("/api/admin/estado", { token: dev.token })).j;
 assert.ok(uso.ok && uso.limite > 0 && uso.real.colecciones.some((c) => c.col === "productos" && c.n >= 170) && uso.pruebas);
 assert.ok(uso.real.tamano === null || uso.real.tamano > 0);
+
+// Mercado Pago contra un Mercado Pago de mentira (en .dev.vars: MP_API=http://localhost:8799).
+const BUENA = "TEST-1234567890-buena-abcdefghijklmnop-9876";
+const mock = http.createServer((q, s) => {
+  const ok = q.headers.authorization === "Bearer " + BUENA, enviar = (st, o) => { s.writeHead(st, { "Content-Type": "application/json" }); s.end(JSON.stringify(o)); };
+  if (!ok) return enviar(401, { message: "invalid_token" });
+  if (q.url === "/users/me") return enviar(200, { id: 123, nickname: "AUKAN3D", email: "x@y.uy", site_id: "MLU", tags: ["test_user"] });
+  if (q.url.startsWith("/v1/payments/search")) return enviar(200, { results: [
+    { id: 991, date_created: "2026-11-28T10:00:00Z", status: "approved", status_detail: "accredited", transaction_amount: 950, currency_id: "UYU", external_reference: "AUKAN-1001", payment_method_id: "visa" },
+    { id: 992, date_created: "2026-11-28T09:00:00Z", status: "rejected", status_detail: "cc_rejected_other_reason", transaction_amount: 500, currency_id: "UYU", external_reference: "AUKAN-1002", payment_method_id: "master" }] });
+  if (q.url === "/v1/payments/555") return enviar(200, { id: 555, status: "approved", external_reference: "AUKAN-" + numMp, transaction_amount: montoMp, currency_id: "UYU", date_approved: "2026-11-28T10:00:00Z" });
+  if (q.url === "/v1/payments/556") return enviar(200, { id: 556, status: "rejected", external_reference: "AUKAN-" + numMp, transaction_amount: montoMp, currency_id: "UYU" });
+  if (q.url === "/checkout/preferences") return enviar(201, { init_point: "https://www.mercadopago.com.uy/checkout/v1/redirect?pref_id=1", sandbox_init_point: "https://sandbox.mercadopago.com.uy/checkout/v1/redirect?pref_id=1" });
+  enviar(404, {});
+}).listen(8799);
+let numMp = "0", montoMp = 0;
+const mp = (body, tok = token, e = "") => pedir("/api/admin/mp" + e, { token: tok, body });
+assert.strictEqual((await pedir("/api/admin/mp")).r.status, 401); // sin sesión
+assert.strictEqual((await mp({ token: "" })).j.configurado, false);
+assert.strictEqual((await mp({ token: "cualquier cosa" })).j.error, "formato");
+assert.strictEqual((await mp({ token: "TEST-1234567890-mala-abcdefghijklmnop" })).j.error, "rechazado");
+const conMp = await mp({ token: BUENA });
+assert.ok(conMp.j.configurado && conMp.j.conectado && conMp.j.modo === "prueba" && conMp.j.final === "9876" && conMp.j.cuenta.nombre === "AUKAN3D", conMp.t);
+assert.ok(conMp.j.pagos.length === 2 && conMp.j.pagos[0].referencia === "AUKAN-1001" && conMp.j.pagos[0].estado === "approved");
+assert.ok(!conMp.t.includes(BUENA) && !(await pedir("/api/admin/datos", { token })).t.includes(BUENA)); // la credencial nunca vuelve
+const devMp = (await pedir("/api/admin/mp?e=pruebas", { token: dev.token })).j; // dev en pruebas ve la misma cuenta
+assert.ok(devMp.configurado && devMp.final === "9876");
+const conLink = (await pedir("/api/pedidos", { body: { cliente: { nombre: "Mp Test", whatsapp: "+598 97" + unico.slice(-6), modo: "sena" }, items: [{ id: idProd, cant: 1 }] } })).j;
+assert.ok(conLink.ok && conLink.pago.startsWith("https://sandbox.mercadopago.com.uy/"), JSON.stringify(conLink));
+// QR del panel: link por la seña; el monto no puede pasar el saldo.
+numMp = String(conLink.numero); montoMp = conLink.aPagar;
+const cobro = (await pedir("/api/admin/mp/cobro", { token, body: { numero: numMp, monto: montoMp, sena: true } })).j;
+assert.ok(cobro.ok && cobro.link.startsWith("https://sandbox.mercadopago.com.uy/"), JSON.stringify(cobro));
+assert.strictEqual((await pedir("/api/admin/mp/cobro", { token, body: { numero: numMp, monto: conLink.total + 1 } })).j.error, "monto");
+assert.strictEqual((await pedir("/api/admin/mp/cobro", { token, body: { numero: "999999", monto: 10 } })).r.status, 404);
+assert.strictEqual((await pedir("/api/admin/mp/cobro", { body: { numero: numMp, monto: 10 } })).r.status, 401);
+// Aviso de Mercado Pago: se verifica el pago contra Mercado Pago y se anota una sola vez.
+const aviso = (id, ip = "10.9.9." + unico.slice(-2)) => pedir("/api/mp/aviso", { body: { type: "payment", data: { id } }, ip });
+assert.strictEqual((await aviso("556")).j.estado, "rejected");
+assert.strictEqual((await aviso("555")).j.registrado, true);
+assert.strictEqual((await aviso("555")).j.registrado, false); // repetido: no duplica
+assert.ok((await aviso("123")).j.ignorado); // Mercado Pago no lo conoce
+assert.ok((await pedir("/api/mp/aviso", { body: { type: "merchant_order", data: { id: "1" } } })).j.ignorado);
+const vMp = (await pedir("/api/admin/datos", { token })).j.ventas.find((v) => v.numero === numMp);
+assert.ok(vMp.estado === 1 && vMp.pagos.length === 1 && vMp.pagos[0].mp === "555" && vMp.pagos[0].monto === montoMp, JSON.stringify(vMp));
+assert.strictEqual((await mp({ token: "" })).j.configurado, false);
+mock.close();
 
 console.log("api ok");

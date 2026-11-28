@@ -22,7 +22,7 @@ export default {
       // ?e=pruebas usa la base de pruebas (DB_PRUEBAS): datos de mentira para probar sin tocar los reales.
       const pruebas = url.searchParams.get("e") === "pruebas";
       if (pruebas && !env.DB_PRUEBAS) return json({ ok: false, error: "entorno" }, 503, cors);
-      const r = await rutear(req, pruebas ? { ...env, DB: env.DB_PRUEBAS, DB_REAL: env.DB, PRUEBAS: true } : env, url);
+      const r = await rutear(req, { ...(pruebas ? { ...env, DB: env.DB_PRUEBAS, DB_REAL: env.DB, PRUEBAS: true } : env), AQUI: url.origin, TIENDA: permitido ? origen : "" }, url);
       for (const [k, v] of Object.entries(cors)) r.headers.set(k, v);
       return r;
     } catch (err) {
@@ -39,6 +39,7 @@ async function rutear(req, env, url) {
   if (m === "POST" && p === "/api/pedidos") return nuevoPedido(req, env);
   if (m === "POST" && p === "/api/pedidos/estado") return estadoPedidos(req, env);
   if (m === "POST" && p === "/api/login") return login(req, env);
+  if (m === "POST" && p === "/api/mp/aviso") return avisoMp(req, env, url);
   if (p.startsWith("/api/admin/")) {
     const quien = await tokenValido(req, env);
     if (!quien) return json({ ok: false, error: "sesion" }, 401);
@@ -47,6 +48,9 @@ async function rutear(req, env, url) {
     if (m === "POST" && p === "/api/admin/lote") return lote(req, env);
     if (m === "POST" && p === "/api/admin/numero") return json({ ok: true, numero: await contador(env) });
     if (m === "GET" && p === "/api/admin/estado") return quien === "dev" ? estadoBases(env) : json({ ok: false, error: "solo dev" }, 403);
+    if (m === "GET" && p === "/api/admin/mp") return estadoMp(env);
+    if (m === "POST" && p === "/api/admin/mp") return guardarMp(req, env);
+    if (m === "POST" && p === "/api/admin/mp/cobro") return cobroMp(req, env);
   }
   return json({ ok: false, error: "no existe" }, 404);
 }
@@ -170,7 +174,7 @@ async function nuevoPedido(req, env) {
   }
   const numero = await contador(env);
   const pago = await linkPago(env, sena ? [{ title: `Seña 50% pedido AUKAN-${numero}`, quantity: 1, unit_price: aPagar, currency_id: "UYU" }]
-    : items.map((i) => ({ title: i.nombre, quantity: i.cant, unit_price: i.precio, currency_id: "UYU" })), `AUKAN-${numero}`, limpio(c.email, 120));
+    : items.map((i) => ({ title: i.nombre, quantity: i.cant, unit_price: i.precio, currency_id: "UYU" })), `AUKAN-${numero}`, limpio(c.email, 120), volverATienda(env));
   const entrega = limpio(c.entrega, 40) + (c.envio ? " · " + limpio(c.envio, 160) : "");
   const venta = { numero: String(numero), fecha: new Date(ahora).toISOString(), origen: "web", cliente: cli.id, vendedor: "", moneda: "UYU", items, pagos: [],
     estado: 0, sena, entrega, nota: limpio(c.comentario, 500), pago };
@@ -178,13 +182,114 @@ async function nuevoPedido(req, env) {
   return json({ ok: true, total, aPagar, sena, numero, pago });
 }
 
+// ---------- Mercado Pago ----------
+// Dirección de vuelta tras pagar: la tienda que hizo el pedido, solo si es un origen permitido (ORIGENES).
+const volverATienda = (env) => (String(env.TIENDA || "").startsWith("https://") ? env.TIENDA + "/#mis-pedidos" : "");
+// La credencial se carga desde el panel (o queda el secreto MP_ACCESS_TOKEN de wrangler). Se guarda siempre en la base real,
+// así admin y dev (también en modo pruebas) ven y usan la misma cuenta. Nunca se devuelve al navegador: solo sus últimos 4 caracteres.
+const mpApi = (env) => env.MP_API || "https://api.mercadopago.com"; // MP_API solo para pruebas locales
+const baseAjustes = (env) => env.DB_REAL || env.DB;
+async function credencialMp(env) {
+  const db = baseAjustes(env);
+  await db.prepare("CREATE TABLE IF NOT EXISTS ajustes (clave TEXT PRIMARY KEY, valor TEXT NOT NULL, actualizado INTEGER NOT NULL)").run();
+  const r = await db.prepare("SELECT valor, actualizado FROM ajustes WHERE clave = 'mp_token'").first();
+  if (r) return { token: r.valor, origen: "panel", actualizado: r.actualizado };
+  return { token: env.MP_ACCESS_TOKEN || "", origen: env.MP_ACCESS_TOKEN ? "secreto" : "", actualizado: null };
+}
+const pedirMp = (env, token, ruta) => fetch(mpApi(env) + ruta, { headers: { Authorization: "Bearer " + token } });
+async function cuentaMp(env, token) {
+  const res = await pedirMp(env, token, "/users/me");
+  if (!res.ok) return null;
+  const u = await res.json();
+  return { id: u.id, nombre: u.nickname || "", email: u.email || "", pais: u.site_id || "", prueba: (u.tags || []).includes("test_user") };
+}
+async function estadoMp(env) {
+  const { token, origen, actualizado } = await credencialMp(env);
+  if (!token) return json({ ok: true, configurado: false });
+  const [cuenta, pagos] = await Promise.all([cuentaMp(env, token).catch(() => null),
+    pedirMp(env, token, "/v1/payments/search?sort=date_created&criteria=desc&limit=30").then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
+  return json({ ok: true, configurado: true, origen, actualizado, final: token.slice(-4), conectado: !!cuenta, cuenta,
+    modo: token.startsWith("TEST-") || cuenta?.prueba ? "prueba" : "produccion",
+    pagos: (pagos?.results || []).map((x) => ({ id: String(x.id), fecha: x.date_created, estado: x.status, detalle: x.status_detail || "",
+      monto: x.transaction_amount, moneda: x.currency_id, referencia: String(x.external_reference || ""), medio: x.payment_method_id || "" })) });
+}
+async function guardarMp(req, env) {
+  let body;
+  try { body = await leerJson(req, 2_000); } catch { return json({ ok: false, error: "invalido" }, 400); }
+  const token = limpio(body.token, 300);
+  const db = baseAjustes(env);
+  await credencialMp(env); // crea la tabla si falta
+  if (!token) { await db.prepare("DELETE FROM ajustes WHERE clave = 'mp_token'").run(); return estadoMp(env); }
+  if (!/^(TEST|APP_USR)-[\w-]{20,}$/.test(token)) return json({ ok: false, error: "formato" }, 400);
+  if (!(await cuentaMp(env, token).catch(() => null))) return json({ ok: false, error: "rechazado" }, 400); // Mercado Pago no la acepta
+  await db.prepare("INSERT INTO ajustes (clave, valor, actualizado) VALUES ('mp_token', ?, ?) ON CONFLICT (clave) DO UPDATE SET valor = excluded.valor, actualizado = excluded.actualizado")
+    .bind(token, Date.now()).run();
+  return estadoMp(env);
+}
+
+const totalDe = (v) => v.items.reduce((t, i) => t + i.precio * i.cant, 0);
+const saldoDe = (v) => Math.max(totalDe(v) - v.pagos.reduce((t, x) => t + x.monto, 0), 0);
+const ventaDoc = async (env, numero) => {
+  const r = await env.DB.prepare("SELECT data FROM docs WHERE col = 'ventas' AND id = ?").bind(String(numero)).first();
+  const v = r && JSON.parse(r.data);
+  return v && !v._borrado ? v : null;
+};
+// QR desde el panel: link de pago por la seña o el saldo de un pedido (el monto lo valida el servidor contra el saldo).
+async function cobroMp(req, env) {
+  let body;
+  try { body = await leerJson(req, 2_000); } catch { return json({ ok: false, error: "invalido" }, 400); }
+  const v = await ventaDoc(env, limpio(body.numero, 12));
+  if (!v) return json({ ok: false, error: "pedido" }, 404);
+  const monto = Math.round(Number(body.monto));
+  if (!(monto >= 1 && monto <= saldoDe(v))) return json({ ok: false, error: "monto" }, 400);
+  const titulo = body.sena ? `Seña 50 % pedido AUKAN-${v.numero}` : `Pedido AUKAN-${v.numero}`;
+  const link = await linkPago(env, [{ title: titulo, quantity: 1, unit_price: monto, currency_id: v.moneda === "USD" ? "USD" : "UYU" }], `AUKAN-${v.numero}`, "");
+  return link ? json({ ok: true, link }) : json({ ok: false, error: "mp" }, 502);
+}
+// Aviso de Mercado Pago (webhook). No se confía en lo que llega: se pide el pago a Mercado Pago con la credencial y,
+// si está aprobado y es de un pedido, se anota una sola vez (por id de pago). Siempre responde 200 para que no reintente sin fin.
+async function avisoMp(req, env, url) {
+  const ip = req.headers.get("CF-Connecting-IP") || "";
+  if (!(await pasaLimite(env, "mp:" + ip, 120, 600_000))) return json({ ok: false, error: "limite" }, 429);
+  let body = {};
+  try { body = await leerJson(req, 10_000); } catch { /* algunos avisos vienen solo en la dirección */ }
+  const tipo = body.type || body.topic || url.searchParams.get("type") || url.searchParams.get("topic");
+  const id = String((body.data && body.data.id) || url.searchParams.get("data.id") || url.searchParams.get("id") || "");
+  if (tipo !== "payment" || !/^\d{1,20}$/.test(id)) return json({ ok: true, ignorado: true });
+  const { token } = await credencialMp(env);
+  if (!token) return json({ ok: true, ignorado: true });
+  const res = await pedirMp(env, token, "/v1/payments/" + id);
+  if (!res.ok) return json({ ok: true, ignorado: true });
+  const x = await res.json();
+  const numero = (String(x.external_reference || "").match(/^AUKAN-(\d+)$/) || [])[1];
+  if (x.status !== "approved" || !numero) return json({ ok: true, estado: x.status });
+  return json({ ok: true, registrado: await anotarPagoMp(env, numero, x) });
+}
+// shortcut: si el panel guarda ese mismo pedido en el mismo segundo, queda la última escritura (igual que entre dos dispositivos).
+async function anotarPagoMp(env, numero, x) {
+  const v = await ventaDoc(env, numero);
+  if (!v || v.pagos.some((p) => p.mp === String(x.id)) || (x.currency_id || "UYU") !== (v.moneda || "UYU")) return false;
+  const monto = Math.min(Math.round(x.transaction_amount), saldoDe(v));
+  if (!(monto > 0)) return false;
+  const medios = (await docs(env, "medios")).filter((m) => !m._borrado);
+  const medio = (medios.find((m) => /mercado ?pago/i.test(m.nombre)) || { id: "m3" }).id;
+  v.pagos.push({ fecha: x.date_approved || x.date_created || new Date().toISOString(), medio, monto, mp: String(x.id) });
+  if (v.estado === 0) v.estado = 1;
+  await guardarDoc(env, "ventas", String(v.numero), v).run();
+  return true;
+}
+
 // Cobro de Checkout Pro con los precios de la base. Devuelve el link o "" si no hay token o falla.
-async function linkPago(env, items, referencia, email) {
-  const token = env.MP_ACCESS_TOKEN;
+async function linkPago(env, items, referencia, email, volver = "") {
+  const { token } = await credencialMp(env);
   if (!token) return "";
   const pref = { items, external_reference: referencia };
+  // Mercado Pago avisa cada pago a esta dirección (con ?e=pruebas si el pedido es de la base de pruebas). Solo https: en local no hay aviso.
+  if (String(env.AQUI || "").startsWith("https://")) pref.notification_url = env.AQUI + "/api/mp/aviso" + (env.PRUEBAS ? "?e=pruebas" : "");
   if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) pref.payer = { email };
-  const res = await fetch("https://api.mercadopago.com/checkout/preferences", {
+  // Al terminar de pagar, Mercado Pago lo devuelve a "Mis pedidos" de la tienda (solo https).
+  if (volver.startsWith("https://")) { pref.back_urls = { success: volver, pending: volver, failure: volver }; pref.auto_return = "approved"; }
+  const res = await fetch(mpApi(env) + "/checkout/preferences", {
     method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", "X-Idempotency-Key": crypto.randomUUID() },
     body: JSON.stringify(pref),
   });

@@ -10,6 +10,10 @@ Plan gratis: alcanza de sobra para la tienda.
 - `POST /api/login`: ingreso al panel (10 intentos por IP cada 15 min). Devuelve un token de 12 h.
 - `GET /api/admin/datos?desde=`, `POST /api/admin/lote`, `POST /api/admin/numero`: datos del panel (con token).
 - `GET /api/admin/estado`: tamaño y registros de las bases (solo usuario dev).
+- `GET /api/admin/mp`, `POST /api/admin/mp`: estado de Mercado Pago (cuenta, modo, últimos 30 cobros) y carga de la credencial. Admin y dev ven la misma: se guarda en la tabla `ajustes` de la base real y nunca vuelve al navegador (solo los últimos 4 caracteres). Si no hay, usa el secreto `MP_ACCESS_TOKEN`.
+- `POST /api/admin/mp/cobro`: link de pago (para el QR del panel) por la seña o el saldo de un pedido.
+- `POST /api/mp/aviso`: aviso de Mercado Pago (webhook). Va en cada link de pago como `notification_url`, no hace falta configurarlo en Mercado Pago. Pide el pago a Mercado Pago y, si está aprobado, lo anota una sola vez en el pedido `AUKAN-N°`.
+- Pruebas locales de Mercado Pago: `MP_API=http://localhost:8799` en `.dev.vars` (test.mjs levanta un Mercado Pago de mentira ahí).
 
 ## Probar en la computadora
 ```

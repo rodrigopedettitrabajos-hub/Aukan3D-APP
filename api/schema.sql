@@ -12,3 +12,5 @@ CREATE TABLE IF NOT EXISTS contadores (nombre TEXT PRIMARY KEY, n INTEGER NOT NU
 INSERT OR IGNORE INTO contadores (nombre, n) VALUES ('venta', 1000);
 -- Límites de intentos (pedidos por WhatsApp, ingresos por IP).
 CREATE TABLE IF NOT EXISTS limites (clave TEXT PRIMARY KEY, n INTEGER NOT NULL, hasta INTEGER NOT NULL);
+-- Ajustes del servidor que no viajan al panel (credencial de Mercado Pago). El Worker la crea sola si falta.
+CREATE TABLE IF NOT EXISTS ajustes (clave TEXT PRIMARY KEY, valor TEXT NOT NULL, actualizado INTEGER NOT NULL);
