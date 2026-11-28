@@ -280,6 +280,33 @@ function resumenCaja(db, caja) {
     diferencia: caja.contado == null ? null : caja.contado - esperado };
 }
 const cajaAbierta = (db) => db.cajas.find((c) => !c.cerrada) || null;
+// Cierre de caja para compartir por WhatsApp o imprimir: ventas por medio de pago, lo más vendido y la diferencia de caja.
+function cierreCaja(db, caja) {
+  const r = resumenCaja(db, caja);
+  const porMedio = Object.entries(r.porMedio).map(([id, n]) => [db.medios.find((m) => m.id === id)?.nombre || "Otro", n]).sort((a, b) => b[1] - a[1]);
+  return { ...r, porMedio, top: masVendidos(r.ventas, 5) };
+}
+function textoCierre(db, caja, plata, vendedor = "") {
+  const c = cierreCaja(db, caja), hora = (iso) => new Date(iso).toLocaleTimeString("es-UY", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const dia = new Date(caja.abierta).toLocaleDateString("es-UY", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
+  const dif = c.diferencia;
+  return [
+    "*Cierre de caja · Aukan3D*",
+    `${dia[0].toUpperCase() + dia.slice(1)} · ${hora(caja.abierta)}${caja.cerrada ? " a " + hora(caja.cerrada) : " (abierta)"}${vendedor ? " · Vendió: " + vendedor : ""}`,
+    "",
+    `*Ventas:* ${c.ventas.length} · ${plata(c.total)}`,
+    ...(c.porMedio.length ? ["*Por medio de pago:*", ...c.porMedio.map(([m, n]) => `• ${m}: ${plata(n)}`)] : []),
+    ...(c.top.length ? ["*Lo más vendido:*", ...c.top.map((x) => `• ${x.cant} × ${x.nombre}`)] : []),
+    "",
+    "*Efectivo:*",
+    `• Inicial: ${plata(caja.fondo)}`,
+    `• Cobrado en efectivo: ${plata(c.efectivo)}`,
+    ...(c.ingresos ? [`• Ingresos: ${plata(c.ingresos)}`] : []),
+    ...(c.retiros ? [`• Retiros: − ${plata(c.retiros)}`] : []),
+    `• Tendría que haber: ${plata(c.esperado)}`,
+    ...(caja.contado == null ? [] : [`• Contado: ${plata(caja.contado)}`, `*Diferencia:* ${dif === 0 ? "cerró justa" : dif < 0 ? "faltan " + plata(-dif) : "sobran " + plata(dif)}`]),
+  ].join("\n");
+}
 
 // --- Sincronización con el servidor (api/) ---
 const COLECCIONES = ["productos", "clientes", "ventas", "gastos", "medios", "usuarios", "cajas", "mensajes", "resenas", "cupones", "avisos"];
@@ -351,4 +378,4 @@ function mensajeDe(db, v, nombre, plata, extra = {}) {
 
 if (typeof module !== "undefined") module.exports = { ESTADOS, bajoMinimo, totalVenta, cobrado, saldo, porMoneda, catalogoDesdeCsv, precioConGanancia, gananciaPct, inventario, margenes, resumenResenas, productosAFilas, inventarioAFilas, numeroCelda, filasAProductos,
   resumenMes, resumenRango, serieVentas, masVendidos, comisiones, registrarPago, datosEjemplo, nuevoNumero, mesDe, suma, hoy, importarPedidosWeb,
-  dbVacia, cambiosDb, marcarEnviado, aplicarServidor, resumenCaja, cajaAbierta, esEfectivo, MENSAJES_BASE, NEGOCIO_BASE, DATOS_MENSAJE, claveMensaje, armarMensaje, mensajeDe };
+  dbVacia, cambiosDb, marcarEnviado, aplicarServidor, resumenCaja, cajaAbierta, cierreCaja, textoCierre, esEfectivo, MENSAJES_BASE, NEGOCIO_BASE, DATOS_MENSAJE, claveMensaje, armarMensaje, mensajeDe };

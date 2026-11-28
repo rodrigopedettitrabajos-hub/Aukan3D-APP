@@ -904,8 +904,25 @@ $("#f-cerrar").addEventListener("submit", (e) => {
   guardar(); PINTAR.feria();
   const r = resumenCaja(db, caja);
   avisar(`Caja cerrada: ${plural(r.ventas.length, "venta")} por ${plata(r.total)}.${r.diferencia ? (r.diferencia < 0 ? ` Faltaron ${plata(-r.diferencia)}.` : ` Sobraron ${plata(r.diferencia)}.`) : " Cerró justa."}`);
+  setTimeout(() => abrirCierre(caja)); // después de que se cierra el diálogo de cierre
 });
 
+// Cierre de caja para compartir: texto para WhatsApp (negritas con *) y la misma información para imprimir.
+function abrirCierre(caja) {
+  const texto = textoCierre(db, caja, plata, usuario(caja.vendedor)?.nombre || "");
+  $("#cierre-texto").textContent = texto.replace(/\*/g, "");
+  $("#cierre-wa").href = "https://wa.me/?text=" + encodeURIComponent(texto);
+  $("#cierre-copiar").textContent = "Copiar";
+  $("#cierre-copiar").onclick = async (e) => { try { await navigator.clipboard.writeText(texto); e.target.textContent = "Copiado"; } catch { e.target.textContent = "No se pudo copiar"; } };
+  $("#cierre-imprimir").onclick = () => {
+    const [titulo, sub, ...resto] = texto.replace(/\*/g, "").split("\n");
+    $("#imprimir").className = "";
+    $("#imprimir").replaceChildren(el("header", {}, el("img", { src: "../logo-comprobante.webp", alt: "" }), el("div", {}, el("h1", { textContent: titulo.replace(" · Aukan3D", "") }), el("p", { textContent: sub }))),
+      el("pre", { className: "cierre-imp", textContent: resto.join("\n").trim() }));
+    print();
+  };
+  $("#d-cierre").showModal();
+}
 PINTAR.feria = () => {
   const caja = cajaAbierta(db);
   $("#f-abrir").hidden = !!caja;
@@ -923,10 +940,11 @@ PINTAR.feria = () => {
   }
   const viejas = db.cajas.filter((c) => c.cerrada).sort((a, b) => b.abierta.localeCompare(a.abierta)).slice(0, 10);
   $("#cajas-viejas").replaceChildren(viejas.length ? el("div", { className: "cajas-viejas" }, el("h2", { textContent: "Cajas anteriores" }),
-    tabla(["Fecha", "Vendió", "#Ventas", "#Total", "#Contado", "#Diferencia"], viejas.map((c) => {
+    tabla(["Fecha", "Vendió", "#Ventas", "#Total", "#Contado", "#Diferencia", ""], viejas.map((c) => {
       const r = resumenCaja(db, c);
       return el("tr", {}, td(fecha(c.abierta)), td(usuario(c.vendedor)?.nombre || "—"), td(String(r.ventas.length), "num"), td(plata(r.total), "num"),
-        td(plata(c.contado), "num"), td(r.diferencia ? (r.diferencia > 0 ? "+ " : "− ") + plata(Math.abs(r.diferencia)) : "Justa", "num " + (r.diferencia < 0 ? "rojo" : r.diferencia > 0 ? "ambar" : "verde")));
+        td(plata(c.contado), "num"), td(r.diferencia ? (r.diferencia > 0 ? "+ " : "− ") + plata(Math.abs(r.diferencia)) : "Justa", "num " + (r.diferencia < 0 ? "rojo" : r.diferencia > 0 ? "ambar" : "verde")),
+        td(el("button", { type: "button", className: "btn sec chico", textContent: "Resumen", ariaLabel: `Resumen de la caja del ${fecha(c.abierta)}`, onclick: () => abrirCierre(c) })));
     }), "")) : "");
 };
 
