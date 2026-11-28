@@ -30,12 +30,97 @@ function catalogoDesdeCsv(text) {
   })).filter((p) => p.id && p.nombre);
 }
 
-// Vuelta a CSV para pegar en la planilla "Productos" (Archivo > Importar > Reemplazar hoja).
-function catalogoACsv(productos) {
-  const campo = (v) => { const t = String(v ?? ""); return /[",\n\r]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
-  const cols = ["id", "categoria", "subcategoria", "nombre", "precio", "foto", "activo", "tamano", "material", "stock"];
-  return [cols.join(","), ...productos.map((p) => cols.map((c) =>
-    campo(c === "activo" ? (p.activo ? "SI" : "NO") : c === "precio" ? p.precio || "" : p[c])).join(","))].join("\r\n");
+// --- Costo, ganancia e inventario ---
+// Ganancia como % sobre el costo: costo 100 con 50 % -> precio 150. Redondeo hacia arriba (10, 50, 100) para no bajar del %.
+const precioConGanancia = (costo, pct, redondeo = 1) => Math.ceil(Math.round(costo * (1 + pct / 100)) / redondeo) * redondeo;
+const gananciaPct = (p) => (p.costo > 0 && p.precio > 0 ? Math.round(((p.precio - p.costo) / p.costo) * 100) : null);
+function inventario(productos) {
+  const t = { unidades: 0, costo: 0, venta: 0, sinCosto: 0 };
+  for (const p of productos) {
+    const n = p.stock || 0;
+    t.unidades += n; t.costo += n * (p.costo || 0); t.venta += n * (p.precio || 0);
+    if (n && !p.costo) t.sinCosto++;
+  }
+  return t;
+}
+// Ganancia de lo vendido en pesos por producto. shortcut: usa el costo actual del producto, no el que tenía el día de la venta.
+function margenes(ventas, productos) {
+  const costoDe = new Map(productos.map((p) => [String(p.id), p.costo || 0])), m = new Map();
+  for (const v of ventas) if (v.moneda === "UYU") for (const i of v.items) {
+    const x = m.get(i.id) || { id: i.id, nombre: i.nombre, cant: 0, vendido: 0, costo: 0, sinCosto: !costoDe.get(String(i.id)) };
+    x.cant += i.cant; x.vendido += i.precio * i.cant; x.costo += (costoDe.get(String(i.id)) || 0) * i.cant;
+    m.set(i.id, x);
+  }
+  const filas = [...m.values()].map((x) => ({ ...x, ganancia: x.sinCosto ? null : x.vendido - x.costo }));
+  const conCosto = filas.filter((x) => !x.sinCosto);
+  const total = { vendido: suma(conCosto, (x) => x.vendido), costo: suma(conCosto, (x) => x.costo), sinCosto: suma(filas.filter((x) => x.sinCosto), (x) => x.vendido) };
+  total.ganancia = total.vendido - total.costo;
+  return { filas: filas.sort((a, b) => (b.ganancia ?? -Infinity) - (a.ganancia ?? -Infinity)), total };
+}
+
+// --- Excel de productos: exportar todo y volver a importarlo ---
+const COLS_EXCEL = [["id", "ID"], ["nombre", "Nombre"], ["categoria", "Categoría"], ["subcategoria", "Subcategoría"], ["costo", "Costo"],
+  ["ganancia", "Ganancia %"], ["precio", "Precio"], ["stock", "Stock"], ["tamano", "Tamaño"], ["material", "Material"], ["activo", "Visible"]];
+const productosAFilas = (productos) => [COLS_EXCEL.map((c) => c[1]), ...productos.map((p) => COLS_EXCEL.map(([k]) =>
+  k === "activo" ? (p.activo ? "SI" : "NO") : k === "ganancia" ? gananciaPct(p) ?? "" : ["costo", "precio"].includes(k) ? p[k] || "" : k === "stock" ? p.stock || 0 : p[k] || ""))];
+// Planilla de conteo: la columna Contado se llena a mano y al importarla pasa a ser el stock.
+const inventarioAFilas = (productos) => [["ID", "Nombre", "Categoría", "Subcategoría", "Costo", "Precio", "Stock en sistema", "Contado"],
+  ...productos.map((p) => [p.id, p.nombre, p.categoria, p.subcategoria || "", p.costo || "", p.precio || "", p.stock || 0, ""])];
+// "1.200", "$ 1.200,50" o 1200 -> número; "" -> null; texto que no es número -> NaN.
+function numeroCelda(v) {
+  if (typeof v === "number") return v;
+  let t = String(v ?? "").trim().replace(/[^\d,.-]/g, "");
+  if (!String(v ?? "").trim()) return null;
+  if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
+  else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, "");
+  return t ? Number(t) : NaN;
+}
+// Columnas por nombre (sin importar mayúsculas ni tildes); las que no están en la hoja no se tocan.
+// Fila con ID conocido: actualiza ese producto. Sin ID o con uno nuevo: producto nuevo. Nunca borra.
+function filasAProductos(filas, productos) {
+  const nombres = { id: "id", nombre: "nombre", categoria: "categoria", subcategoria: "subcategoria", costo: "costo", "ganancia %": "ganancia", ganancia: "ganancia",
+    precio: "precio", stock: "stock", contado: "contado", tamano: "tamano", material: "material", visible: "activo", activo: "activo" };
+  const [cab = [], ...resto] = filas, col = {};
+  cab.forEach((h, i) => { const k = nombres[normalizar(String(h)).trim()]; if (k && !(k in col)) col[k] = i; });
+  if (!("id" in col) && !("nombre" in col)) return { cambios: [], nuevos: [], errores: ["La hoja no tiene columna ID ni Nombre."], iguales: 0 };
+  const porId = new Map(productos.filter((p) => !p._borrado).map((p) => [String(p.id), p]));
+  let proximo = Math.max(0, ...productos.map((p) => +p.id || 0)) + 1;
+  const cambios = [], nuevos = [], errores = [];
+  let iguales = 0;
+  resto.forEach((r, i) => {
+    const fila = i + 2, celda = (k) => (k in col ? r[col[k]] : undefined), texto = (k) => String(celda(k) ?? "").trim();
+    if (!r.some((x) => String(x ?? "").trim())) return;
+    const id = texto("id"), actual = id && porId.get(id), d = {};
+    if (id && !/^[\w.-]{1,60}$/.test(id)) return errores.push(`Fila ${fila}: el ID "${id}" no sirve (solo letras, números, - y _).`);
+    for (const k of ["nombre", "categoria", "subcategoria", "tamano", "material"]) if (k in col) d[k] = texto(k).slice(0, k === "nombre" ? 80 : 40);
+    for (const k of ["costo", "precio", "stock", "contado", "ganancia"]) {
+      if (!(k in col)) continue;
+      const n = numeroCelda(celda(k));
+      if (Number.isNaN(n) || n < 0) return errores.push(`Fila ${fila}: "${celda(k)}" no es un número válido en ${k === "contado" ? "Contado" : COLS_EXCEL.find((c) => c[0] === k)[1]}.`);
+      d[k] = n;
+    }
+    if (errores.length && errores[errores.length - 1].startsWith(`Fila ${fila}:`)) return;
+    if ("activo" in col && texto("activo")) d.activo = !/^(no|false|falso|0|oculto)$/i.test(texto("activo"));
+    // Precio vacío con costo y ganancia: se calcula. Contado (planilla de inventario) reemplaza al stock.
+    if (d.precio == null && d.ganancia != null && (d.costo ?? actual?.costo) > 0) d.precio = precioConGanancia(d.costo ?? actual.costo, d.ganancia);
+    if (d.contado != null) d.stock = d.contado;
+    delete d.ganancia; delete d.contado;
+    for (const k of ["costo", "precio", "stock"]) if (k in d) d[k] = Math.round(d[k] || 0);
+    if (actual) {
+      const cambia = Object.keys(d).filter((k) => (d[k] ?? "") !== (k === "activo" ? !!actual.activo : actual[k] ?? (["costo", "precio", "stock"].includes(k) ? 0 : "")));
+      if (!cambia.length) return iguales++;
+      if ("nombre" in d && !d.nombre) return errores.push(`Fila ${fila}: falta el nombre.`);
+      if ("categoria" in d && !d.categoria) return errores.push(`Fila ${fila}: falta la categoría.`);
+      cambios.push({ producto: actual, datos: Object.fromEntries(cambia.map((k) => [k, d[k]])) });
+    } else {
+      if (!d.nombre || !d.categoria) return errores.push(`Fila ${fila}: un producto nuevo necesita nombre y categoría.`);
+      const nuevoId = id || String(proximo++);
+      if (nuevos.some((p) => p.id === nuevoId)) return errores.push(`Fila ${fila}: el ID ${nuevoId} está repetido.`);
+      nuevos.push({ id: nuevoId, nombre: d.nombre, categoria: d.categoria, subcategoria: d.subcategoria || "", tamano: d.tamano || "", material: d.material || "",
+        costo: d.costo || 0, precio: d.precio || 0, stock: d.stock || 0, activo: d.activo ?? true, foto: "" });
+    }
+  });
+  return { cambios, nuevos, errores, iguales };
 }
 
 // Resumen de un mes ("AAAA-MM"): vendido, cobrado y gastado por moneda.
@@ -247,6 +332,6 @@ function mensajeDe(db, v, nombre, plata) {
   return m.activo ? armarMensaje(m.texto, v, nombre, plata, { ...NEGOCIO_BASE, ...(db.mensajes || []).find((x) => x.id === "negocio") }) : "";
 }
 
-if (typeof module !== "undefined") module.exports = { ESTADOS, totalVenta, cobrado, saldo, porMoneda, catalogoDesdeCsv, catalogoACsv,
+if (typeof module !== "undefined") module.exports = { ESTADOS, totalVenta, cobrado, saldo, porMoneda, catalogoDesdeCsv, precioConGanancia, gananciaPct, inventario, margenes, productosAFilas, inventarioAFilas, numeroCelda, filasAProductos,
   resumenMes, resumenRango, serieVentas, masVendidos, comisiones, registrarPago, datosEjemplo, nuevoNumero, mesDe, suma, hoy, importarPedidosWeb,
   dbVacia, cambiosDb, marcarEnviado, aplicarServidor, resumenCaja, cajaAbierta, esEfectivo, MENSAJES_BASE, NEGOCIO_BASE, DATOS_MENSAJE, claveMensaje, armarMensaje, mensajeDe };

@@ -366,6 +366,8 @@ const ESCRIBE = { ventas: ["ventas", "feria", "pendientes"], clientes: ["cliente
 const puedeEscribir = (q, col) => (ESCRIBE[col] || []).some((x) => q.permisos.includes(x));
 // Lectura: sin estos permisos, los clientes llegan solo con id y nombre (sin WhatsApp ni correo) y los gastos no llegan.
 const VE_CLIENTES = ["ventas", "pendientes", "clientes", "reportes"];
+// El costo de los productos (para márgenes) solo lo ven quienes manejan productos o reportes; la feria y ventas no.
+const VE_COSTO = ["productos", "reportes"];
 const algunoDe = (q, lista) => lista.some((x) => q.permisos.includes(x));
 // Quien tiene Accesos solo maneja cuentas que no lo superan: ni permisos que no tiene, ni la base real si no entra a ella.
 const abarca = (q, c) => c.permisos.every((x) => q.permisos.includes(x)) && (c.entorno === "pruebas" || q.real);
@@ -491,11 +493,12 @@ async function cambiarMiClave(req, env, quien) {
 async function datos(env, desde, quien) {
   const { results } = await env.DB.prepare("SELECT col, data, actualizado FROM docs WHERE actualizado >= ?").bind(desde).all();
   const r = Object.fromEntries(COLECCIONES.map((c) => [c, []]));
-  const veClientes = algunoDe(quien, VE_CLIENTES), veGastos = algunoDe(quien, ["reportes"]);
+  const veClientes = algunoDe(quien, VE_CLIENTES), veGastos = algunoDe(quien, ["reportes"]), veCosto = algunoDe(quien, VE_COSTO);
   let hasta = desde;
   for (const x of results) {
     let d = JSON.parse(x.data);
     if (x.col === "gastos" && !veGastos) d = null;
+    if (x.col === "productos" && !veCosto && d) delete d.costo;
     if (x.col === "clientes" && !veClientes && d) d = { id: d.id, nombre: d.nombre, ...(d._borrado ? { _borrado: true } : {}) };
     if (d && r[x.col] && !d.espera) r[x.col].push(d); // pedidos de la tienda sin pagar: el panel no los ve hasta que se pagan
     hasta = Math.max(hasta, x.actualizado);
@@ -512,6 +515,14 @@ async function lote(req, env, quien) {
   const valido = (x) => x && COLECCIONES.includes(x.col) && /^[\w.-]{1,60}$/.test(String(x.id));
   if (![...set, ...del].every(valido) || !set.every((x) => x.data && typeof x.data === "object")) return json({ ok: false, error: "datos" }, 400);
   if (![...set, ...del].every((x) => puedeEscribir(quien, x.col))) return json({ ok: false, error: "permiso" }, 403);
+  // Quien no ve el costo (feria, ventas) igual guarda productos al mover stock: se conserva el costo guardado.
+  const sinCosto = algunoDe(quien, VE_COSTO) ? [] : set.filter((x) => x.col === "productos");
+  if (sinCosto.length) {
+    const { results } = await env.DB.prepare(`SELECT id, data FROM docs WHERE col = 'productos' AND id IN (${sinCosto.map(() => "?").join(",")})`)
+      .bind(...sinCosto.map((x) => String(x.id))).all();
+    const costo = new Map(results.map((r) => [r.id, JSON.parse(r.data).costo]));
+    for (const x of sinCosto) { const { costo: _, ...resto } = x.data; x.data = costo.get(String(x.id)) ? { ...resto, costo: costo.get(String(x.id)) } : resto; }
+  }
   const ahora = Date.now();
   const ventasSet = set.filter((x) => x.col === "ventas" && Number.isInteger(x.data.estado));
   const antes = ventasSet.length ? await estadosDe(env, ventasSet.map((x) => String(x.id))) : new Map();

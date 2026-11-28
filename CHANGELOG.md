@@ -2,6 +2,15 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.54 · 2026-11-28
+- Productos: costo y ganancia (% sobre el costo). En la ficha, el costo y la ganancia calculan el precio, y el precio recalcula la ganancia. La lista muestra costo, precio y ganancia, con el filtro "Sin costo cargado".
+- Productos: casillas para marcar varios (o todos los del filtro) y "Cambiar precios": precio con un % de ganancia sobre el costo, subir o bajar un % el precio actual, o cargar el mismo costo. Redondeo hacia arriba a $10, $50 o $100, vista previa y deshacer.
+- Inventario: unidades en stock valorizadas al costo y a precio de venta. Planilla de conteo para imprimir o bajar en Excel; la columna Contado se sube con Importar Excel y pasa a ser el stock.
+- Exportar e importar Excel con todos los productos (reemplaza "Descargar CSV"). Al importar se ve qué cambia antes de aplicar; las filas sin ID son productos nuevos y no se borra nada.
+- Reportes y gastos en pestañas: Resumen, Ventas, Productos y márgenes (ganancia por producto con el costo cargado) y Gastos (con la ganancia después de gastos).
+- Menú: Mercado Pago y Base de datos pasan al grupo "Panel Developers".
+- Servidor: el costo no lo ven las cuentas sin Productos ni Reportes (feria, ventas), y si guardan un producto el costo se conserva. La tienda no lo publica. Se sube solo al mergear.
+
 ## V0.53 · 2026-11-28
 - Panel: pantalla "Entregas y envíos" (retiro en Montevideo, agencias, costo y demora) con vista previa; la tienda la muestra en la pregunta "¿Realizan envíos?", en la ayuda de la entrega y al elegir "Envío por agencia" (servidor: GET /api/tienda, solo esos datos y los del negocio).
 - Panel: "Tamaño y material" carga esos datos a una categoría o subcategoría entera de una vez (por defecto solo donde faltan). Filtro "Sin tamaño o material" y el dato visible en la lista de productos.
