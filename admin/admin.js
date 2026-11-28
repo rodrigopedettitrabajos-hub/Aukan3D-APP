@@ -155,7 +155,7 @@ async function traerServidor() {
   const primera = !hasta, antes = pagosMp();
   const n = aplicarServidor(db, r, enviado);
   hasta = r.hasta; servidorMensajes = "mensajes" in r; // servidor anterior a V0.51: no guarda mensajes
-  if (primera && location.hash === "#mensajes") PINTAR.mensajes(); // no se repinta solo: borraría lo que se está escribiendo
+  if (primera && ["#mensajes", "#envios"].includes(location.hash)) PINTAR[location.hash.slice(1)](); // no se repinta solo: borraría lo que se está escribiendo
 
   if (!primera) { avisoPedidos(n); avisoPagosMp(antes); } // el pago va último: si llegan juntos, es el aviso que queda a la vista
   return primera ? 0 : n;
@@ -227,11 +227,11 @@ function avisar(t, deshacer) {
 // --- Navegación ---
 const VISTAS = { panel: "Panel principal", ventas: "Ventas y pedidos", feria: "Modo feria", pendientes: "Cuentas pendientes", clientes: "Clientes",
   productos: "Productos y stock", medios: "Medios de pago", usuarios: "Usuarios y comisiones", reportes: "Reportes y gastos", base: "Base de datos", mp: "Mercado Pago",
-  accesos: "Accesos al panel", mensajes: "Mensajes de WhatsApp" };
+  accesos: "Accesos al panel", mensajes: "Mensajes de WhatsApp", envios: "Entregas y envíos" };
 const PINTAR = {};
 function mostrarVista() {
   let v = location.hash.slice(1) in VISTAS ? location.hash.slice(1) : "panel";
-  if (!puede(v === "panel" ? "" : v) || ((v === "mp" || v === "accesos" || v === "base") && !API)) v = "panel";
+  if (!puede(v === "panel" ? "" : v === "envios" ? "mensajes" : v) || ((v === "mp" || v === "accesos" || v === "base") && !API)) v = "panel";
   for (const s of document.querySelectorAll(".vista")) s.hidden = s.id !== "v-" + v;
   for (const a of document.querySelectorAll(".nav a")) a.ariaCurrent = a.hash === "#" + v ? "page" : null;
   $("#crumb").textContent = VISTAS[v];
@@ -240,7 +240,7 @@ function mostrarVista() {
   pintarCampana();
 }
 addEventListener("hashchange", () => { mostrarVista(); scrollTo(0, 0); });
-const repintar = () => { const v = location.hash.slice(1); if (!["base", "mp", "accesos", "mensajes"].includes(v)) PINTAR[v in VISTAS ? v : "panel"](); pintarCampana(); };
+const repintar = () => { const v = location.hash.slice(1); if (!["base", "mp", "accesos", "mensajes", "envios"].includes(v)) PINTAR[v in VISTAS ? v : "panel"](); pintarCampana(); };
 
 // --- Campana: pedidos de la tienda en "Recibido" que todavía no se abrieron en este navegador ---
 const VISTOS = PRUEBAS ? "aukan_vistos_pruebas" : "aukan_vistos"; // los números se repiten entre la base real y la de pruebas
@@ -874,11 +874,11 @@ for (const id of ["#prod-q", "#prod-cat", "#prod-stock"]) $(id).addEventListener
 PINTAR.productos = () => {
   const q = normalizar($("#prod-q").value.trim()), cat = $("#prod-cat").value, st = $("#prod-stock").value;
   const lista = db.productos.filter((p) => (!cat || p.categoria === cat) && (!q || normalizar(`${p.nombre} ${p.subcategoria}`).includes(q))
-    && (st === "" || (st === "sin" ? !p.stock : st === "con" ? p.stock > 0 : !p.activo)));
+    && (st === "" || (st === "sin" ? !p.stock : st === "con" ? p.stock > 0 : st === "faltan" ? !(p.tamano && p.material) : !p.activo)));
   const mostrar = lista.slice(0, 60); // shortcut: muestra 60 por vez; paginar si el catálogo pasa de unos cientos
   $("#prod-lista").replaceChildren(tabla(["", "Producto", "Categoría", "#Precio", "#Stock listo", "Tienda", ""], mostrar.map((p) => el("tr", {},
     td(p.foto ? el("img", { src: foto(p.foto), alt: "", width: 44, height: 44, loading: "lazy", className: "mini-foto" }) : el("span", { className: "mini-foto vacia", textContent: "3D" })),
-    td(el("span", {}, el("b", { textContent: p.nombre }), p.subcategoria ? el("small", { textContent: p.subcategoria }) : "")), td(p.categoria),
+    td(el("span", {}, el("b", { textContent: p.nombre }), el("small", { textContent: [p.subcategoria, p.tamano, p.material].filter(Boolean).join(" · ") || "Sin tamaño ni material" }))), td(p.categoria),
     td(p.precio ? plata(p.precio) : "Consultar", "num"),
     td(el("span", { className: "stock" },
       el("button", { type: "button", className: "paso", textContent: "−", ariaLabel: `Restar stock de ${p.nombre}`, disabled: !p.stock, onclick: () => { p.stock--; guardar(); PINTAR.productos(); } }),
@@ -888,6 +888,44 @@ PINTAR.productos = () => {
     td(el("button", { type: "button", className: "btn sec chico", textContent: "Editar", onclick: () => abrirProducto(p) })))),
   "No hay productos con esos filtros."), lista.length > mostrar.length ? el("p", { className: "sub", textContent: `Se muestran 60 de ${lista.length}. Buscá para encontrar el resto.` }) : "");
 };
+// Tamaño y material a una categoría (o subcategoría) entera.
+const fl = $("#f-lote");
+const productosLote = () => db.productos.filter((p) => !p._borrado && p.categoria === fl.categoria.value && (!fl.subcategoria.value || p.subcategoria === fl.subcategoria.value));
+function contarLote() {
+  const lista = productosLote(), tocar = (k) => fl[k].value.trim() ? lista.filter((p) => !fl.soloVacios.checked || !p[k]).length : 0;
+  const t = tocar("tamano"), m = tocar("material");
+  $("#lote-cuenta").textContent = !fl.tamano.value.trim() && !fl.material.value.trim() ? `${lista.length} productos en esta selección. Escribí el tamaño, el material o los dos.`
+    : `Se carga${fl.tamano.value.trim() ? ` el tamaño en ${t}` : ""}${t && m ? " y" : ""}${fl.material.value.trim() ? ` el material en ${m}` : ""} de ${lista.length} productos.`;
+}
+function subcatsLote() {
+  const subs = [...new Set(db.productos.filter((p) => p.categoria === fl.categoria.value && p.subcategoria).map((p) => p.subcategoria))].sort();
+  fl.subcategoria.replaceChildren(el("option", { value: "", textContent: "Todas" }), ...subs.map((x) => el("option", { value: x, textContent: x })));
+  fl.subcategoria.disabled = !subs.length;
+}
+$("#lote-productos").addEventListener("click", () => {
+  fl.reset();
+  fl.categoria.replaceChildren(...cats().map((c) => el("option", { value: c, textContent: c })));
+  if ($("#prod-cat").value) fl.categoria.value = $("#prod-cat").value;
+  subcatsLote(); contarLote();
+  $("#d-lote").showModal();
+});
+fl.categoria.addEventListener("change", () => { subcatsLote(); contarLote(); });
+fl.addEventListener("input", contarLote);
+fl.addEventListener("submit", (e) => {
+  if (e.submitter?.value !== "ok") return;
+  const tam = fl.tamano.value.trim(), mat = fl.material.value.trim();
+  if (!tam && !mat) { e.preventDefault(); return contarLote(); }
+  let n = 0;
+  for (const p of productosLote()) {
+    let cambio = false;
+    if (tam && (!fl.soloVacios.checked || !p.tamano)) { p.tamano = tam; cambio = true; }
+    if (mat && (!fl.soloVacios.checked || !p.material)) { p.material = mat; cambio = true; }
+    n += cambio;
+  }
+  guardar(); PINTAR.productos();
+  avisar(n ? `Listo: actualizamos ${n} productos de ${fl.categoria.value}${fl.subcategoria.value ? " · " + fl.subcategoria.value : ""}.` : "No había productos para cambiar.");
+});
+
 let productoEdit = null, fotoNueva = null;
 const fp = $("#f-producto");
 function abrirProducto(p) {
@@ -1072,6 +1110,26 @@ PINTAR.mensajes = () => {
   }));
   previas.forEach((f) => f());
 };
+// Entregas y envíos: datos públicos para la tienda (los lee /api/tienda). Van en el mismo registro que los datos del negocio.
+const CAMPOS_ENVIO = ["retiro", "agencias", "costo", "plazo"];
+function previaEnvios() {
+  const f = $("#f-envios"), t = textosEnvio(Object.fromEntries(CAMPOS_ENVIO.map((k) => [k, f[k].value.trim()])));
+  $("#envios-faq").textContent = t.faq; $("#envios-entrega").textContent = t.entrega; $("#envios-info").textContent = t.info || "(sin datos: no se muestra nada)";
+}
+PINTAR.envios = () => {
+  const f = $("#f-envios"), n = negocioGuardado();
+  for (const k of CAMPOS_ENVIO) f[k].value = n[k] || "";
+  f.querySelector("button[type=submit]").disabled = API && !servidorMensajes;
+  previaEnvios();
+};
+$("#f-envios").addEventListener("input", previaEnvios);
+$("#f-envios").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const f = e.target, doc = { ...negocioGuardado(), ...Object.fromEntries(CAMPOS_ENVIO.map((k) => [k, f[k].value.trim()])) };
+  const i = db.mensajes.findIndex((x) => x.id === "negocio");
+  if (i < 0) db.mensajes.push(doc); else db.mensajes[i] = doc;
+  guardar(); avisar("Guardado. La tienda lo muestra en un minuto.");
+});
 $("#f-mensajes").addEventListener("submit", (e) => {
   e.preventDefault();
   const f = e.target, texto = (id) => deEditor($(`#f-mensajes .editor-msj[data-id="${id}"]`)).trim();
@@ -1079,7 +1137,7 @@ $("#f-mensajes").addEventListener("submit", (e) => {
   if (vacio) return avisar(`Escribí el mensaje de "${vacio.nombre}" o desactivalo.`);
   const poner = (doc) => { const i = db.mensajes.findIndex((x) => x.id === doc.id); if (i < 0) db.mensajes.push(doc); else db.mensajes[i] = doc; };
   for (const b of MENSAJES_BASE) poner({ id: b.id, texto: texto(b.id).slice(0, 1000), activo: f["activo-" + b.id].checked });
-  poner({ id: "negocio", ...Object.fromEntries(["negocio", "direccion", "horario", "redes"].map((k) => [k, f["negocio-" + k].value.trim()])) });
+  poner({ ...negocioGuardado(), id: "negocio", ...Object.fromEntries(["negocio", "direccion", "horario", "redes"].map((k) => [k, f["negocio-" + k].value.trim()])) });
   guardar(); avisar("Mensajes guardados. Se usan desde el próximo cambio de estado.");
 });
 
@@ -1300,7 +1358,7 @@ $("#reiniciar").addEventListener("click", () => {
 
 // --- Accesos: cuentas para entrar al panel (las crea quien tiene el permiso "accesos") ---
 const NOMBRE_PERMISO = { ventas: "Ventas y pedidos", feria: "Modo feria", pendientes: "Cuentas pendientes", clientes: "Clientes", productos: "Productos y stock",
-  reportes: "Reportes y gastos", usuarios: "Usuarios y comisiones", medios: "Medios de pago", mensajes: "Mensajes de WhatsApp", mp: "Mercado Pago", accesos: "Accesos al panel", base: "Base de datos" };
+  reportes: "Reportes y gastos", usuarios: "Usuarios y comisiones", medios: "Medios de pago", mensajes: "Mensajes y envíos", mp: "Mercado Pago", accesos: "Accesos al panel", base: "Base de datos" };
 // Plantilla para quienes prueban la app y dan feedback: todo el día a día, sin Mercado Pago, Base de datos ni Accesos, y solo en la base de pruebas.
 const PROBADOR = ["ventas", "feria", "pendientes", "clientes", "productos", "reportes", "usuarios", "medios", "mensajes"];
 const ENTORNO_TXT = { pruebas: "Solo pruebas", real: "Solo real", ambos: "Real y pruebas" };

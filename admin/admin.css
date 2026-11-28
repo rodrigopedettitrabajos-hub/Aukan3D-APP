@@ -462,3 +462,8 @@ legend { padding: 0 6px; font-weight: 600; }
 .qr-acciones[hidden] { display: none; }
 .qr-caja a.btn.wa { background: #1a9e50; border-color: #1a9e50; color: #fff; text-decoration: none; }
 @media (max-width: 700px) { .side-pie .version { display: none; } } /* la versión queda en el menú de escritorio */
+.envios-grilla { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; }
+.envios-grilla .campos { display: grid; gap: 12px; }
+.envios-grilla h2 { margin: 0 0 8px; font-size: 18px; }
+.previa-tienda { margin: 2px 0 12px; padding: 10px 12px; border-radius: 10px; background: var(--soft); font-size: 14px; }
+@media (max-width: 800px) { .envios-grilla { grid-template-columns: 1fr; } }

@@ -2,6 +2,10 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.53 · 2026-11-28
+- Panel: pantalla "Entregas y envíos" (retiro en Montevideo, agencias, costo y demora) con vista previa; la tienda la muestra en la pregunta "¿Realizan envíos?", en la ayuda de la entrega y al elegir "Envío por agencia" (servidor: GET /api/tienda, solo esos datos y los del negocio).
+- Panel: "Tamaño y material" carga esos datos a una categoría o subcategoría entera de una vez (por defecto solo donde faltan). Filtro "Sin tamaño o material" y el dato visible en la lista de productos.
+
 ## V0.52 · 2026-11-28
 - Mensajes de WhatsApp: los datos se ven como etiquetas con su nombre dentro del texto ("Nombre del cliente", "Lo que pidió"…) y se agregan tocando "+ dato" donde está el cursor. Datos nuevos: lo que pidió, entrega, lo que pagó, lo que debe, nombre del negocio, dirección, horario y redes (estos cuatro se cargan en "Datos del negocio"). Mensajes de varias líneas; una línea que solo tenía datos vacíos no se manda.
 - Script `subir-servidor.bat` (en la carpeta de Rodrigo) y acción de GitHub "Subir servidor": con los secretos CLOUDFLARE_API_TOKEN y CLOUDFLARE_ACCOUNT_ID, el servidor se sube solo al mergear cambios de api/.
