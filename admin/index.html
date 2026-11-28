@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.57">
-  <script src="../tema.js?v=0.57"></script>
+  <link rel="stylesheet" href="admin.css?v=0.58">
+  <script src="../tema.js?v=0.58"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -39,7 +39,8 @@
       <a href="#pendientes" data-permiso="pendientes">Cuentas pendientes</a>
       <a href="#clientes" data-permiso="clientes">Clientes</a>
       <p class="nav-grupo">Catálogo</p>
-      <a href="#productos" data-permiso="productos">Productos y stock</a>
+      <a href="#productos" data-permiso="productos">Productos y precios</a>
+      <a href="#stock" data-permiso="productos">Stock</a>
       <p class="nav-grupo">Administración</p>
       <a href="#reportes" data-permiso="reportes">Estadísticas</a>
       <a href="#usuarios" data-permiso="usuarios">Usuarios y comisiones</a>
@@ -149,18 +150,31 @@
       </section>
 
       <section id="v-productos" class="vista" hidden>
-        <div class="cabeza"><div><p class="eyebrow">Catálogo</p><h1>Productos y stock</h1><p class="sub">El mismo catálogo de la tienda, con costo y ganancia. Marcá productos para cambiarles el precio juntos.</p></div>
-          <div class="botones"><button class="btn sec" type="button" id="inventario">Inventario</button><button class="btn sec" type="button" id="bajar-excel">Exportar Excel</button><button class="btn sec" type="button" id="subir-excel">Importar Excel</button><input id="excel-input" type="file" accept=".xlsx,.csv" class="sr" tabindex="-1" aria-hidden="true"><button class="btn sec" type="button" id="lote-productos">Tamaño y material</button><button class="btn" type="button" id="nuevo-producto">+ Producto</button></div></div>
+        <div class="cabeza"><div><p class="eyebrow">Catálogo</p><h1>Productos y precios</h1><p class="sub">El catálogo de la tienda con costo, precio y ganancia. Marcá productos para cambiarles el precio juntos.</p></div>
+          <div class="botones"><button class="btn sec" type="button" id="bajar-excel">Exportar Excel</button><button class="btn sec" type="button" id="subir-excel">Importar Excel</button><input id="excel-input" type="file" accept=".xlsx,.csv" class="sr" tabindex="-1" aria-hidden="true"><button class="btn sec" type="button" id="lote-productos">Tamaño y material</button><button class="btn" type="button" id="nuevo-producto">+ Producto</button></div></div>
         <div class="filtros">
           <input id="prod-q" type="search" placeholder="Buscar producto" aria-label="Buscar productos">
           <select id="prod-cat" aria-label="Categoría"><option value="">Todas las categorías</option></select>
-          <select id="prod-stock" aria-label="Stock"><option value="">Con y sin stock</option><option value="sin">Sin stock (se imprime a pedido)</option><option value="con">Con stock</option><option value="oculto">Ocultos en la tienda</option><option value="faltan">Sin tamaño o material</option><option value="sincosto">Sin costo cargado</option></select>
+          <select id="prod-stock" aria-label="Mostrar"><option value="">Todos</option><option value="oculto">Ocultos en la tienda</option><option value="sincosto">Sin costo cargado</option><option value="sinprecio">Sin precio (Consultar)</option><option value="faltan">Sin tamaño o material</option></select>
         </div>
         <div class="barra-sel caja" id="prod-sel" hidden>
           <strong id="prod-sel-n" aria-live="polite"></strong>
           <span class="acciones"><button class="btn chico" type="button" id="sel-precios">Cambiar precios</button><button class="btn sec chico" type="button" id="sel-limpiar">Quitar selección</button></span>
         </div>
         <div id="prod-lista"></div>
+      </section>
+
+      <section id="v-stock" class="vista" hidden>
+        <div class="cabeza"><div><p class="eyebrow">Catálogo</p><h1>Stock</h1><p class="sub">Lo que tenés hecho y listo para entregar, valorizado al costo y a precio de venta. Sin stock, el producto se imprime a pedido.</p></div>
+          <div class="botones"><button class="btn sec" type="button" id="inv-excel">Planilla de conteo en Excel</button><button class="btn sec" type="button" id="inv-subir">Subir conteo</button><button class="btn" type="button" id="inv-imprimir">Imprimir planilla</button></div></div>
+        <div class="kpis" id="inv-kpis"></div>
+        <div class="filtros">
+          <input id="stock-q" type="search" placeholder="Buscar producto" aria-label="Buscar en stock">
+          <select id="stock-cat" aria-label="Categoría"><option value="">Todas las categorías</option></select>
+          <select id="stock-filtro" aria-label="Stock"><option value="con">Con stock</option><option value="">Todos</option><option value="sin">Sin stock (a pedido)</option></select>
+        </div>
+        <div id="stock-lista"></div>
+        <p class="sub chico">Para contar: bajá o imprimí la planilla, anotá lo que hay en la columna Contado y subila con "Subir conteo". El stock se actualiza solo.</p>
       </section>
 
       <section id="v-medios" class="vista" hidden>
@@ -407,20 +421,6 @@
   </form>
 </dialog>
 
-<dialog id="d-inventario" class="ventana ancha" aria-labelledby="d-inventario-t">
-  <form method="dialog" id="f-inventario" novalidate>
-    <header><h2 id="d-inventario-t">Inventario</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
-    <div class="filtros">
-      <select name="categoria" aria-label="Categoría"><option value="">Todas las categorías</option></select>
-      <label class="check"><input type="checkbox" name="soloStock" checked> Solo con stock</label>
-    </div>
-    <div class="kpis" id="inv-kpis"></div>
-    <div id="inv-lista"></div>
-    <p class="sub chico">Para contar: imprimí la planilla o bajala en Excel, anotá lo que hay en la columna Contado y subila con Importar Excel. El stock se actualiza solo.</p>
-    <footer><button class="btn sec" type="button" id="inv-excel">Bajar planilla en Excel</button><button class="btn" type="button" id="inv-imprimir">Imprimir planilla de conteo</button></footer>
-  </form>
-</dialog>
-
 <dialog id="d-importar" class="ventana ancha" aria-labelledby="d-importar-t">
   <form method="dialog" id="f-importar" novalidate>
     <header><h2 id="d-importar-t">Importar productos</h2><button class="x" value="cancel" formnovalidate aria-label="Cerrar">×</button></header>
@@ -591,11 +591,11 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.57"></script>
-<script src="../productos.js?v=0.57"></script>
-<script src="../catalogo.js?v=0.57"></script>
-<script src="datos.js?v=0.57"></script>
-<script src="excel.js?v=0.57"></script>
-<script src="admin.js?v=0.57"></script>
+<script src="../config.js?v=0.58"></script>
+<script src="../productos.js?v=0.58"></script>
+<script src="../catalogo.js?v=0.58"></script>
+<script src="datos.js?v=0.58"></script>
+<script src="excel.js?v=0.58"></script>
+<script src="admin.js?v=0.58"></script>
 </body>
 </html>
