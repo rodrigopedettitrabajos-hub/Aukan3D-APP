@@ -17,6 +17,7 @@ const pedir = async (ruta, { body, token, metodo, origen = ORIGEN, ip } = {}) =>
   return { r, t, j };
 };
 const unico = String(Date.now()).slice(-8);
+const deB64 = (t) => Uint8Array.from(Buffer.from(t.replace(/-/g, "+").replace(/_/g, "/"), "base64"));
 
 // Catálogo público.
 const cat = await pedir("/api/productos.csv");
@@ -194,5 +195,30 @@ assert.strictEqual((await pedir("/api/login", { body: { usuario: usu, clave: "nu
 await cu({ usuario: usu, nombre: "Probador Uno", entorno: "pruebas", permisos: PROBADOR, activo: false });
 assert.strictEqual((await pedir("/api/admin/datos?e=pruebas", { token: lp2.token })).r.status, 401);
 assert.strictEqual((await pedir("/api/login", { body: { usuario: usu, clave: re.clave }, ip: ipP })).r.status, 401);
+
+// Avisos push: alta con el WhatsApp del pedido, y al avanzar el estado el servidor llama al servicio de push con VAPID.
+const recibidos = [];
+const servicioPush = http.createServer((q, r) => { recibidos.push({ url: q.url, auth: q.headers.authorization || "" }); r.writeHead(201); r.end(); }).listen(8799);
+const { clave: vapid } = (await pedir("/api/push/clave")).j;
+assert.ok(vapid && deB64(vapid).length === 65, vapid);
+const ep = "http://localhost:8799/push/" + unico;
+const altaP = (endpoint, wa) => pedir("/api/push/alta", { body: { endpoint, pedidos: [{ numero: String(ped.j.numero), whatsapp: wa }] }, ip: "10.6.0." + (unico % 250) });
+assert.strictEqual((await altaP("https://evil.example.com/x", cliente.whatsapp)).j.error, "endpoint");
+assert.deepStrictEqual((await altaP(ep, "+598 91111111")).j.pedidos, []);
+assert.deepStrictEqual((await altaP(ep, cliente.whatsapp)).j.pedidos, [String(ped.j.numero)]);
+const vPush = (await pedir("/api/admin/datos", { token })).j.ventas.find((v) => String(v.numero) === String(ped.j.numero));
+assert.ok((await pedir("/api/admin/lote", { token, body: { set: [{ col: "ventas", id: String(vPush.numero), data: { ...vPush, estado: 2 } }] } })).j.ok);
+for (let i = 0; i < 20 && !recibidos.length; i++) await new Promise((r) => setTimeout(r, 100));
+assert.strictEqual(recibidos.length, 1, "push enviado");
+const [, jwt, k] = recibidos[0].auth.match(/^vapid t=([^,]+), k=(.+)$/) || [];
+assert.strictEqual(k, vapid);
+const [h, c, f] = jwt.split(".");
+const pub = await crypto.subtle.importKey("raw", deB64(vapid), { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
+assert.ok(await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, pub, deB64(f), new TextEncoder().encode(h + "." + c)), "firma VAPID");
+assert.strictEqual(JSON.parse(new TextDecoder().decode(deB64(c))).aud, "http://localhost:8799");
+const ult = (await pedir("/api/push/ultimo", { body: { endpoint: ep } })).j.aviso;
+assert.ok(ult && ult.numero === String(ped.j.numero) && /impresión/.test(ult.texto), JSON.stringify(ult));
+assert.strictEqual((await pedir("/api/push/ultimo", { body: { endpoint: ep + "x" } })).j.aviso, null);
+servicioPush.close();
 
 console.log("api ok");

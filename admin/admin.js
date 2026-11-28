@@ -41,7 +41,12 @@ const leerSesion = () => { try { return sessionStorage.getItem(SESION) || ""; } 
 const TODOS = ["ventas", "feria", "pendientes", "clientes", "productos", "reportes", "usuarios", "medios", "mp", "accesos", "base"];
 function cuentaActual() {
   if (!API) return { nombre: "Administrador", permisos: TODOS.filter((x) => !["base", "mp", "accesos"].includes(x)), real: true, pruebas: false };
-  try { return JSON.parse(sessionStorage.getItem(CUENTA)) || { permisos: [] }; } catch { return { permisos: [] }; }
+  let c = null, u = "";
+  try { c = JSON.parse(sessionStorage.getItem(CUENTA)); u = sessionStorage.getItem(USUARIO) || ""; } catch { /* sin almacenamiento */ }
+  if (c?.permisos?.length || (c && c.usuario && c.usuario !== "dev" && c.nombre)) return c;
+  // Sesión de antes de V0.49 o servidor sin actualizar (no manda permisos): las cuentas fijas tienen todo.
+  const dev = (c?.usuario || u) === "dev";
+  return { usuario: c?.usuario || u, nombre: dev ? "Dev" : "Administrador", permisos: dev ? TODOS : TODOS.filter((x) => x !== "base"), real: true, pruebas: dev };
 }
 const puede = (x) => !x || cuentaActual().permisos?.includes(x);
 const conSesion = () => (API ? !!leerSesion() : leerSesion() === "1");
@@ -88,8 +93,9 @@ $("#f-login").addEventListener("submit", async (e) => {
       }
       const cuenta = { usuario: r.usuario, nombre: r.nombre, permisos: r.permisos || [], real: r.real, pruebas: r.pruebas, cambiarClave: !!r.cambiarClave };
       try { sessionStorage.setItem(SESION, r.token); sessionStorage.setItem(USUARIO, r.usuario || ""); sessionStorage.setItem(CUENTA, JSON.stringify(cuenta)); } catch { /* sin almacenamiento */ }
-      if (PRUEBAS && !r.pruebas) return cambiarEntorno(false); // cada cuenta entra solo a las bases que tiene
-      if (!PRUEBAS && !r.real) return cambiarEntorno(true);
+      const yo = cuentaActual(); // con servidor viejo (sin permisos en la respuesta) toma los de la cuenta fija
+      if (PRUEBAS && !yo.pruebas) return cambiarEntorno(false); // cada cuenta entra solo a las bases que tiene
+      if (!PRUEBAS && !yo.real) return cambiarEntorno(true);
       f.reset();
       await traerServidor();
       mostrarApp();

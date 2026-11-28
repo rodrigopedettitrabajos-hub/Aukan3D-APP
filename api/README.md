@@ -13,6 +13,7 @@ Plan gratis: alcanza de sobra para la tienda.
 - `GET /api/admin/mp`, `POST /api/admin/mp`: estado de Mercado Pago (cuenta, modo, últimos 30 cobros) y carga de la credencial. Admin y dev ven la misma: se guarda en la tabla `ajustes` de la base real y nunca vuelve al navegador (solo los últimos 4 caracteres). Si no hay, usa el secreto `MP_ACCESS_TOKEN`.
 - `POST /api/admin/mp/cobro`: link de pago (para el QR del panel) por la seña o el saldo de un pedido.
 - `GET/POST /api/admin/cuentas`, `POST /api/admin/cuentas/clave` (permiso Accesos): cuentas del panel con permisos por sección y base (real, pruebas o ambas). Al crear o reiniciar devuelve una contraseña temporal una sola vez.
+- `GET /api/push/clave`, `POST /api/push/alta`, `POST /api/push/ultimo`: avisos push al cliente (claves VAPID creadas solas en `ajustes`; suscripciones en la tabla `push` de cada base). El push va vacío y el service worker pide el texto.
 - `POST /api/admin/mi-clave`: la cuenta cambia su contraseña (obligatorio después de una temporal).
 - Permisos: cada pedido relee la cuenta; desactivarla corta la sesión al instante. Escribir una colección pide su permiso (ver `ESCRIBE` en src/index.js); Mercado Pago, Base de datos y Accesos piden el suyo. Las cuentas fijas (ADMIN_USUARIO y dev) siguen con los secretos.
 - `POST /api/mp/aviso`: aviso de Mercado Pago (webhook). Va en cada link de pago como `notification_url`, no hace falta configurarlo en Mercado Pago. Pide el pago a Mercado Pago y, si está aprobado, lo anota una sola vez en el pedido `AUKAN-N°`.
