@@ -16,7 +16,7 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 "Open Sans", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
-h1, h2, h3, .btn, .kpi strong, .brand strong, .nav a, .login h1 { font-family: Oswald, "Arial Narrow", sans-serif; letter-spacing: .02em; }
+h1, h2, h3, .btn, .kpi strong, .brand strong, .login h1 { font-family: Oswald, "Arial Narrow", sans-serif; letter-spacing: .02em; }
 h1, h2, h3 { font-weight: 600; }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -41,11 +41,12 @@ button { cursor: pointer; }
 .brand strong span { color: var(--brand); }
 .brand small { font-size: 11px; letter-spacing: .3em; color: #9aa0a6; }
 .nav { display: grid; gap: 2px; }
-.nav a { color: #c8cacd; text-decoration: none; padding: 10px 12px; border-radius: 10px; font-size: 15px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
+.nav a { color: #e6e8ea; text-decoration: none; padding: 9px 12px; border-radius: 10px; font-size: 15px; font-weight: 600; }
 .nav a:hover { background: rgb(255 255 255 / .08); color: #fff; }
 .nav a[aria-current="page"] { background: rgb(3 146 202 / .18); color: #fff; box-shadow: inset 3px 0 0 var(--brand); }
-.nav-grupo { margin: 14px 12px 4px; color: #7d838a; font: 600 11px Oswald, sans-serif; letter-spacing: .18em; text-transform: uppercase; }
-.nav-sep { border: 0; border-top: 1px solid #2a2d31; margin: 14px 6px 10px; width: auto; }
+.nav-grupo { display: flex; align-items: center; gap: 10px; margin: 18px 12px 6px; color: #5cc4ee; font: 600 12px Oswald, sans-serif; letter-spacing: .14em; text-transform: uppercase; }
+.nav-grupo::after { content: ""; flex: 1; border-top: 1px solid #3a3e44; }
+.nav-sep { border: 0; border-top: 1px solid #3a3e44; margin: 14px 6px 10px; width: auto; }
 .nav a.nav-feria { border: 1px solid var(--brand); color: #fff; display: flex; align-items: center; gap: 8px; }
 .nav a.nav-feria::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); flex: none; }
 .nav a.nav-feria:hover, .nav a.nav-feria[aria-current="page"] { background: var(--brand); color: #fff; box-shadow: none; }
