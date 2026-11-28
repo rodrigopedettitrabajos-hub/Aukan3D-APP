@@ -363,8 +363,10 @@ function pintarAlertas() {
   if (puede("productos")) {
     const listos = db.avisos.filter((x) => !x._borrado && !x.avisado && productoDe(x.producto)?.stock > 0).length;
     if (listos) a.push([`${plural(listos, "cliente")} ${listos === 1 ? "espera" : "esperan"} aviso: ya tenés stock de lo que pidieron.`, "#stock", "Avisar"]);
+    const bajos = db.productos.filter(bajoMinimo);
+    if (bajos.length) a.push([`Stock bajo: ${bajos.length === 1 ? bajos[0].nombre + " tiene" : plural(bajos.length, "producto") + " tienen"} menos que el mínimo.`, "#stock", "Ver", () => { $("#stock-filtro").value = "bajo"; }]);
   }
-  $("#panel-alertas").replaceChildren(...a.map(([t, href, accion]) => el("p", { className: "alerta" }, el("span", { textContent: t }), el("a", { href, textContent: accion }))));
+  $("#panel-alertas").replaceChildren(...a.map(([t, href, accion, antes]) => el("p", { className: "alerta" }, el("span", { textContent: t }), el("a", { href, textContent: accion, onclick: antes }))));
 }
 PINTAR.panel = () => {
   pintarAlertas();
@@ -1069,7 +1071,7 @@ for (const id of ["#stock-q", "#stock-cat", "#stock-filtro"]) $(id).addEventList
 const productosStock = () => {
   const q = normalizar($("#stock-q").value.trim()), cat = $("#stock-cat").value, f = $("#stock-filtro").value;
   return db.productos.filter((p) => !p._borrado && (!cat || p.categoria === cat) && (!q || normalizar(`${p.nombre} ${p.subcategoria}`).includes(q))
-    && (f === "" || (f === "con" ? p.stock > 0 : !p.stock))).sort((a, b) => a.categoria.localeCompare(b.categoria) || a.nombre.localeCompare(b.nombre));
+    && (f === "" || (f === "con" ? p.stock > 0 : f === "bajo" ? bajoMinimo(p) : !p.stock))).sort((a, b) => a.categoria.localeCompare(b.categoria) || a.nombre.localeCompare(b.nombre));
 };
 // "Avisame cuando esté listo" (tienda): los que esperan un producto; con stock cargado se les avisa por WhatsApp.
 const TIENDA = new URL("../", location.href).href;
@@ -1104,7 +1106,7 @@ PINTAR.stock = () => {
     kpi("Valor al costo", plata(t.costo), t.sinCosto ? `${plural(t.sinCosto, "producto")} sin costo` : "Lo que te costó"),
     kpi("Valor de venta", plata(t.venta), "A precio de la tienda"), kpi("Ganancia posible", plata(t.venta - t.costo), "Venta menos costo", "verde"));
   const lista = productosStock(), mostrar = lista.slice(0, 60);
-  $("#stock-lista").replaceChildren(tabla(["", "Producto", "Categoría", "#Costo", "#Precio", "#Stock listo", "#Valor costo", "#Valor venta"], mostrar.map((p) => el("tr", {},
+  $("#stock-lista").replaceChildren(tabla(["", "Producto", "Categoría", "#Costo", "#Precio", "#Stock listo", "#Mínimo", "#Valor costo", "#Valor venta"], mostrar.map((p) => el("tr", { className: bajoMinimo(p) ? "bajo" : "" },
     td(p.foto ? el("img", { src: foto(p.foto), alt: "", width: 44, height: 44, loading: "lazy", className: "mini-foto" }) : el("span", { className: "mini-foto vacia", textContent: "3D" })),
     td(el("span", {}, el("b", { textContent: p.nombre }), p.subcategoria ? el("small", { textContent: p.subcategoria }) : "")), td(p.categoria),
     td(p.costo ? plata(p.costo) : "—", "num"), td(p.precio ? plata(p.precio) : "—", "num"),
@@ -1112,6 +1114,8 @@ PINTAR.stock = () => {
       el("button", { type: "button", className: "paso", textContent: "−", ariaLabel: `Restar stock de ${p.nombre}`, disabled: !p.stock, onclick: () => { p.stock--; guardar(); PINTAR.stock(); } }),
       el("b", { textContent: p.stock || 0 }),
       el("button", { type: "button", className: "paso", textContent: "+", ariaLabel: `Sumar stock de ${p.nombre}`, onclick: () => { p.stock = (p.stock || 0) + 1; guardar(); PINTAR.stock(); } })), "num"),
+    td(el("input", { type: "number", min: 0, step: 1, inputMode: "numeric", className: "minimo", value: p.minimo || "", placeholder: "—", ariaLabel: `Stock mínimo de ${p.nombre}`,
+      onchange: (e) => { p.minimo = Math.max(Math.round(+e.target.value || 0), 0); guardar(); PINTAR.stock(); } }), "num"),
     td(plata((p.stock || 0) * (p.costo || 0)), "num"), td(plata((p.stock || 0) * (p.precio || 0)), "num"))),
   $("#stock-filtro").value === "con" ? "No hay productos con stock con esos filtros. Usá + en \"Todos\" para cargar lo que tenés hecho." : "No hay productos con esos filtros.", "t-stock"),
   lista.length > mostrar.length ? el("p", { className: "sub", textContent: `Se muestran 60 de ${lista.length}. Buscá para encontrar el resto; la planilla los incluye todos.` }) : "");
@@ -1223,7 +1227,7 @@ function abrirProducto(p) {
   productoEdit = p; fotoNueva = null;
   fp.reset();
   for (const k of ["nombre", "categoria", "subcategoria", "tamano", "material"]) fp[k].value = p?.[k] || "";
-  fp.precio.value = p?.precio || ""; fp.stock.value = p?.stock || ""; fp.costo.value = p?.costo || "";
+  fp.precio.value = p?.precio || ""; fp.stock.value = p?.stock || ""; fp.costo.value = p?.costo || ""; fp.minimo.value = p?.minimo || "";
   fp.ganancia.value = p ? gananciaPct(p) ?? "" : ""; gananciaForm();
   fp.activo.checked = p ? p.activo : true;
   $("#lista-cats").replaceChildren(...cats().map((c) => el("option", { value: c })));
@@ -1279,7 +1283,7 @@ fp.addEventListener("submit", (e) => {
   if (!d.nombre.trim() || !d.categoria.trim()) return error("Poné nombre y categoría.");
   const p = productoEdit || { id: String(Math.max(0, ...db.productos.map((x) => +x.id || 0)) + 1), foto: "" };
   Object.assign(p, { nombre: d.nombre.trim(), categoria: d.categoria.trim(), subcategoria: d.subcategoria.trim(), tamano: d.tamano.trim(), material: d.material.trim(),
-    precio: Math.max(Math.round(+d.precio || 0), 0), costo: Math.max(Math.round(+d.costo || 0), 0), stock: Math.max(Math.round(+d.stock || 0), 0), activo: fp.activo.checked });
+    precio: Math.max(Math.round(+d.precio || 0), 0), costo: Math.max(Math.round(+d.costo || 0), 0), stock: Math.max(Math.round(+d.stock || 0), 0), minimo: Math.max(Math.round(+d.minimo || 0), 0), activo: fp.activo.checked });
   if (fotoNueva && API) { p.foto = fotoNueva; p.fotoV = (p.fotoV || 0) + 1; } // el servidor la publica para la tienda
   else if (fotoNueva) {
     // Demo: la foto nueva se baja con el nombre que usa el CSV, para subirla a fotos/ del sitio.

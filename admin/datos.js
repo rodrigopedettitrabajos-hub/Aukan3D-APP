@@ -9,6 +9,8 @@ const hoy = () => diaLocal();
 const mesDe = (fecha) => (fecha.length > 10 ? diaLocal(new Date(fecha)) : fecha).slice(0, 7); // fecha y hora ISO o "AAAA-MM-DD"
 
 const DESCUENTO = "descuento"; // renglón de descuento (código) dentro de los items: el total ya lo resta; no es un producto
+// Stock bajo: el producto tiene un mínimo (lo que querés tener hecho) y hay menos que eso.
+const bajoMinimo = (p) => !p._borrado && p.minimo > 0 && (p.stock || 0) < p.minimo;
 const totalVenta = (v) => v.items.reduce((s, i) => s + i.precio * i.cant, 0);
 const cobrado = (v) => v.pagos.reduce((s, p) => s + p.monto, 0);
 const saldo = (v) => Math.max(totalVenta(v) - cobrado(v), 0);
@@ -347,6 +349,6 @@ function mensajeDe(db, v, nombre, plata, extra = {}) {
   return m.activo ? armarMensaje(m.texto, v, nombre, plata, { ...NEGOCIO_BASE, ...(db.mensajes || []).find((x) => x.id === "negocio"), ...extra }) : "";
 }
 
-if (typeof module !== "undefined") module.exports = { ESTADOS, totalVenta, cobrado, saldo, porMoneda, catalogoDesdeCsv, precioConGanancia, gananciaPct, inventario, margenes, resumenResenas, productosAFilas, inventarioAFilas, numeroCelda, filasAProductos,
+if (typeof module !== "undefined") module.exports = { ESTADOS, bajoMinimo, totalVenta, cobrado, saldo, porMoneda, catalogoDesdeCsv, precioConGanancia, gananciaPct, inventario, margenes, resumenResenas, productosAFilas, inventarioAFilas, numeroCelda, filasAProductos,
   resumenMes, resumenRango, serieVentas, masVendidos, comisiones, registrarPago, datosEjemplo, nuevoNumero, mesDe, suma, hoy, importarPedidosWeb,
   dbVacia, cambiosDb, marcarEnviado, aplicarServidor, resumenCaja, cajaAbierta, esEfectivo, MENSAJES_BASE, NEGOCIO_BASE, DATOS_MENSAJE, claveMensaje, armarMensaje, mensajeDe };

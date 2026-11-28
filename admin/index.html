@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.75">
-  <script src="../tema.js?v=0.75"></script>
+  <link rel="stylesheet" href="admin.css?v=0.76">
+  <script src="../tema.js?v=0.76"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -176,10 +176,10 @@
         <div class="filtros">
           <input id="stock-q" type="search" placeholder="Buscar producto" aria-label="Buscar en stock">
           <select id="stock-cat" aria-label="Categoría"><option value="">Todas las categorías</option></select>
-          <select id="stock-filtro" aria-label="Stock"><option value="con">Con stock</option><option value="">Todos</option><option value="sin">Sin stock (a pedido)</option></select>
+          <select id="stock-filtro" aria-label="Stock"><option value="con">Con stock</option><option value="">Todos</option><option value="sin">Sin stock (a pedido)</option><option value="bajo">Bajo el mínimo</option></select>
         </div>
         <div id="stock-lista"></div>
-        <p class="sub chico">Para contar: bajá o imprimí la planilla, anotá lo que hay en la columna Contado y subila con "Importar inventario". El stock se actualiza solo.</p>
+        <p class="sub chico">Mínimo: cuántos querés tener hechos. Si hay menos, el producto se marca y aparece un aviso en el panel principal. Para contar: bajá o imprimí la planilla, anotá lo que hay en la columna Contado y subila con "Importar inventario". El stock se actualiza solo.</p>
       </section>
 
       <section id="v-cupones" class="vista" hidden>
@@ -502,6 +502,7 @@
         <label>Precio ($) <input name="precio" type="number" min="0" step="1" inputmode="numeric" placeholder="Vacío = Consultar"></label>
         <p class="sub chico" id="producto-ganancia" aria-live="polite"></p>
         <label>Stock listo <input name="stock" type="number" min="0" step="1" inputmode="numeric" placeholder="0 = a pedido"></label>
+        <label>Stock mínimo <input name="minimo" type="number" min="0" step="1" inputmode="numeric" placeholder="Sin alerta"></label>
         <label>Tamaño <input name="tamano" maxlength="40" placeholder="Ej. 12 cm de alto"></label>
         <label>Material <input name="material" maxlength="40" placeholder="Ej. PLA"></label>
         <label class="check todo"><input name="activo" type="checkbox"> Se muestra en la tienda</label>
@@ -649,11 +650,11 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.75"></script>
-<script src="../productos.js?v=0.75"></script>
-<script src="../catalogo.js?v=0.75"></script>
-<script src="datos.js?v=0.75"></script>
-<script src="excel.js?v=0.75"></script>
-<script src="admin.js?v=0.75"></script>
+<script src="../config.js?v=0.76"></script>
+<script src="../productos.js?v=0.76"></script>
+<script src="../catalogo.js?v=0.76"></script>
+<script src="datos.js?v=0.76"></script>
+<script src="excel.js?v=0.76"></script>
+<script src="admin.js?v=0.76"></script>
 </body>
 </html>
