@@ -339,6 +339,10 @@ function filaVenta(v, extra = []) {
   return tr;
 }
 const CAB_VENTAS = ["Pedido", "Fecha", "Cliente", "#Total", "#Saldo", "Estado"];
+// Comprobante del pedido: abre la impresión, donde también se guarda como PDF ("Guardar como PDF").
+const botonImp = (v, formato, texto, nombre) => el("button", { type: "button", className: "btn sec chico", textContent: texto, title: `Comprobante ${nombre}: imprimir o guardar como PDF`,
+  ariaLabel: `Comprobante del pedido ${v.numero} en ${nombre}`, onclick: () => imprimirPedido(v.numero, formato) });
+const celdaComprobante = (v) => td(el("span", { className: "imp-formatos" }, botonImp(v, "a4", "A4", "A4"), botonImp(v, "80", "80 mm", "ticket de 80 mm")), "num");
 
 // --- Panel principal ---
 PINTAR.panel = () => {
@@ -355,7 +359,7 @@ PINTAR.panel = () => {
   const unidades = {};
   for (const v of r.ventas) for (const i of v.items) unidades[i.nombre] = (unidades[i.nombre] || 0) + i.cant;
   $("#top").replaceChildren(barras(Object.entries(unidades).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n, c]) => [n, c, String(c)])));
-  $("#ultimas").replaceChildren(tabla(CAB_VENTAS, db.ventas.slice(0, 6).map((v) => filaVenta(v)), "Todavía no hay ventas.", "t-ventas"));
+  $("#ultimas").replaceChildren(tabla([...CAB_VENTAS, "#Comprobante"], db.ventas.slice(0, 6).map((v) => filaVenta(v, [celdaComprobante(v)])), "Todavía no hay ventas.", "t-ventas"));
 };
 
 // --- Ventas ---
@@ -366,9 +370,7 @@ PINTAR.ventas = () => {
   const lista = db.ventas.filter((v) => (!org || v.origen === org)
     && (est === "" || (est === "saldo" ? saldo(v) > 0 : v.estado === +est))
     && (!q || normalizar([v.numero, cliente(v.cliente).nombre, ...v.items.map((i) => i.nombre)].join(" ")).includes(q)));
-  const boton = (v, formato, texto, nombre) => el("button", { type: "button", className: "btn sec chico", textContent: texto, ariaLabel: `Imprimir pedido ${v.numero} en ${nombre}`, onclick: () => imprimirPedido(v.numero, formato) });
-  const imp = (v) => td(el("span", { className: "imp-formatos" }, boton(v, "a4", "A4", "A4"), boton(v, "80", "80 mm", "ticket de 80 mm")), "num");
-  $("#ventas-lista").replaceChildren(tabla([...CAB_VENTAS, "#Imprimir"], lista.map((v) => filaVenta(v, [imp(v)])), "No hay ventas con esos filtros.", "t-ventas"));
+  $("#ventas-lista").replaceChildren(tabla([...CAB_VENTAS, "#Comprobante"], lista.map((v) => filaVenta(v, [celdaComprobante(v)])), "No hay ventas con esos filtros.", "t-ventas"));
 };
 
 // Hoja del pedido para imprimir (o guardar como PDF), en A4 o en ticket de 80 mm. Se arma en #imprimir y el CSS de

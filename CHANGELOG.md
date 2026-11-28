@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.63 · 2026-11-28
+- Panel principal: "Últimas ventas" suma la columna Comprobante (A4 o ticket de 80 mm), igual que Ventas y pedidos. Se imprime o se guarda como PDF.
+
 ## V0.62 · 2026-11-28
 - Menú del panel: los grupos arrancan plegados. Se ve abierto solo el de la pantalla actual y los que abras vos (se recuerda en ese navegador).
 
