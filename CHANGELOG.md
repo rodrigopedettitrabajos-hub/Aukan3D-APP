@@ -2,6 +2,12 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.68 · 2026-11-28
+- Tienda, carrito: el encabezado "Tu pedido" ya no queda tapado por los campos al bajar, y en el celular el carrito ocupa todo el ancho (antes quedaba una franja de la tienda a la izquierda).
+- Tienda: al entrar por un link a Eventos o Preguntas frecuentes el título ya no queda escondido abajo del encabezado.
+- Tienda: "seña del 50 %" no se corta dejando el "%" solo en otra línea.
+- Panel, Entregas y envíos: ejemplos más cortos para que no se corten en el celular.
+
 ## V0.67 · 2026-11-28
 - Medios de pago con íconos (efectivo, banco/transferencia, Mercado Pago, tarjeta y uno genérico para los demás), según el nombre. Se ven en Medios de pago y en los botones de "Cómo paga" del Modo feria.
 
