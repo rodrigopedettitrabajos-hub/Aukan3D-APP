@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.43 · 2026-11-28
+- Mercado Pago: el link de pago ya no lleva el mail del cliente. Con una cuenta de prueba, un mail real hacía fallar el pago con "Una de las partes con la que intentas hacer el pago es de prueba".
+
 ## V0.42 · 2026-11-28
 - Mercado Pago: el nombre largo de la cuenta ya no se sale de su recuadro (los recuadros de números cortan el texto largo en vez de desbordar).
 
