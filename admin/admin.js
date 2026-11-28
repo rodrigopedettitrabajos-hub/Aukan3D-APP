@@ -1255,6 +1255,125 @@ fp.addEventListener("submit", (e) => {
   guardar(); repintar();
   avisar(fotoNueva && !API ? "Producto guardado. La foto se descargó para subirla a la carpeta fotos." : "Producto guardado.");
 });
+// --- Carga rápida: muchos productos de una vez, desde fotos o una lista pegada ---
+const fc = $("#f-carga");
+const MAX_CARGA = 60; // por tanda: las fotos viajan dentro del producto (~140 KB cada una)
+let cargaFotos = [], cargaFilas = [], cargaPaso = 1, cargaOcupada = false;
+const numeroLibre = (s) => { const n = +String(s ?? "").replace(/[$\s.]/g, "").replace(",", "."); return Number.isFinite(n) && n > 0 ? Math.round(n) : 0; };
+// "pikachu-gorra.jpg" → "PIKACHU GORRA"; los nombres de cámara (IMG_1234) quedan vacíos para completarlos.
+const nombreDeArchivo = (f) => { const t = f.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim(); return /^(img|dsc|pxl|whatsapp image|photo|foto)\b/i.test(t) ? "" : t.toUpperCase(); };
+function cargaMostrarPaso(n) {
+  cargaPaso = n;
+  $("#carga-1").hidden = n !== 1; $("#carga-2").hidden = n !== 2;
+  $("#carga-paso").textContent = `Paso ${n} de 2`;
+  $("#d-carga-t").textContent = n === 1 ? "Carga rápida de productos" : "Revisá y completá";
+  $("#carga-volver").textContent = n === 1 ? "Cancelar" : "Volver";
+  $("#carga-ok").textContent = n === 1 ? "Siguiente: precios y stock" : `Guardar ${cargaFilas.length} ${cargaFilas.length === 1 ? "producto" : "productos"}`;
+  $("#carga-error").textContent = "";
+}
+$("#carga-rapida").addEventListener("click", () => {
+  fc.reset(); cargaFotos = []; cargaFilas = [];
+  $("#lista-cats").replaceChildren(...cats().map((c) => el("option", { value: c })));
+  pintarMinis(); cargaMostrarPaso(1);
+  $("#d-carga").showModal();
+});
+function pintarMinis() {
+  $("#carga-fotos-n").textContent = cargaFotos.length ? `${cargaFotos.length} ${cargaFotos.length === 1 ? "foto elegida" : "fotos elegidas"}` : "";
+  $("#carga-minis").replaceChildren(...cargaFotos.map((f, i) => el("figure", {}, el("img", { src: f.foto, alt: f.nombre || "Foto sin nombre" }),
+    el("button", { type: "button", className: "x", textContent: "×", ariaLabel: `Quitar ${f.nombre || "foto"}`, onclick: () => { cargaFotos.splice(i, 1); pintarMinis(); } }))));
+}
+async function cargaSumarFotos(files) {
+  const lista = [...files].filter((f) => /^image\/(jpeg|png|webp)$/.test(f.type)).slice(0, MAX_CARGA - cargaFotos.length);
+  if (!lista.length) { $("#carga-fotos-n").textContent = cargaFotos.length >= MAX_CARGA ? `Hasta ${MAX_CARGA} fotos por tanda.` : "Elegí fotos JPG, PNG o WebP."; return; }
+  cargaOcupada = true; $("#carga-ok").disabled = true;
+  let malas = 0;
+  for (const [i, f] of lista.entries()) {
+    $("#carga-fotos-n").textContent = `Optimizando ${i + 1} de ${lista.length}…`;
+    try { cargaFotos.push({ foto: await optimizarFoto(f), nombre: nombreDeArchivo(f.name) }); } catch { malas++; }
+  }
+  cargaOcupada = false; $("#carga-ok").disabled = false;
+  pintarMinis();
+  if (malas) $("#carga-fotos-n").textContent += ` · ${malas} no se pudieron leer`;
+}
+$("#carga-fotos").addEventListener("change", (e) => { cargaSumarFotos(e.target.files); e.target.value = ""; });
+const zona = $(".carga-zona");
+zona.addEventListener("dragover", (e) => { e.preventDefault(); zona.classList.add("encima"); });
+zona.addEventListener("dragleave", () => zona.classList.remove("encima"));
+zona.addEventListener("drop", (e) => { e.preventDefault(); zona.classList.remove("encima"); cargaSumarFotos(e.dataTransfer.files); });
+function cargaPrecio(f) {
+  if (f.costo > 0 && f.ganancia !== "") f.precio = precioConGanancia(f.costo, +f.ganancia, +fc.redondeo.value);
+  else if (!f.costo) f.precio = 0;
+}
+function cargaResumen() {
+  const existen = new Set(db.productos.filter((p) => !p._borrado).map((p) => normalizar(p.nombre).trim()));
+  let conPrecio = 0, sinCosto = 0, repetidos = 0, stock = 0;
+  for (const [i, f] of cargaFilas.entries()) {
+    const fila = $("#carga-filas").children[i], rep = !!f.nombre && existen.has(normalizar(f.nombre).trim());
+    if (f.precio > 0) conPrecio++; if (!f.costo) sinCosto++; if (rep) repetidos++; stock += f.stock;
+    fila.classList.toggle("falta", !f.costo); fila.classList.toggle("repetido", rep);
+    fila.querySelector("[name=c-precio]").value = f.precio || "";
+  }
+  $("#carga-resumen").replaceChildren(
+    el("span", {}, el("b", { textContent: cargaFilas.length }), " productos"), el("span", {}, el("b", { textContent: conPrecio }), " con precio"),
+    sinCosto ? el("span", { className: "ojo" }, el("b", { textContent: sinCosto }), " sin costo: queda \"Consultar\"") : "",
+    repetidos ? el("span", { className: "ojo" }, el("b", { textContent: repetidos }), " con un nombre que ya existe") : "",
+    el("span", {}, el("b", { textContent: stock }), " unidades de stock"));
+  $("#carga-ok").textContent = `Guardar ${cargaFilas.length} ${cargaFilas.length === 1 ? "producto" : "productos"}`;
+}
+function pintarCarga() {
+  const campo = (f, k, l, extra = {}) => el("td", { className: k === "nombre" ? "" : "num", dataset: { l } },
+    el("input", { name: "c-" + k, value: f[k] || (k === "ganancia" ? f.ganancia : ""), ariaLabel: `${l} de ${f.nombre || "producto sin nombre"}`, ...extra,
+      oninput: (e) => {
+        const v = e.target.value;
+        if (k === "nombre") f.nombre = v.trim();
+        else if (k === "precio") { f.precio = numeroLibre(v); f.ganancia = gananciaPct(f) ?? f.ganancia; e.target.closest("tr").querySelector("[name=c-ganancia]").value = f.ganancia; }
+        else if (k === "ganancia") { f.ganancia = v.trim(); cargaPrecio(f); }
+        else { f[k] = numeroLibre(v); if (k === "costo") cargaPrecio(f); }
+        if (k !== "precio") cargaResumen(); else { const pr = e.target; cargaResumen(); pr.value = v; }
+      } }));
+  const num = { inputMode: "numeric", autocomplete: "off" };
+  $("#carga-filas").replaceChildren(...cargaFilas.map((f, i) => el("tr", {},
+    el("td", { className: "foto" }, f.foto ? el("img", { src: f.foto, alt: "", width: 44, height: 44, className: "mini-foto" }) : el("span", { className: "mini-foto vacia", textContent: "3D" })),
+    campo(f, "nombre", "Nombre", { maxLength: 80, required: true, placeholder: "Nombre" }),
+    campo(f, "costo", "Costo", { ...num, placeholder: "$" }), campo(f, "ganancia", "Ganancia %", num),
+    campo(f, "precio", "Precio", { ...num, placeholder: "Consultar" }), campo(f, "stock", "Stock", num),
+    el("td", { className: "quitar" }, el("button", { type: "button", className: "x", textContent: "×", ariaLabel: `Quitar ${f.nombre || "fila"}`,
+      onclick: () => { cargaFilas.splice(i, 1); if (!cargaFilas.length) return cargaMostrarPaso(1); pintarCarga(); } })))));
+  cargaResumen();
+}
+$("#carga-aplicar").addEventListener("click", () => {
+  const g = fc.ganancia.value.trim();
+  for (const f of cargaFilas) { if (g !== "") f.ganancia = g; cargaPrecio(f); }
+  pintarCarga();
+});
+$("#carga-volver").addEventListener("click", () => (cargaPaso === 2 ? cargaMostrarPaso(1) : $("#d-carga").close()));
+fc.addEventListener("submit", (e) => {
+  if (e.submitter?.value !== "ok") return;
+  e.preventDefault();
+  const error = (t) => { $("#carga-error").textContent = t; };
+  if (cargaOcupada) return;
+  if (cargaPaso === 1) {
+    const lista = fc.lista.value.split(/\r?\n/).map((l) => l.split(/\t|;|\|/).map((x) => x.trim())).filter((c) => c[0]);
+    if (!cargaFotos.length && !lista.length) return error("Elegí fotos o pegá una lista.");
+    if (!fc.categoria.value.trim()) return error("Poné la categoría.");
+    if (cargaFotos.length + lista.length > MAX_CARGA) return error(`Hasta ${MAX_CARGA} productos por tanda.`);
+    const g = fc.ganancia.value.trim();
+    cargaFilas = [...cargaFotos.map((f) => ({ nombre: f.nombre, foto: f.foto, costo: 0, stock: 0 })),
+      ...lista.map(([n, c, s]) => ({ nombre: n.toUpperCase().slice(0, 80), foto: "", costo: numeroLibre(c), stock: numeroLibre(s) }))];
+    for (const f of cargaFilas) { f.ganancia = g; cargaPrecio(f); }
+    cargaMostrarPaso(2); pintarCarga();
+    return;
+  }
+  const sinNombre = cargaFilas.findIndex((f) => !f.nombre);
+  if (sinNombre >= 0) { error("Hay productos sin nombre."); return $("#carga-filas").children[sinNombre].querySelector("[name=c-nombre]").focus(); }
+  let id = Math.max(0, ...db.productos.map((x) => +x.id || 0));
+  const base = { categoria: fc.categoria.value.trim(), subcategoria: fc.subcategoria.value.trim(), material: fc.material.value.trim(), tamano: "", activo: true };
+  for (const f of cargaFilas) db.productos.push({ id: String(++id), ...base, nombre: f.nombre, costo: f.costo, precio: f.precio, stock: f.stock,
+    foto: f.foto, ...(f.foto ? { fotoV: 1 } : {}) });
+  const n = cargaFilas.length;
+  $("#d-carga").close(); guardar(); repintar();
+  avisar(`Se cargaron ${n} ${n === 1 ? "producto" : "productos"}.`);
+});
 // --- Medios de pago ---
 // Ícono de cada medio de pago, según su nombre (trazos simples, toman el color del texto).
 const ICONOS_MEDIO = [

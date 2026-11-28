@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.73 · 2026-11-28
+- Panel, Productos: botón "Carga rápida" para cargar muchos productos de una vez. Paso 1: elegir o arrastrar fotos (una foto = un producto, el nombre sale del archivo) y/o pegar una lista "nombre; costo; stock", con categoría y subcategoría para todos. Paso 2: tabla para revisar nombre, costo, ganancia, precio y stock, con ganancia, redondeo y material para todos. Marca en ámbar los que quedan sin costo ("Consultar") y los nombres que ya existen. Hasta 60 por tanda.
+
 ## V0.72 · 2026-11-28
 - Reseñas en la tienda: cada producto muestra sus estrellas en la tarjeta y las opiniones en el detalle, y el inicio tiene la sección "Lo que dicen nuestros clientes". Solo se publica el primer nombre del cliente (nunca el número de pedido ni el WhatsApp).
 - Panel, Reportes > Reseñas: botón "Ocultar en la tienda" / "Mostrar en la tienda" por reseña.
