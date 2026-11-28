@@ -1,6 +1,6 @@
 /* Panel de gestión: mismos colores y letras que la tienda (styles.css). */
 :root {
-  --ink: #161718; --muted: #5e6166; --line: #e3e5e8; --bg: #f4f5f6; --card: #ffffff; --soft: #f4f5f6;
+  --ink: #161718; --muted: #5e6166; --placeholder: #6d7076; --line: #e3e5e8; --bg: #f4f5f6; --card: #ffffff; --soft: #f4f5f6;
   --brand: #0392ca; --avatar-ink: #015a80; --brand-ink: #0277a6; --on-brand: #ffffff; --brand-soft: #e3f4fb;
   --ok: #1b7f45; --warn: #9a5b00; --warn-soft: #fff3dc; --error: #c62828; --ok-soft: #e4f4ea;
   --radius: 14px; --side: #000000;
@@ -8,9 +8,9 @@
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --pill-verde: #5cd38a; --pill-azul: #2bb0e6; --ink: #f1f2f3; --muted: #a3a7ad; --line: #2c2f33; --bg: #111214; --card: #1b1d20; --soft: #24272b; --brand-ink: #2bb0e6; --avatar-ink: #2bb0e6; --on-brand: #0b0c0d; --brand-soft: #0f2a36; --ok: #5cd38a; --warn: #f2b65a; --warn-soft: #33260f; --error: #ff6b6b; --ok-soft: #12291b; }
+  :root:not([data-theme="light"]) { --pill-verde: #5cd38a; --pill-azul: #2bb0e6; --ink: #f1f2f3; --muted: #a3a7ad; --placeholder: #8d9197; --line: #2c2f33; --bg: #111214; --card: #1b1d20; --soft: #24272b; --brand-ink: #2bb0e6; --avatar-ink: #2bb0e6; --on-brand: #0b0c0d; --brand-soft: #0f2a36; --ok: #5cd38a; --warn: #f2b65a; --warn-soft: #33260f; --error: #ff6b6b; --ok-soft: #12291b; }
 }
-:root[data-theme="dark"] { --pill-verde: #5cd38a; --pill-azul: #2bb0e6; --ink: #f1f2f3; --muted: #a3a7ad; --line: #2c2f33; --bg: #111214; --card: #1b1d20; --soft: #24272b; --brand-ink: #2bb0e6; --avatar-ink: #2bb0e6; --on-brand: #0b0c0d; --brand-soft: #0f2a36; --ok: #5cd38a; --warn: #f2b65a; --warn-soft: #33260f; --error: #ff6b6b; --ok-soft: #12291b; color-scheme: dark; }
+:root[data-theme="dark"] { --pill-verde: #5cd38a; --pill-azul: #2bb0e6; --ink: #f1f2f3; --muted: #a3a7ad; --placeholder: #8d9197; --line: #2c2f33; --bg: #111214; --card: #1b1d20; --soft: #24272b; --brand-ink: #2bb0e6; --avatar-ink: #2bb0e6; --on-brand: #0b0c0d; --brand-soft: #0f2a36; --ok: #5cd38a; --warn: #f2b65a; --warn-soft: #33260f; --error: #ff6b6b; --ok-soft: #12291b; color-scheme: dark; }
 :root[data-theme="light"] { color-scheme: light; }
 
 * { box-sizing: border-box; }
@@ -55,7 +55,8 @@ button.nav-grupo:hover { color: #8fd8f5; }
 .nav-sep { border: 0; border-top: 1px solid #3a3e44; margin: 14px 6px 10px; width: auto; }
 .nav a.nav-feria { border: 1px solid var(--brand); color: #fff; display: flex; align-items: center; gap: 8px; }
 .nav a.nav-feria::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); flex: none; }
-.nav a.nav-feria:hover, .nav a.nav-feria[aria-current="page"] { background: var(--brand); color: #fff; box-shadow: none; }
+.nav a.nav-feria:hover, .nav a.nav-feria[aria-current="page"] { background: #0277a6; border-color: #0277a6; color: #fff; box-shadow: none; } /* 4,9:1 con el blanco */
+::placeholder { color: var(--placeholder); opacity: 1; } /* 4,5:1 o más sobre los campos */
 .nav a.nav-feria[aria-current="page"]::before { background: #fff; }
 .side-pie { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 6px; }
 .side-link { color: #c8cacd; font-size: 13px; }
@@ -532,5 +533,5 @@ legend { padding: 0 6px; font-weight: 600; }
 .resena-detalle { margin-top: 8px; }
 @media (max-width: 700px) { .resenas-grilla { grid-template-columns: 1fr; } }
 @media (max-width: 700px) {
-  .t-stock th:nth-child(4), .t-stock td:nth-child(4), .t-stock th:nth-child(5), .t-stock td:nth-child(5), .t-stock th:nth-child(7), .t-stock td:nth-child(7), .t-stock th:nth-child(8), .t-stock td:nth-child(8) { display: none; }
+  .t-stock th:nth-child(3), .t-stock td:nth-child(3), .t-stock th:nth-child(4), .t-stock td:nth-child(4), .t-stock th:nth-child(5), .t-stock td:nth-child(5), .t-stock th:nth-child(7), .t-stock td:nth-child(7), .t-stock th:nth-child(8), .t-stock td:nth-child(8) { display: none; }
 }

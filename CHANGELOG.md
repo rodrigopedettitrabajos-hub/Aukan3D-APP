@@ -2,6 +2,13 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.69 · 2026-11-28
+- Arreglos de las auditorías V0.68 (ponytail, seguridad e impeccable; informes en la carpeta auditorias).
+- Modo feria con QR: el QR espera a que la venta llegue al servidor (antes, si coincidía con un guardado en curso, podía decir "La venta no llegó al servidor"). Una venta cobrada por Mercado Pago ya no ofrece "Deshacer".
+- Guardados grandes (ej. un Excel de más de 500 productos) se mandan en partes y no quedan trabados; el servidor consulta de a 90 ids (límite de D1). Hay que volver a subir el servidor (se sube solo).
+- Stock en el celular: se ve la columna de stock con − y + (antes quedaba fuera de la pantalla).
+- Contraste: "Modo feria" seleccionado en el menú y los textos de ejemplo de los campos.
+
 ## V0.68 · 2026-11-28
 - Tienda, carrito: el encabezado "Tu pedido" ya no queda tapado por los campos al bajar, y en el celular el carrito ocupa todo el ancho (antes quedaba una franja de la tienda a la izquierda).
 - Tienda: al entrar por un link a Eventos o Preguntas frecuentes el título ya no queda escondido abajo del encabezado.

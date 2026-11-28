@@ -162,14 +162,19 @@ async function traerServidor() {
 }
 function sincronizar() {
   if (enviando) { otraVez = true; return enviando; }
-  const cam = cambiosDb(db, enviado);
-  if (!cam.set.length && !cam.del.length) return Promise.resolve();
+  const todo = cambiosDb(db, enviado);
+  if (!todo.set.length && !todo.del.length) return Promise.resolve();
+  // El servidor acepta hasta 500 cambios por envío (ej. un Excel grande): el resto sale en el envío siguiente.
+  const cam = { set: todo.set.slice(0, 400), del: todo.del.slice(0, Math.max(0, 400 - todo.set.length)) };
+  const quedan = cam.set.length + cam.del.length < todo.set.length + todo.del.length;
   enviando = llamar("/api/admin/lote", { set: cam.set.map(({ col, id, data }) => ({ col, id, data })), del: cam.del })
-    .then(() => marcarEnviado(enviado, cam))
+    .then(() => { marcarEnviado(enviado, cam); if (quedan) otraVez = true; })
     .catch((e) => { if (e.message !== "sesion") avisar("No se pudo guardar en el servidor. Reintentamos en unos segundos."); })
     .finally(() => { enviando = null; if (otraVez) { otraVez = false; sincronizar(); } });
   return enviando;
 }
+// Espera a que no quede nada sin mandar (si había un envío en curso, la venta nueva va en el siguiente).
+async function subirTodo() { do await sincronizar(); while (enviando); }
 async function actualizar() {
   if (!API || !conSesion()) return; // también en segundo plano, para avisar pedidos nuevos
   await sincronizar();
@@ -586,7 +591,7 @@ function cobrarFeriaQr(v, recibido) {
   $("#qr-img").hidden = $("#qr-link").hidden = true; $("#qr-check").setAttribute("hidden", "");
   $("#qr-estado").className = ""; $("#qr-estado").textContent = "Guardando la venta…";
   $("#d-qr").showModal();
-  sincronizar().then(() => generarQr(totalVenta(v), false, null));
+  subirTodo().then(() => generarQr(totalVenta(v), false, null));
 }
 function pagoFeriaListo() {
   const { v } = feriaQr;
@@ -820,7 +825,9 @@ function terminarVentaFeria(v, recibido) {
   const total = totalVenta(v), vuelto = recibido > total ? recibido - total : 0, m = v.pagos[0]?.medio || feriaMedio;
   pintarResumenCaja();
   $("#pos-ultima").replaceChildren(el("span", { textContent: `Última venta N° ${v.numero}` }), botonesImp(v.numero, { recibido }));
-  avisar(`Venta N° ${v.numero}: ${plata(total)} con ${medio(m)}${vuelto ? ` · vuelto ${plata(vuelto)}` : ""}.`, () => {
+  const texto = `Venta N° ${v.numero}: ${plata(total)} con ${medio(m)}${vuelto ? ` · vuelto ${plata(vuelto)}` : ""}.`;
+  if (v.pagos.some((p) => p.mp)) return avisar(texto); // cobrada por Mercado Pago: la plata ya entró, no se deshace desde acá
+  avisar(texto, () => {
     if (db.ventas.includes(v)) db.ventas.splice(db.ventas.indexOf(v), 1);
     for (const i of v.items) { const p = productoDe(i.id); if (p) p.stock = (p.stock || 0) + i.cant; }
   });
