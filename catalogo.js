@@ -47,7 +47,7 @@ function productosDesdeCsv(text) {
     .filter((p) => p.id && p.nombre && p.activo);
 }
 
-// Igual que en apps-script/Code.gs: la seña es el 50% redondeado hacia arriba.
+// Igual que en el servidor (api: nuevoPedido): la seña es el 50% redondeado hacia arriba.
 const montoSena = (total) => Math.ceil(total / 2);
 
 function resumenPedido(items, cliente) {

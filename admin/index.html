@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="../favicon.png">
-  <link rel="stylesheet" href="admin.css?v=0.50">
-  <script src="../tema.js?v=0.50"></script>
+  <link rel="stylesheet" href="admin.css?v=0.51">
+  <script src="../tema.js?v=0.51"></script>
 </head>
 <body>
 <div id="login" class="login" hidden>
@@ -44,6 +44,7 @@
       <a href="#reportes" data-permiso="reportes">Reportes y gastos</a>
       <a href="#usuarios" data-permiso="usuarios">Usuarios y comisiones</a>
       <a href="#medios" data-permiso="medios">Medios de pago</a>
+      <a href="#mensajes" data-permiso="mensajes">Mensajes de WhatsApp</a>
       <a href="#mp" data-permiso="mp" data-solo-servidor hidden>Mercado Pago</a>
       <a href="#accesos" data-permiso="accesos" data-solo-servidor hidden>Accesos al panel</a>
       <a href="#base" data-permiso="base" data-solo-servidor hidden>Base de datos</a>
@@ -160,6 +161,15 @@
         <div class="cabeza"><div><p class="eyebrow">Configuración</p><h1>Medios de pago</h1><p class="sub">Efectivo, transferencias, Mercado Pago y los que quieras, con su QR.</p></div>
           <button class="btn" type="button" id="nuevo-medio">+ Agregar medio</button></div>
         <div id="medios-lista" class="tarjetas"></div>
+      </section>
+
+      <section id="v-mensajes" class="vista" hidden>
+        <div class="cabeza"><div><p class="eyebrow">Configuración</p><h1>Mensajes de WhatsApp</h1><p class="sub">El mensaje que te proponemos mandarle al cliente cuando cambiás el estado de su pedido. Tocá una etiqueta para sumar un dato del pedido.</p></div></div>
+        <p id="mensajes-aviso" class="caja nota-servidor" hidden>Para guardar los mensajes hay que actualizar el servidor (V0.51). Mientras tanto se usan los textos originales.</p>
+        <form id="f-mensajes" novalidate>
+          <div id="mensajes-lista" class="tarjetas mensajes"></div>
+          <div class="acciones-form"><button class="btn" type="submit">Guardar mensajes</button></div>
+        </form>
       </section>
 
       <section id="v-mp" class="vista" hidden>
@@ -305,7 +315,11 @@
     <div class="qr-caja">
       <img id="qr-img" alt="Código QR para pagar con Mercado Pago" width="240" height="240" hidden>
       <p id="qr-estado" aria-live="polite"></p>
-      <a id="qr-link" target="_blank" rel="noopener" hidden>Abrir el link de pago (para mandarlo por WhatsApp)</a>
+      <div id="qr-link" class="qr-acciones" hidden>
+        <a id="qr-wa" class="btn chico wa" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+        <button id="qr-copiar" class="btn sec chico" type="button">Copiar link</button>
+        <a id="qr-abrir" class="chico" target="_blank" rel="noopener">Abrir el link</a>
+      </div>
     </div>
     <footer><button class="btn sec" value="cancel">Cerrar</button></footer>
   </form>
@@ -466,10 +480,10 @@
 <div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
 <section id="imprimir" aria-hidden="true"></section>
-<script src="../config.js?v=0.50"></script>
-<script src="../productos.js?v=0.50"></script>
-<script src="../catalogo.js?v=0.50"></script>
-<script src="datos.js?v=0.50"></script>
-<script src="admin.js?v=0.50"></script>
+<script src="../config.js?v=0.51"></script>
+<script src="../productos.js?v=0.51"></script>
+<script src="../catalogo.js?v=0.51"></script>
+<script src="datos.js?v=0.51"></script>
+<script src="admin.js?v=0.51"></script>
 </body>
 </html>
