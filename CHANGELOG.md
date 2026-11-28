@@ -2,6 +2,9 @@
 
 Versiones `V0.XX` mientras la app está en desarrollo. Cada entrega sube el número, actualiza `version` en `config.js` y el `?v=` de los archivos en `index.html` (para que el navegador no use copias viejas).
 
+## V0.64 · 2026-11-28
+- Ticket de 80 mm pensado para impresora térmica (rollo 80 mm, 72 mm imprimibles): todo en negro puro, letra más grande, logo en blanco y negro, márgenes de 4 mm a los costados y el largo justo para el contenido (no gasta los 297 mm del rollo).
+
 ## V0.63 · 2026-11-28
 - Panel principal: "Últimas ventas" suma la columna Comprobante (A4 o ticket de 80 mm), igual que Ventas y pedidos. Se imprime o se guarda como PDF.
 
